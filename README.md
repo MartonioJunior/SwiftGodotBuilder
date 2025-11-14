@@ -1,7 +1,7 @@
 
 <a href="#"><img src="media/patterns.png?raw=true" width="210" align="right" title="Pictured: Ancient Roman seamstress at a loom, holding a shuttle."></a>
 
-### SwiftGodotBuilder
+#### SwiftGodotBuilder
 
 Declarative Godot development.
 
@@ -15,6 +15,19 @@ A SwiftUI-style library for building Godot games and apps using [SwiftGodot](htt
 <br><br>
 
 ## Quick Start
+
+Add SwiftGodotBuilder to your `Package.swift`:
+
+```swift
+dependencies: [
+  .package(url: "https://github.com/johnsusek/SwiftGodotBuilder", branch: "main")
+],
+targets: [
+  .target(name: "YourTarget", dependencies: ["SwiftGodotBuilder"])
+]
+```
+
+Then import and use:
 
 ```swift
 import SwiftGodot
@@ -36,7 +49,9 @@ struct GameView: GView {
 }
 ```
 
-## Builder Syntax
+## Core Features
+
+### Builder Syntax
 
 ```swift
 // $ syntax - shorthand for GNode<T>
@@ -61,7 +76,7 @@ GNode<CustomNode>("Name", make: { CustomNode(config: config) }) {
 }
 ```
 
-## Properties & Configuration
+### Properties & Configuration
 
 ```swift
 // Dynamic member lookup - set any property
@@ -79,7 +94,7 @@ Sprite2D$().configure { sprite in
 }
 ```
 
-## Resource Loading
+### Resource Loading
 
 ```swift
 // Load into property
@@ -96,7 +111,46 @@ Sprite2D$()
   }
 ```
 
-## State Management
+### Signal Connections
+
+```swift
+// No arguments
+Button$()
+  .onSignal(\.pressed) { node in
+    print("Pressed!")
+  }
+
+// With arguments
+Area2D$()
+  .onSignal(\.bodyEntered) { node, body in
+    print("Body entered: \(body)")
+  }
+
+// Multiple arguments
+Area2D$()
+  .onSignal(\.bodyShapeEntered) { node, bodyRid, body, bodyShapeIndex, localShapeIndex in
+    // Handle collision
+  }
+```
+
+### Process Hooks
+
+```swift
+Node2D$()
+  .onReady { node in
+    print("Node ready!")
+  }
+  .onProcess { node, delta in
+    node.position.x += 100 * Float(delta)
+  }
+  .onPhysicsProcess { node, delta in
+    // Physics updates
+  }
+```
+
+## Reactive Data
+
+### State Management
 
 ```swift
 struct PlayerView: GView {
@@ -119,7 +173,7 @@ struct PlayerView: GView {
 }
 ```
 
-## State Binding Patterns
+#### State Binding Patterns
 
 ```swift
 // One-way bind to property
@@ -134,11 +188,6 @@ Sprite2D$().bind(\.x, to: $position, \.x)
 // Multi-state binding
 Label$().bind(\.text, to: $health, $maxHealth) { "\($0)/\($1)" }
 
-// Watch state changes
-Node2D$().watch($health) { node, health in
-  node.modulate = health < 20 ? .red : .white
-}
-
 // Two-way bindings (form controls)
 LineEdit$().text($username)
 Slider$().value($volume)
@@ -146,44 +195,9 @@ CheckBox$().pressed($isEnabled)
 OptionButton$().selected($selectedIndex)
 ```
 
-## Signal Connections
+### Dynamic Views
 
-```swift
-// No arguments
-Button$()
-  .onSignal(\.pressed) { node in
-    print("Pressed!")
-  }
-
-// With arguments
-Area2D$()
-  .onSignal(\.bodyEntered) { node, body in
-    print("Body entered: \(body)")
-  }
-
-// Multiple arguments
-Area2D$()
-  .onSignal(\.bodyShapeEntered) { node, bodyRid, body, bodyShapeIndex, localShapeIndex in
-    // Handle collision
-  }
-```
-
-## Process Hooks
-
-```swift
-Node2D$()
-  .onReady { node in
-    print("Node ready!")
-  }
-  .onProcess { node, delta in
-    node.position.x += 100 * Float(delta)
-  }
-  .onPhysicsProcess { node, delta in
-    // Physics updates
-  }
-```
-
-## Dynamic Views
+#### ForEach
 
 ```swift
 // ForEach - dynamic lists
@@ -203,7 +217,11 @@ struct InventoryView: GView {
     }
   }
 }
+```
 
+#### If/Else
+
+```swift
 // If - conditional rendering
 struct MenuView: GView {
   @State var showSettings = false
@@ -224,7 +242,11 @@ struct MenuView: GView {
 If($condition) { /* ... */ }                 // .hide (default) - toggle visible
 If($condition) { /* ... */ }.mode(.remove)   // addChild/removeChild
 If($condition) { /* ... */ }.mode(.destroy)  // queueFree/rebuild
+```
 
+#### Switch/Case
+
+```swift
 // Switch/Case - multi-way branching
 enum Page { case mainMenu, levelSelect, settings }
 
@@ -256,7 +278,12 @@ struct GameView: GView {
     }
   }
 }
+```
 
+
+### Computed Properties
+
+```swift
 // Computed state - derive new reactive states
 @State var score = 0
 let scoreText = $score.computed { "Score: \($0)" }
@@ -285,67 +312,53 @@ let statusText = $health.computed(with: $maxHealth, $playerName) { hp, maxHp, na
 Label$().text(statusText)
 ```
 
-## Groups & Scene Instancing
+### Watchers
 
 ```swift
-Node2D$()
-  .group("enemies")
-  .group("damageable", persistent: true)
-  .groups(["enemies", "damageable"])
+// Watch and react to state changes
+Node2D$().watch($health) { node, health in
+  node.modulate = health < 20 ? .red : .white
+}
+```
 
-Node2D$()
-  .fromScene("enemy.tscn") { child in
-    // Configure instanced scene
+### Store
+
+```swift
+struct GameState {
+  var health: Int = 100
+  var score: Int = 0
+}
+
+enum GameEvent {
+  case takeDamage(Int)
+  case addScore(Int)
+}
+
+func gameReducer(state: inout GameState, event: GameEvent) {
+  switch event {
+  case .takeDamage(let amount):
+    state.health = max(0, state.health - amount)
+  case .addScore(let points):
+    state.score += points
   }
+}
+
+let store = Store(initialState: GameState(), reducer: gameReducer)
+
+// Use in views
+ProgressBar$().value(store.state(\.health))
+Label$().text(store.state(\.score)) { "Score: \($0)" }
+
+// Send events
+store.commit(.takeDamage(10))
+store.commit(.addScore(100))
 ```
 
-## Control Layout
 
-```swift
-// Anchor/offset presets (non-container parents)
-Control$()
-  .anchors(.center)
-  .offsets(.topRight)
-  .anchorsAndOffsets(.fullRect, margin: 10)
-  .anchor(top: 0, right: 1, bottom: 1, left: 0)
-  .offset(top: 12, right: -12, bottom: -12, left: 12)
 
-// Container size flags (for VBox/HBox parents)
-Button$()
-  .sizeH(.expandFill)
-  .sizeV(.shrinkCenter)
-  .size(.expandFill, .shrinkCenter)
-  .size(.expandFill)  // Both axes
-```
+### EventBus
 
-## Collision (2D)
-
-```swift
-CharacterBody2D$()
-  .collisionLayer(.alpha)
-  .collisionMask([.beta, .gamma])
-
-// Available layers: .alpha, .beta, .gamma, .delta, .epsilon, .zeta, .eta, .theta,
-// .iota, .kappa, .lambda, .mu, .nu, .xi, .omicron, .pi, .rho, .sigma, .tau,
-// .upsilon, .phi, .chi, .psi, .omega
-
-// Custom layers
-CharacterBody2D$()
-  .collisionMask(wallLayer | enemyLayer)
-```
-
-## Shape Helpers
-
-```swift
-CollisionShape2D$().shape(RectangleShape2D(w: 50, h: 100))
-CollisionShape2D$().shape(CircleShape2D(radius: 25))
-CollisionShape2D$().shape(CapsuleShape2D(radius: 10, height: 50))
-CollisionShape2D$().shape(SegmentShape2D(a: [0, 0], b: [100, 100]))
-CollisionShape2D$().shape(SeparationRayShape2D(length: 100))
-CollisionShape2D$().shape(WorldBoundaryShape2D(normal: [0, -1], distance: 0))
-```
-
-## EventBus
+Modify parent state from children by emitting events instead of using callbacks.
 
 ```swift
 enum GameEvent {
@@ -384,40 +397,144 @@ enum GameEvent: EmittableEvent {
 GameEvent.playerDied.emit()
 ```
 
-## Store (Uni-directional State)
+## Node Modifiers
+
+### Control Layout
 
 ```swift
-struct GameState {
-  var health: Int = 100
-  var score: Int = 0
-}
+// Anchor/offset presets (non-container parents)
+Control$()
+  .anchors(.center)
+  .offsets(.topRight)
+  .anchorsAndOffsets(.fullRect, margin: 10)
+  .anchor(top: 0, right: 1, bottom: 1, left: 0)
+  .offset(top: 12, right: -12, bottom: -12, left: 12)
 
-enum GameEvent {
-  case takeDamage(Int)
-  case addScore(Int)
-}
-
-func gameReducer(state: inout GameState, event: GameEvent) {
-  switch event {
-  case .takeDamage(let amount):
-    state.health = max(0, state.health - amount)
-  case .addScore(let points):
-    state.score += points
-  }
-}
-
-let store = Store(initialState: GameState(), reducer: gameReducer)
-
-// Use in views
-ProgressBar$().value(store.state(\.health))
-Label$().text(store.state(\.score)) { "Score: \($0)" }
-
-// Send events
-store.commit(.takeDamage(10))
-store.commit(.addScore(100))
+// Container size flags (for VBox/HBox parents)
+Button$()
+  .sizeH(.expandFill)
+  .sizeV(.shrinkCenter)
+  .size(.expandFill, .shrinkCenter)
+  .size(.expandFill)  // Both axes
 ```
 
-## Input Actions
+
+### Theme Building
+
+```swift
+let theme = Theme([
+  "Button": [
+    "colors": ["fontColor": Color.white],
+    "constants": ["outlineSize": 2],
+    "fontSizes": ["fontSize": 16]
+  ],
+  "Label": [
+    "colors": ["fontColor": Color.white],
+    "fontSizes": ["fontSize": 14]
+  ]
+])
+
+Control$().theme(theme)
+```
+
+### Collision (2D)
+
+```swift
+CharacterBody2D$()
+  .collisionLayer(.alpha)
+  .collisionMask([.beta, .gamma])
+
+// Available layers: .alpha, .beta, .gamma, .delta, .epsilon, .zeta, .eta, .theta,
+// .iota, .kappa, .lambda, .mu, .nu, .xi, .omicron, .pi, .rho, .sigma, .tau,
+// .upsilon, .phi, .chi, .psi, .omega
+
+// Custom layers
+CharacterBody2D$()
+  .collisionMask(wallLayer | enemyLayer)
+```
+
+
+### Groups
+
+```swift
+Node2D$()
+  .group("enemies")
+  .group("damageable", persistent: true)
+  .groups(["enemies", "damageable"])
+```
+
+### Scene Instancing
+```swift
+Node2D$()
+  .fromScene("enemy.tscn") { child in
+    // Configure instanced scene
+  }
+```
+
+## Extensions & Helpers
+
+### Vector2 Extensions
+
+```swift
+let pos = Vector2(100, 200)
+let pos: Vector2 = [100, 200]  // Array literal
+let doubled = pos * 2
+let scaled = pos * 1.5
+```
+
+### Shape Extensions
+
+```swift
+let rect = RectangleShape2D(w: 50, h: 100)
+let circle = CircleShape2D(radius: 25)
+let capsule = CapsuleShape2D(radius: 10, height: 50)
+let segment = SegmentShape2D(a: [0, 0], b: [100, 100])
+let ray = SeparationRayShape2D(length: 100)
+let boundary = WorldBoundaryShape2D(normal: [0, -1], distance: 0)
+```
+
+### Node Extensions
+
+```swift
+// Typed queries
+let sprites: [Sprite2D] = node.getChildren()
+let firstSprite: Sprite2D? = node.getChild()
+let enemySprite: Sprite2D? = node.getNode("Enemy")
+
+// Group queries
+let enemies: [Enemy] = node.getNodes(inGroup: "enemies")
+
+// Parent chain
+let parents: [Node2D] = node.getParents()
+
+// Metadata queries (recursive)
+let spawns: [Node2D] = root.queryMeta(key: "type", value: "spawn")
+let valuable: [Node2D] = root.queryMeta(key: "value", value: 100)
+let markers: [Node2D] = root.queryMetaKey("marker")
+
+// Get typed metadata
+let coinValue: Int? = node.getMetaValue("coin_value")
+```
+
+### Engine Extensions
+
+```swift
+if let tree = Engine.getSceneTree() {
+  // ...
+}
+
+Engine.onNextFrame {
+  print("Next frame!")
+}
+
+Engine.onNextPhysicsFrame {
+  print("Next physics frame!")
+}
+```
+
+
+
+### Input Actions
 
 ```swift
 // Define actions
@@ -471,9 +588,11 @@ let movement = RuntimeAction.vector(
 )
 ```
 
-## Property Wrappers
 
-Call `bindProps()` in `_ready()` to activate all property wrappers.
+
+### Property Wrappers
+
+Call `bindProps()` in `_ready()` in a `@Godot` class to activate all property wrappers.
 
 ```swift
 @Godot
@@ -505,73 +624,9 @@ final class Player: CharacterBody2D {
 }
 ```
 
-## Theme Building
+## Integrations
 
-```swift
-let theme = Theme([
-  "Button": [
-    "colors": ["fontColor": Color.white],
-    "constants": ["outlineSize": 2],
-    "fontSizes": ["fontSize": 16]
-  ],
-  "Label": [
-    "colors": ["fontColor": Color.white],
-    "fontSizes": ["fontSize": 14]
-  ]
-])
-
-Control$().theme(theme)
-```
-
-## Vector2 Extensions
-
-```swift
-let pos = Vector2(100, 200)
-let pos: Vector2 = [100, 200]  // Array literal
-let doubled = pos * 2
-let scaled = pos * 1.5
-```
-
-## Node Extensions
-
-```swift
-// Typed queries
-let sprites: [Sprite2D] = node.getChildren()
-let firstSprite: Sprite2D? = node.getChild()
-let enemySprite: Sprite2D? = node.getNode("Enemy")
-
-// Group queries
-let enemies: [Enemy] = node.getNodes(inGroup: "enemies")
-
-// Parent chain
-let parents: [Node2D] = node.getParents()
-
-// Metadata queries (recursive)
-let spawns: [Node2D] = root.queryMeta(key: "type", value: "spawn")
-let valuable: [Node2D] = root.queryMeta(key: "value", value: 100)
-let markers: [Node2D] = root.queryMetaKey("marker")
-
-// Get typed metadata
-let coinValue: Int? = node.getMetaValue("coin_value")
-```
-
-## Engine Extensions
-
-```swift
-if let tree = Engine.getSceneTree() {
-  // ...
-}
-
-Engine.onNextFrame {
-  print("Next frame!")
-}
-
-Engine.onNextPhysicsFrame {
-  print("Next physics frame!")
-}
-```
-
-## LDtk Integration
+### LDtk Integration
 
 Complete workflow for loading LDtk levels.
 
@@ -678,7 +733,7 @@ let project = LDProject.load("res://game.ldtk")!
 addChild(node: GameView(project: project).toNode())
 ```
 
-### LDtk Field Accessors
+#### LDtk Field Accessors
 
 All LDtk field types are supported:
 
@@ -707,7 +762,7 @@ entity.field("loot")?.asEnumArray<Item>() -> [Item]?
 entity.field("values")?.asArray() -> [LDFieldValue]?  // Raw array
 ```
 
-### LDtk Collision Helper
+#### LDtk Collision Helper
 
 ```swift
 // Get physics layer bit for IntGrid group name
@@ -718,7 +773,7 @@ CharacterBody2D$()
   .collisionMask(wallLayer | platformLayer)
 ```
 
-## AseSprite
+### AseSprite
 
 ```swift
 // Load Aseprite animations
@@ -739,7 +794,9 @@ AseSprite$(path: "player", layer: "Main")
   }
 ```
 
-## Complete Game Example
+## Examples & Patterns
+
+### Complete Game Example
 
 ```swift
 import SwiftGodot
@@ -937,9 +994,9 @@ struct HUDView: GView {
 }
 ```
 
-## Common Patterns
+### Common Patterns
 
-### Character Controller
+#### Character Controller
 
 ```swift
 struct PlayerController: GView {
@@ -982,7 +1039,7 @@ struct PlayerController: GView {
 }
 ```
 
-### Interactive Object
+#### Interactive Object
 
 ```swift
 struct Chest: GView {
@@ -1010,7 +1067,7 @@ struct Chest: GView {
 }
 ```
 
-### Health Bar
+#### Health Bar
 
 ```swift
 struct HealthBar: GView {
@@ -1027,7 +1084,7 @@ struct HealthBar: GView {
 }
 ```
 
-### Menu System
+#### Menu System
 
 ```swift
 enum MenuPage {
@@ -1078,7 +1135,7 @@ struct MainMenu: GView {
 }
 ```
 
-### Inventory System
+#### Inventory System
 
 ```swift
 struct InventoryView: GView {
@@ -1102,7 +1159,7 @@ struct InventoryView: GView {
 }
 ```
 
-### Timer/Countdown
+#### Timer/Countdown
 
 ```swift
 struct Countdown: GView {
