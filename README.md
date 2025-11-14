@@ -3,9 +3,11 @@
 
 ### SwiftGodotBuilder
 
-Declarative game development.
+Declarative Godot development.
 
-A SwiftUI-style library for building games with [SwiftGodot](https://github.com/migueldeicaza/SwiftGodot), [LDtk](https://ldtk.io), and [Aseprite](https://aseprite.org).
+A SwiftUI-style library for building Godot scenes using [SwiftGodot](https://github.com/migueldeicaza/SwiftGodot) with integrations for [LDtk](https://ldtk.io) and [Aseprite](https://aseprite.org).
+
+_Simple games should be simple to make._
 
 <br>
 
