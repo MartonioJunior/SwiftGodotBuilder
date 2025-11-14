@@ -1,5 +1,5 @@
 import SwiftGodot
-import SwiftGodotPatterns
+import SwiftGodotBuilder
 
 #initSwiftExtension(
   cdecl: "swift_entry_point",

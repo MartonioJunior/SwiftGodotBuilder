@@ -4,10 +4,10 @@ import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
-    name: "SwiftGodotPatterns",
+    name: "SwiftGodotBuilder",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "SwiftGodotPatterns", type: .dynamic, targets: ["SwiftGodotPatterns"]),
+        .library(name: "SwiftGodotBuilder", type: .dynamic, targets: ["SwiftGodotBuilder"]),
         .plugin(name: "GenNodeApi", targets: ["GenNodeApi"]),
         .plugin(name: "GenLDEnums", targets: ["GenLDEnums"]),
     ],
@@ -45,7 +45,7 @@ let package = Package(
         ),
 
         .macro(
-            name: "SwiftGodotPatternsMacros",
+            name: "SwiftGodotBuilderMacros",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -53,17 +53,17 @@ let package = Package(
         ),
 
         .target(
-            name: "SwiftGodotPatterns",
+            name: "SwiftGodotBuilder",
             dependencies: [
                 "SwiftGodot",
-                "SwiftGodotPatternsMacros",
+                "SwiftGodotBuilderMacros",
             ],
             plugins: ["GenNodeApi"]
         ),
 
         .testTarget(
-            name: "SwiftGodotPatternsTests",
-            dependencies: ["SwiftGodotPatterns"],
+            name: "SwiftGodotBuilderTests",
+            dependencies: ["SwiftGodotBuilder"],
             resources: [
                 .copy("Test_file_for_API_showing_all_features.ldtk"),
             ]

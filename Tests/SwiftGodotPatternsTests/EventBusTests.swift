@@ -1,4 +1,4 @@
-@testable import SwiftGodotPatterns
+@testable import SwiftGodotBuilder
 import Testing
 
 @Suite("EventBus Tests")

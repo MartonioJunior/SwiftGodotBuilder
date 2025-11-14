@@ -19,10 +19,10 @@ let package = Package(
     .target(
       name: "DemoApp",
       dependencies: [
-        "SwiftGodotPatterns",
+        "SwiftGodotBuilder",
       ],
       plugins: [
-        .plugin(name: "GenLDEnums", package: "SwiftGodotPatterns"),
+        .plugin(name: "GenLDEnums", package: "SwiftGodotBuilder"),
       ]
     ),
   ]

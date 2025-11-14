@@ -17,7 +17,7 @@ import SwiftGodot
 
 @attached(peer)
 public macro OnSignal(_ path: String, _ keyPath: Any, flags: Object.ConnectFlags = [])
-  = #externalMacro(module: "SwiftGodotPatternsMacros", type: "OnSignalMacro")
+  = #externalMacro(module: "SwiftGodotBuilderMacros", type: "OnSignalMacro")
 
 /// Binds a zero-argument Godot signal (`SimpleSignal`) to a Swift closure.
 ///

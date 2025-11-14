@@ -1,7 +1,7 @@
 
-<a href="#"><img src="https://github.com/johnsusek/SwiftGodotPatterns/raw/main/media/patterns.png?raw=true" width="210" align="right" title="Pictured: Ancient Roman seamstress at a loom, holding a shuttle."></a>
+<a href="#"><img src="media/patterns.png?raw=true" width="210" align="right" title="Pictured: Ancient Roman seamstress at a loom, holding a shuttle."></a>
 
-### SwiftGodotPatterns
+### SwiftGodotBuilder
 
 Declarative game development.
 
@@ -9,7 +9,7 @@ A SwiftUI-style library for building games with [SwiftGodot](https://github.com/
 
 <br>
 
-📕 [API Documentation](https://swiftpackageindex.com/johnsusek/SwiftGodotPatterns/documentation/swiftgodotpatterns)
+📕 [API Documentation](https://swiftpackageindex.com/johnsusek/SwiftGodotBuilder/documentation/swiftgodotbuilder)
 
 <br><br><br><br>
 
@@ -17,7 +17,7 @@ A SwiftUI-style library for building games with [SwiftGodot](https://github.com/
 
 ```swift
 import SwiftGodot
-import SwiftGodotPatterns
+import SwiftGodotBuilder
 
 @Godot
 final class Game: Node2D {
@@ -408,8 +408,8 @@ func gameReducer(state: inout GameState, event: GameEvent) {
 let store = Store(initialState: GameState(), reducer: gameReducer)
 
 // Use in views
-ProgressBar$().value(store.bind(\.health))
-Label$().text(store.bind(\.score)) { "Score: \($0)" }
+ProgressBar$().value(store.state(\.health))
+Label$().text(store.state(\.score)) { "Score: \($0)" }
 
 // Send events
 store.commit(.takeDamage(10))
@@ -742,7 +742,7 @@ AseSprite$(path: "player", layer: "Main")
 
 ```swift
 import SwiftGodot
-import SwiftGodotPatterns
+import SwiftGodotBuilder
 
 @Godot
 final class Game: Node2D {

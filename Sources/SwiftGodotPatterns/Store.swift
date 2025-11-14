@@ -237,11 +237,11 @@ public extension Store {
   ///
   /// // Bind directly to UI elements
   /// ProgressBar$()
-  ///   .value(store.bind(\.playerHealth))
+  ///   .value(store.state(\.playerHealth))
   ///   .maxValue(100)
   ///
   /// Label$()
-  ///   .text(store.bind(\.score)) { "Score: \($0)" }
+  ///   .text(store.state(\.score)) { "Score: \($0)" }
   /// ```
   ///
   /// - Parameter keyPath: The key path to the property in the store's state.
@@ -249,7 +249,7 @@ public extension Store {
   ///
   /// - Note: The observation uses a weak reference to the returned GState, so it will
   ///         automatically stop updating when the GState is deallocated.
-  func bind<T: Equatable>(_ keyPath: KeyPath<State, T>) -> GState<T> {
+  func state<T: Equatable>(_ keyPath: KeyPath<State, T>) -> GState<T> {
     let state = GState(wrappedValue: self.state[keyPath: keyPath])
     observe { [weak state] newState in
       state?.wrappedValue = newState[keyPath: keyPath]

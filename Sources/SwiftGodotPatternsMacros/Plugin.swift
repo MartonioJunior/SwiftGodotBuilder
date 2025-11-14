@@ -4,7 +4,7 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 @main
-struct SwiftGodotPatternsMacros: CompilerPlugin {
+struct SwiftGodotBuilderMacros: CompilerPlugin {
   let providingMacros: [Macro.Type] = [OnSignalMacro.self]
 }
 

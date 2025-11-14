@@ -1,5 +1,5 @@
 import SwiftGodot
-@testable import SwiftGodotPatterns
+@testable import SwiftGodotBuilder
 import XCTest
 
 final class LDFieldTests: XCTestCase {

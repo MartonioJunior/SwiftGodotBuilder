@@ -1,5 +1,5 @@
 import Foundation
-@testable import SwiftGodotPatterns
+@testable import SwiftGodotBuilder
 import Testing
 
 @Suite("MsgLog Tests")

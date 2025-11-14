@@ -1,4 +1,4 @@
-@testable import SwiftGodotPatterns
+@testable import SwiftGodotBuilder
 import Testing
 
 @Suite("Store Tests")
@@ -381,7 +381,7 @@ struct StoreTests {
     )
 
     // Create a binding to the count property
-    let countBinding = store.bind(\.count)
+    let countBinding = store.state(\.count)
 
     // Should have initial value
     #expect(countBinding.wrappedValue == 10)
@@ -404,7 +404,7 @@ struct StoreTests {
       reducer: counterReducer
     )
 
-    let binding = store.bind(\.count)
+    let binding = store.state(\.count)
     var observedValues: [Int] = []
 
     // Observe changes to the binding

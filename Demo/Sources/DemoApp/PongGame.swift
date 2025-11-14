@@ -1,5 +1,5 @@
 import SwiftGodot
-import SwiftGodotPatterns
+import SwiftGodotBuilder
 
 @Godot
 final class PongGame: Node2D {

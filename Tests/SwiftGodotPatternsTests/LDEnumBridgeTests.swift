@@ -1,4 +1,4 @@
-@testable import SwiftGodotPatterns
+@testable import SwiftGodotBuilder
 import XCTest
 
 // Test enum matching LDtk Item enum

@@ -1,6 +1,6 @@
 import Foundation
 import SwiftGodot
-import SwiftGodotPatterns
+import SwiftGodotBuilder
 
 @Godot
 final class BreakoutGame: Node2D {

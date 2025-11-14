@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SwiftGodotBuilder - Declarative game development</title>
+    <meta name="description" content="Declarative game development." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css" />
+    <style>
+      :root {
+        --theme-color: #4678f4;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        font-size: 15px;
+      }
+      code {
+        font-family: SFMono, Consolas, "Liberation Mono", Monaco, Menlo, Courier, monospace;
+        font-size: 15px !important;
+        line-height: 1.6 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script>
+      window.$docsify = {
+        name: "SwiftGodotBuilder",
+        // repo: "johnsusek/SwiftGodotBuilder",
+        loadSidebar: true,
+        coverpage: false,
+        maxLevel: 2,
+        themeColor: "#4678f4",
+
+        basePath: "/",
+        relativePath: false,
+        routerMode: "history",
+
+        search: {
+          maxAge: 86400000,
+          paths: "auto",
+          placeholder: "Search...",
+          noData: "No Results",
+          depth: 3,
+        },
+
+        copyCode: {
+          buttonText: "Copy",
+          errorText: "Error",
+          successText: "Copied",
+        },
+      };
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-swift.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docsify-pagination@2/dist/docsify-pagination.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/zoom-image.min.js"></script>
+  </body>
+</html>
