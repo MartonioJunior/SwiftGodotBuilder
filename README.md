@@ -5,15 +5,14 @@
 
 Declarative Godot development.
 
-A SwiftUI-style library for building Godot scenes using [SwiftGodot](https://github.com/migueldeicaza/SwiftGodot) with integrations for [LDtk](https://ldtk.io) and [Aseprite](https://aseprite.org).
 
-_Simple games should be simple to make._
+A SwiftUI-style library for building Godot games and apps using [SwiftGodot](https://github.com/migueldeicaza/SwiftGodot). Integrates with [LDtk](https://ldtk.io) and [Aseprite](https://aseprite.org).
 
 <br>
 
 📕 [API Documentation](https://swiftpackageindex.com/johnsusek/SwiftGodotBuilder/documentation/swiftgodotbuilder)
 
-<br><br><br><br>
+<br><br>
 
 ## Quick Start
 
