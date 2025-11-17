@@ -13,7 +13,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(path: ".."),
+    .package(name: "SwiftGodotBuilder", path: ".."),
   ],
   targets: [
     .target(

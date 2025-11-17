@@ -9,6 +9,7 @@ import SwiftGodotBuilder
     LevelDesigner.self,
     AsteroidsGame.self,
     PongGame.self,
+    MinimalGame.self,
     BreakoutGame.self,
     SpaceInvadersGame.self,
     PlatformerGame.self,
