@@ -1,0 +1,5 @@
+- [Home](/)
+- [Tutorials](https://tutorials.swiftgodotbuilder.com)
+- [FAQ](/FAQ.md)
+- [API](https://swiftpackageindex.com/johnsusek/SwiftGodotBuilder/documentation/swiftgodotbuilder)
+- [GitHub](https://github.com/johnsusek/SwiftGodotBuilder)

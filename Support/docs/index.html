@@ -15,6 +15,7 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
         font-size: 16px;
       }
+
       code {
         font-family: SFMono, Consolas, "Liberation Mono", Monaco, Menlo, Courier, monospace;
         font-size: 15px !important;
@@ -22,6 +23,19 @@
 
       .app-sub-sidebar li:before {
         display: none;
+      }
+
+      section.cover .cover-main > p:last-child a {
+        color: var(--theme-color) !important;
+      }
+
+      section.cover .cover-main > p:last-child a:last-child {
+        color: #fff !important;
+      }
+
+      section.cover.show {
+        background: none !important;
+        background-color: #ffffff !important;
       }
     </style>
   </head>
@@ -33,7 +47,7 @@
         name: "SwiftGodotBuilder",
         loadSidebar: false,
         loadNavbar: true,
-        coverpage: false,
+        coverpage: true,
         maxLevel: 3,
         themeColor: "#4678f4",
 
