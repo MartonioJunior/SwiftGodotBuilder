@@ -123,83 +123,70 @@ private extension String {
   }
 }
 
-/// Helper for creating StyleBox instances with less boilerplate
-public extension StyleBox {
-  /// Creates a flat StyleBox with a background color.
+// MARK: - GNode theme modifier
+
+public extension GNode where T: Control {
+  /// Applies a theme to this control.
   ///
-  /// - Parameters:
-  ///   - color: Background color
-  ///   - contentMargin: Margin on all sides (default: 0)
-  /// - Returns: A configured StyleBoxFlat
-  static func flat(
-    color: Color,
-    contentMargin: Double = 0
-  ) -> StyleBoxFlat {
-    let box = StyleBoxFlat()
-    box.bgColor = color
-    if contentMargin > 0 {
-      box.contentMarginLeft = contentMargin
-      box.contentMarginTop = contentMargin
-      box.contentMarginRight = contentMargin
-      box.contentMarginBottom = contentMargin
-    }
-    return box
+  /// - Parameter theme: The Theme to apply
+  func theme(_ theme: Theme) -> Self {
+    var s = self
+    s.ops.append { $0.theme = theme }
+    return s
   }
 
-  /// Creates a flat StyleBox with a background color and border.
+  /// Applies theme properties using a flat dictionary.
   ///
-  /// - Parameters:
-  ///   - color: Background color
-  ///   - borderColor: Border color
-  ///   - borderWidth: Border width on all sides
-  ///   - contentMargin: Content margin on all sides (default: 0)
-  /// - Returns: A configured StyleBoxFlat
-  static func flat(
-    color: Color,
-    borderColor: Color,
-    borderWidth: Double,
-    contentMargin: Double = 0
-  ) -> StyleBoxFlat {
-    let box = StyleBoxFlat()
-    box.bgColor = color
-    box.borderColor = borderColor
-    box.borderWidthLeft = Int32(borderWidth)
-    box.borderWidthTop = Int32(borderWidth)
-    box.borderWidthRight = Int32(borderWidth)
-    box.borderWidthBottom = Int32(borderWidth)
-    if contentMargin > 0 {
-      box.contentMarginLeft = contentMargin
-      box.contentMarginTop = contentMargin
-      box.contentMarginRight = contentMargin
-      box.contentMarginBottom = contentMargin
-    }
-    return box
-  }
+  /// ```swift
+  /// Label$()
+  ///   .theme([
+  ///     "fontSize": 32,
+  ///     "fontColor": Color.white
+  ///   ])
+  /// ```
+  ///
+  /// Auto-categorization:
+  /// - `*Color` → colors
+  /// - `*Size` or `fontSize` → fontSizes
+  /// - Numeric values → constants
+  /// - Font values → fonts
+  /// - Texture2D values → icons
+  /// - StyleBox values → styleboxes
+  ///
+  /// - Parameter _: Dictionary of property names to values
+  func theme(_ flat: [String: Any]) -> Self {
+    var categorized: [String: Any] = [:]
 
-  /// Creates a flat StyleBox with rounded corners.
-  ///
-  /// - Parameters:
-  ///   - color: Background color
-  ///   - cornerRadius: Radius for all corners
-  ///   - contentMargin: Content margin on all sides (default: 0)
-  /// - Returns: A configured StyleBoxFlat
-  static func flat(
-    color: Color,
-    cornerRadius: Double,
-    contentMargin: Double = 0
-  ) -> StyleBoxFlat {
-    let box = StyleBoxFlat()
-    box.bgColor = color
-    box.cornerRadiusTopLeft = Int32(cornerRadius)
-    box.cornerRadiusTopRight = Int32(cornerRadius)
-    box.cornerRadiusBottomLeft = Int32(cornerRadius)
-    box.cornerRadiusBottomRight = Int32(cornerRadius)
-    if contentMargin > 0 {
-      box.contentMarginLeft = contentMargin
-      box.contentMarginTop = contentMargin
-      box.contentMarginRight = contentMargin
-      box.contentMarginBottom = contentMargin
+    for (key, value) in flat {
+      let category: String
+
+      // Determine category based on key name and value type
+      if key.hasSuffix("Color") || key == "fontColor" {
+        category = "colors"
+      } else if key.hasSuffix("Size") || key == "fontSize" {
+        category = "fontSizes"
+      } else if key.hasSuffix("Font") || value is Font {
+        category = "fonts"
+      } else if value is Texture2D {
+        category = "icons"
+      } else if value is StyleBox {
+        category = "styleboxes"
+      } else if value is Int || value is Int32 {
+        category = "constants"
+      } else {
+        // Default to constants for unknown types
+        category = "constants"
+      }
+
+      if categorized[category] == nil {
+        categorized[category] = [String: Any]()
+      }
+      var catDict = categorized[category] as! [String: Any]
+      catDict[key] = value
+      categorized[category] = catDict
     }
-    return box
+
+    let controlType = String(describing: T.self)
+    return theme(Theme([controlType: categorized]))
   }
 }
