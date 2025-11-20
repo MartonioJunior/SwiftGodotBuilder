@@ -422,15 +422,20 @@ Button$()
 ### Theme Building
 
 ```swift
-let theme = Theme([
-  "Button": [
-    "colors": ["fontColor": Color.white],
-    "constants": ["outlineSize": 2],
-    "fontSizes": ["fontSize": 16]
-  ],
+// Flat dictionary - auto-categorized by property name
+Label$()
+  .theme(Theme([
   "Label": [
     "colors": ["fontColor": Color.white],
-    "fontSizes": ["fontSize": 14]
+    "fontSizes": ["fontSize": 16]
+  ]
+]))
+
+// Or create and reuse a Theme
+let theme = Theme([
+  "Label": [
+    "colors": ["fontColor": Color.white],
+    "fontSizes": ["fontSize": 16]
   ]
 ])
 
@@ -438,6 +443,8 @@ Control$().theme(theme)
 ```
 
 ### Collision (2D)
+
+Named layer helpers.
 
 ```swift
 CharacterBody2D$()
@@ -532,7 +539,37 @@ Engine.onNextPhysicsFrame {
 }
 ```
 
+### Particle Effects
 
+```swift
+// Define presets as extensions
+extension ParticleConfig {
+  static let explosion = ParticleConfig(
+    amount: 20,
+    lifetime: 0.8,
+    explosiveness: 1.0,
+    direction: Vector2(x: 0, y: -1),
+    spread: 180,
+    initialVelocityMin: 100,
+    initialVelocityMax: 200,
+    gravity: Vector2(x: 0, y: 400),
+    color: Color(r: 1.0, g: 0.5, b: 0.0)
+  )
+}
+
+// Apply to particles
+let config = ParticleConfig.explosion
+CPUParticles2D$()
+  .amount(config.amount)
+  .lifetime(config.lifetime)
+  .explosiveness(config.explosiveness)
+  .direction(config.direction)
+  .spread(config.spread)
+  .initialVelocityMin(config.initialVelocityMin)
+  .initialVelocityMax(config.initialVelocityMax)
+  .gravity(config.gravity)
+  .color(config.color)
+```
 
 ### Input Actions
 
