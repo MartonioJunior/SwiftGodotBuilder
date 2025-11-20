@@ -69,9 +69,6 @@ public extension GNode where T: Node {
   }
 }
 
-// safe because constant value
-private nonisolated(unsafe) let _gProcessRelayName = StringName("__GProcessRelay__")
-
 private func _attachOrUpdateRelay<T: Node>(
   _ host: T,
   onReady: ((T) -> Void)? = nil,
@@ -79,10 +76,14 @@ private func _attachOrUpdateRelay<T: Node>(
   onPhysics: ((T, Double) -> Void)? = nil
 ) {
   let relay: GProcessRelay = {
-    if let existing: GProcessRelay = host.getChildren()
-      .first(where: { $0.name == _gProcessRelayName }) { return existing }
+    // Use getNodeOrNull to avoid triggering the typed array resolution
+    // which causes "Unknown class name: Node." error in barebone-split branch
+    if let existing = host.getNodeOrNull(path: NodePath("__GProcessRelay__")) as? GProcessRelay {
+      return existing
+    }
+
     let r = GProcessRelay()
-    r.name = _gProcessRelayName
+    r.name = StringName("__GProcessRelay__")
     r.ownerNode = .init(host)
     host.addChild(node: r)
     return r
