@@ -138,6 +138,15 @@ public final class Store<State, Event>: @unchecked Sendable {
   /// The observer is called immediately with the current state, and then
   /// whenever `commit(_:)` causes a state change.
   ///
+  /// ## Example
+  ///
+  /// ```swift
+  /// let store = Store(initialState: GameState(), reducer: gameReducer)
+  /// let token = store.observe { state in
+  ///   print("New state: \(state)")
+  /// }
+  /// ```
+  ///
   /// - Parameter handler: A closure that receives the new state.
   /// - Returns: A token that can be used to cancel the observation.
   @discardableResult

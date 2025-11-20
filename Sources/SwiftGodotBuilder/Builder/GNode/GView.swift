@@ -57,7 +57,7 @@ public extension GView {
   var shouldFlattenChildren: Bool { false }
 
   /// Default implementation - returns nil (node not used).
-  func toNodeWithParent(_ parent: Node) -> Node? { nil }
+  func toNodeWithParent(_: Node) -> Node? { nil }
 }
 
 @_documentation(visibility: private)
