@@ -170,9 +170,7 @@ let jsonData = try encoder.encode(jsonDict)
 // Check if file changed to avoid unnecessary writes
 if let existingData = try? Data(contentsOf: outputJSON),
    existingData == jsonData
-{
-  fputs("LDtk enums unchanged (\(allEnums.count) enums)\n", stderr)
-} else {
+{} else {
   try jsonData.write(to: outputJSON, options: .atomic)
   fputs("Generated LDtk enums: \(allEnums.count) enums\n", stderr)
   for enumInfo in allEnums.sorted(by: { $0.ldtkName < $1.ldtkName }) {
