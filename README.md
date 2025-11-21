@@ -284,10 +284,16 @@ struct GameView: GView {
 ### Computed Properties
 
 ```swift
-// Computed state - derive new reactive states
+// Define computed properties as computed vars on the struct
 @State var score = 0
-let scoreText = $score.computed { "Score: \($0)" }
-let isHighScore = $score.computed { $0 > 1000 }
+
+var scoreText: GState<String> {
+  $score.computed { "Score: \($0)" }
+}
+
+var isHighScore: GState<Bool> {
+  $score.computed { $0 > 1000 }
+}
 
 Label$().text(scoreText)
 
@@ -296,17 +302,14 @@ If(isHighScore) {
 }
 
 // Combine multiple states
-@State var currentPage = 1
-@State var totalPages = 10
-let pageText = $currentPage.computed(with: $totalPages) { current, total in
-  "Page \(current) of \(total)"
-}
-
 @State var health = 80
 @State var maxHealth = 100
 @State var playerName = "Hero"
-let statusText = $health.computed(with: $maxHealth, $playerName) { hp, maxHp, name in
-  "\(name): \(hp)/\(maxHp) HP"
+
+var statusText: GState<String> {
+  $health.computed(with: $maxHealth, $playerName) { hp, maxHp, name in
+    "\(name): \(hp)/\(maxHp) HP"
+  }
 }
 
 Label$().text(statusText)

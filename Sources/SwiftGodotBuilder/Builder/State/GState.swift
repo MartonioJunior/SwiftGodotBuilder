@@ -103,10 +103,13 @@ public extension GState {
   func computed<U: Equatable>(_ transform: @escaping (Value) -> U) -> GState<U> {
     let derived = GState<U>(wrappedValue: transform(self.value))
 
-    // Keep the source state alive as long as the derived state exists
-    // This ensures the onChange listener stays registered
-    onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(newValue)
+    // Capture derived strongly so it stays alive and continues to update.
+    // This is safe because:
+    // - Source doesn't own derived (we return it)
+    // - Listener (owned by source) captures derived
+    // - When source is deallocated, listeners are cleaned up
+    onChange { [derived] newValue in
+      derived.wrappedValue = transform(newValue)
     }
 
     return derived
@@ -137,12 +140,12 @@ public extension GState {
   ) -> GState<U> {
     let derived = GState<U>(wrappedValue: transform(self.value, other.value))
 
-    onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(newValue, other.value)
+    onChange { [derived] newValue in
+      derived.wrappedValue = transform(newValue, other.value)
     }
 
-    other.onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(self.value, newValue)
+    other.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, newValue)
     }
 
     return derived
@@ -166,16 +169,16 @@ public extension GState {
   ) -> GState<V> {
     let derived = GState<V>(wrappedValue: transform(self.value, second.value, third.value))
 
-    onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(newValue, second.value, third.value)
+    onChange { [derived] newValue in
+      derived.wrappedValue = transform(newValue, second.value, third.value)
     }
 
-    second.onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(self.value, newValue, third.value)
+    second.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, newValue, third.value)
     }
 
-    third.onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(self.value, second.value, newValue)
+    third.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, newValue)
     }
 
     return derived
@@ -201,20 +204,20 @@ public extension GState {
   ) -> GState<W> {
     let derived = GState<W>(wrappedValue: transform(self.value, second.value, third.value, fourth.value))
 
-    onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(newValue, second.value, third.value, fourth.value)
+    onChange { [derived] newValue in
+      derived.wrappedValue = transform(newValue, second.value, third.value, fourth.value)
     }
 
-    second.onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(self.value, newValue, third.value, fourth.value)
+    second.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, newValue, third.value, fourth.value)
     }
 
-    third.onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(self.value, second.value, newValue, fourth.value)
+    third.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, newValue, fourth.value)
     }
 
-    fourth.onChange { [weak derived] newValue in
-      derived?.wrappedValue = transform(self.value, second.value, third.value, newValue)
+    fourth.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, third.value, newValue)
     }
 
     return derived
