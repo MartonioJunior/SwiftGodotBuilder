@@ -11,17 +11,17 @@ final class PlatformerGame: Node2D {
 }
 
 struct PlatformerGameView: GView {
-  let screenWidth: Float = 800
-  let screenHeight: Float = 600
-  let playerWidth: Float = 32
-  let playerHeight: Float = 32
-  let gravity: Float = 980
-  let jumpSpeed: Float = 450
-  let moveSpeed: Float = 200
-  let coinSize: Float = 16
+  let screenWidth: Float = 320
+  let screenHeight: Float = 180
+  let playerWidth: Float = 13
+  let playerHeight: Float = 13
+  let gravity: Float = 392
+  let jumpSpeed: Float = 180
+  let moveSpeed: Float = 80
+  let coinSize: Float = 6
   let themes = PlatformerThemes()
 
-  @State var playerPos: Vector2 = [400, 200]
+  @State var playerPos: Vector2 = [160, 80]
   @State var playerVel: Vector2 = [0, 0]
   @State var score = 0
   @State var totalCoins = 0
@@ -74,8 +74,8 @@ struct PlatformerGameView: GView {
           .bind(\.text, to: $score, $totalCoins) { collected, total in
             "Coins: \(collected) / \(total)"
           }
-          .offsetLeft(20)
-          .offsetTop(10)
+          .offsetLeft(4)
+          .offsetTop(4)
           .theme(themes.score)
 
         // Start message
@@ -86,15 +86,15 @@ struct PlatformerGameView: GView {
               .horizontalAlignment(.center)
               .theme(themes.score)
 
-            Control$().customMinimumSize([0, 20])
+            Control$().minSize([0, 8])
 
             Label$()
               .text("Press SPACE to start\nA/D or Arrow Keys to move\nSPACE/W/UP to jump\n\nCollect all the coins!")
               .horizontalAlignment(.center)
               .theme(themes.message)
           }
-          .offsetLeft(Double(screenWidth / 2 - 150))
-          .offsetTop(Double(screenHeight / 2 - 100))
+          .offsetLeft(Double(screenWidth / 2 - 60))
+          .offsetTop(Double(screenHeight / 2 - 40))
         }
         .anchorsAndOffsets(.fullRect)
         .bind(\.visible, to: $gameState) { $0 == .menu }
@@ -103,8 +103,8 @@ struct PlatformerGameView: GView {
         CenterContainer$ {
           Label$()
             .text("YOU WIN!\nPress SPACE to restart")
-            .offsetLeft(Double(screenWidth / 2 - 180))
-            .offsetTop(Double(screenHeight / 2 - 50))
+            .offsetLeft(Double(screenWidth / 2 - 72))
+            .offsetTop(Double(screenHeight / 2 - 20))
             .horizontalAlignment(.center)
             .theme(themes.gameOver)
         }
@@ -165,7 +165,7 @@ extension PlatformerGameView {
     // These are marker nodes placed in the Godot editor
     let playerSpawns: [Marker2D] = rootNode.getNodes(inGroup: "player_spawns")
 
-    playerPos = playerSpawns.randomElement()?.position ?? [100, 200]
+    playerPos = playerSpawns.randomElement()?.position ?? [40, 80]
   }
 
   func initializeCoins() {
@@ -242,7 +242,7 @@ extension PlatformerGameView {
     }
 
     // Fall off screen = reset
-    if playerPos.y > screenHeight + 100 {
+    if playerPos.y > screenHeight + 40 {
       resetPlayer()
     }
   }
@@ -280,21 +280,21 @@ extension PlatformerGameView {
 struct PlatformerThemes {
   let score = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 28],
+      "fontSizes": ["fontSize": 11],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let message = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 20],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let gameOver = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 42],
+      "fontSizes": ["fontSize": 16],
       "colors": ["fontColor": Color(r: 0.3, g: 1.0, b: 0.3)],
     ],
   ])

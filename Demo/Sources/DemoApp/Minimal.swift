@@ -11,6 +11,10 @@ final class MinimalGame: Node2D {
 
 struct MinimalGameView: GView {
   var body: some GView {
-    Node2D$()
+    Node2D$().onReady { _ in
+      print("MinimalGameView is ready!")
+    }.onProcess { _, _ in
+      print("MinimalGameView is processing!")
+    }
   }
 }

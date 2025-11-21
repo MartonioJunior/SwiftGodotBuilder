@@ -13,21 +13,21 @@ final class AsteroidsGame: Node2D {
 struct AsteroidsThemes {
   let score = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 24],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let message = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 28],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let gameOver = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 48],
+      "fontSizes": ["fontSize": 16],
       "colors": ["fontColor": Color.red],
     ],
   ])
@@ -40,9 +40,9 @@ enum AsteroidSize {
 
   var radius: Float {
     switch self {
-    case .large: return 40
-    case .medium: return 25
-    case .small: return 15
+    case .large: return 16
+    case .medium: return 10
+    case .small: return 6
     }
   }
 
@@ -81,18 +81,18 @@ struct AsteroidsBullet: Identifiable, Equatable {
 }
 
 struct AsteroidsGameView: GView {
-  let screenWidth: Float = 800
-  let screenHeight: Float = 600
-  let shipSize: Float = 20
-  let thrustPower: Float = 400
+  let screenWidth: Float = 320
+  let screenHeight: Float = 180
+  let shipSize: Float = 8
+  let thrustPower: Float = 160
   let rotationSpeed: Float = 4.5
-  let maxSpeed: Float = 500
-  let bulletSpeed: Float = 600
+  let maxSpeed: Float = 200
+  let bulletSpeed: Float = 240
   let bulletLifetime: Double = 1.5
   let friction: Float = 0.99
   let themes = AsteroidsThemes()
 
-  @State var shipPos: Vector2 = [400, 300]
+  @State var shipPos: Vector2 = [160, 90]
   @State var shipVel: Vector2 = [0, 0]
   @State var shipRotation: Float = 0
   @State var bullets: [AsteroidsBullet] = []
@@ -219,22 +219,22 @@ struct AsteroidsGameView: GView {
         // Score
         Label$()
           .bind(\.text, to: $score) { "SCORE: \($0)" }
-          .offsetLeft(20)
-          .offsetTop(10)
+          .offsetLeft(4)
+          .offsetTop(4)
           .theme(themes.score)
 
         // Lives
         Label$()
           .bind(\.text, to: $lives) { "LIVES: \($0)" }
-          .offsetLeft(Double(screenWidth - 150))
-          .offsetTop(10)
+          .offsetLeft(Double(screenWidth - 60))
+          .offsetTop(4)
           .theme(themes.score)
 
         // Level
         Label$()
           .bind(\.text, to: $level) { "LEVEL: \($0)" }
-          .offsetLeft(Double(screenWidth / 2 - 50))
-          .offsetTop(10)
+          .offsetLeft(Double(screenWidth / 2 - 28))
+          .offsetTop(4)
           .theme(themes.score)
 
         // Start message
@@ -309,16 +309,16 @@ struct AsteroidsGameView: GView {
       switch edge {
       case 0: // Top
         pos = [Float.random(in: 0 ... screenWidth), 0]
-        vel = [Float.random(in: -100 ... 100), Float.random(in: 50 ... 150)]
+        vel = [Float.random(in: -40 ... 40), Float.random(in: 20 ... 60)]
       case 1: // Right
         pos = [screenWidth, Float.random(in: 0 ... screenHeight)]
-        vel = [Float.random(in: -150 ... -50), Float.random(in: -100 ... 100)]
+        vel = [Float.random(in: -60 ... -20), Float.random(in: -40 ... 40)]
       case 2: // Bottom
         pos = [Float.random(in: 0 ... screenWidth), screenHeight]
-        vel = [Float.random(in: -100 ... 100), Float.random(in: -150 ... -50)]
+        vel = [Float.random(in: -40 ... 40), Float.random(in: -60 ... -20)]
       default: // Left
         pos = [0, Float.random(in: 0 ... screenHeight)]
-        vel = [Float.random(in: 50 ... 150), Float.random(in: -100 ... 100)]
+        vel = [Float.random(in: 20 ... 60), Float.random(in: -40 ... 40)]
       }
 
       asteroids.append(Asteroid(
@@ -466,7 +466,7 @@ struct AsteroidsGameView: GView {
   func spawnFragments(at position: Vector2, velocity: Vector2, size: AsteroidSize) {
     for _ in 0 ..< 2 {
       let angle = Float.random(in: 0 ... .pi * 2)
-      let speed: Float = 150
+      let speed: Float = 60
       let newVel = Vector2(
         x: cos(angle) * speed + velocity.x * 0.5,
         y: sin(angle) * speed + velocity.y * 0.5
@@ -495,16 +495,16 @@ struct AsteroidsGameView: GView {
   func wrapPosition(_ pos: Vector2) -> Vector2 {
     var wrapped = pos
 
-    if wrapped.x < -50 {
-      wrapped.x = screenWidth + 50
-    } else if wrapped.x > screenWidth + 50 {
-      wrapped.x = -50
+    if wrapped.x < -20 {
+      wrapped.x = screenWidth + 20
+    } else if wrapped.x > screenWidth + 20 {
+      wrapped.x = -20
     }
 
-    if wrapped.y < -50 {
-      wrapped.y = screenHeight + 50
-    } else if wrapped.y > screenHeight + 50 {
-      wrapped.y = -50
+    if wrapped.y < -20 {
+      wrapped.y = screenHeight + 20
+    } else if wrapped.y > screenHeight + 20 {
+      wrapped.y = -20
     }
 
     return wrapped

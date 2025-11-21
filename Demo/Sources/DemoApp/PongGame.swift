@@ -12,52 +12,53 @@ final class PongGame: Node2D {
 struct Themes {
   let scoreLeft = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 48],
+      "fontSizes": ["fontSize": 20],
       "colors": ["fontColor": Color(r: 0.3, g: 0.7, b: 1.0, a: 0.8)],
     ],
   ])
 
   let scoreRight = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 48],
+      "fontSizes": ["fontSize": 20],
       "colors": ["fontColor": Color(r: 1.0, g: 0.3, b: 0.5, a: 0.8)],
     ],
   ])
 
   let message = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 20],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let pause = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 32],
+      "fontSizes": ["fontSize": 16],
       "colors": ["fontColor": Color.yellow],
     ],
   ])
 }
 
 struct PongGameView: GView {
-  let screenWidth: Float = 800
-  let screenHeight: Float = 600
-  let paddleWidth: Float = 15
-  let paddleHeight: Float = 80
-  let ballSize: Float = 15
-  let paddleSpeed: Float = 400
-  let initialBallSpeed: Float = 300
-  let paddleMargin: Float = 30
+  let screenWidth: Float = 320
+  let screenHeight: Float = 180
+  let paddleWidth: Float = 8
+  let paddleHeight: Float = 32
+  let ballSize: Float = 6
+  let paddleSpeed: Float = 160
+  let initialBallSpeed: Float = 120
+  let paddleMargin: Float = 12
   let themes = Themes()
 
-  @State var ballPos: Vector2 = [400, 300]
-  @State var ballVel: Vector2 = [300, 210]
-  @State var leftPaddleY: Float = (600 - 80) / 2
-  @State var rightPaddleY: Float = (600 - 80) / 2
+  @State var ballPos: Vector2 = [160, 90]
+  @State var ballVel: Vector2 = [120, 84]
+  @State var leftPaddleY: Float = (180 - 32) / 2
+  @State var rightPaddleY: Float = (180 - 32) / 2
   @State var leftScore = 0
   @State var rightScore = 0
   @State var isPaused = false
   @State var gameStarted = false
+  @State var ballNode: CharacterBody2D?
 
   var body: some GView {
     Node2D$ {
@@ -134,21 +135,22 @@ struct PongGameView: GView {
       }
       .position($ballPos)
       .velocity($ballVel)
+      .ref($ballNode)
 
       // Score UI overlay
       CanvasLayer$ {
         // Left score
         Label$()
           .bind(\.text, to: $leftScore) { String($0) }
-          .offsetLeft(Double(screenWidth / 4 - 20))
-          .offsetTop(30)
+          .offsetLeft(Double(screenWidth / 4 - 10))
+          .offsetTop(10)
           .theme(themes.scoreLeft)
 
         // Right score
         Label$()
           .bind(\.text, to: $rightScore) { String($0) }
-          .offsetLeft(Double(screenWidth * 3 / 4 - 20))
-          .offsetTop(30)
+          .offsetLeft(Double(screenWidth * 3 / 4 - 10))
+          .offsetTop(10)
           .theme(themes.scoreRight)
 
         // Start message
@@ -222,9 +224,9 @@ struct PongGameView: GView {
     }
   }
 
-  func updateBall(_ node: Node, _ delta: Double) {
-    // Find the ball CharacterBody2D
-    guard let ball: CharacterBody2D = node.getChild() else {
+  func updateBall(_: Node, _ delta: Double) {
+    // Use the stored ball reference
+    guard let ball = ballNode else {
       return
     }
 

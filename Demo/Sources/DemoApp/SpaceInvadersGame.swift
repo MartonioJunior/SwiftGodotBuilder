@@ -13,28 +13,28 @@ final class SpaceInvadersGame: Node2D {
 struct SpaceInvadersThemes {
   let score = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 20],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let message = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 24],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let gameOver = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 48],
+      "fontSizes": ["fontSize": 14],
       "colors": ["fontColor": Color.red],
     ],
   ])
 
   let victory = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 36],
+      "fontSizes": ["fontSize": 16],
       "colors": ["fontColor": Color.green],
     ],
   ])
@@ -84,23 +84,23 @@ struct Barrier: Identifiable, Equatable {
 }
 
 struct SpaceInvadersGameView: GView {
-  let screenWidth: Float = 800
-  let screenHeight: Float = 600
-  let playerWidth: Float = 40
-  let playerHeight: Float = 30
-  let playerSpeed: Float = 400
-  let bulletSpeed: Float = 500
-  let enemyWidth: Float = 32
-  let enemyHeight: Float = 24
+  let screenWidth: Float = 320
+  let screenHeight: Float = 180
+  let playerWidth: Float = 16
+  let playerHeight: Float = 12
+  let playerSpeed: Float = 160
+  let bulletSpeed: Float = 200
+  let enemyWidth: Float = 13
+  let enemyHeight: Float = 10
   let enemyRows = 5
   let enemyCols = 11
-  let enemySpacingX: Float = 48
-  let enemySpacingY: Float = 40
-  let barrierWidth: Float = 60
-  let barrierHeight: Float = 40
+  let enemySpacingX: Float = 19
+  let enemySpacingY: Float = 16
+  let barrierWidth: Float = 24
+  let barrierHeight: Float = 16
   let themes = SpaceInvadersThemes()
 
-  @State var playerX: Float = 380
+  @State var playerX: Float = 152
   @State var bullets: [Bullet] = []
   @State var enemies: [Enemy] = []
   @State var barriers: [Barrier] = []
@@ -135,7 +135,7 @@ struct SpaceInvadersGameView: GView {
           .shape(RectangleShape2D(size: [playerWidth, playerHeight]))
       }
       .bind(\.position, to: $playerX) { x in
-        [x, screenHeight - 60]
+        [x, screenHeight - 24]
       }
       .collisionLayer(.alpha)
       .collisionMask(.delta)
@@ -253,22 +253,22 @@ struct SpaceInvadersGameView: GView {
         // Score
         Label$()
           .bind(\.text, to: $score) { "SCORE: \($0)" }
-          .offsetLeft(20)
-          .offsetTop(10)
+          .offsetLeft(4)
+          .offsetTop(4)
           .theme(themes.score)
 
         // Lives
         Label$()
           .bind(\.text, to: $lives) { "LIVES: \($0)" }
-          .offsetLeft(Double(screenWidth - 120))
-          .offsetTop(10)
+          .offsetLeft(Double(screenWidth - 48))
+          .offsetTop(4)
           .theme(themes.score)
 
         // Wave
         Label$()
           .bind(\.text, to: $wave) { "WAVE: \($0)" }
-          .offsetLeft(Double(screenWidth / 2 - 40))
-          .offsetTop(10)
+          .offsetLeft(Double(screenWidth / 2 - 24))
+          .offsetTop(4)
           .theme(themes.score)
 
         // Start message
@@ -345,7 +345,7 @@ struct SpaceInvadersGameView: GView {
   func spawnEnemies() {
     enemies = []
     let startX = (screenWidth - Float(enemyCols) * enemySpacingX + enemySpacingX) / 2
-    let startY: Float = 80
+    let startY: Float = 32
 
     var id = 0
     for row in 0 ..< enemyRows {
@@ -375,7 +375,7 @@ struct SpaceInvadersGameView: GView {
     for i in 0 ..< 4 {
       barriers.append(Barrier(
         id: i,
-        position: [spacing * Float(i + 1) - barrierWidth / 2, screenHeight - 150],
+        position: [spacing * Float(i + 1) - barrierWidth / 2, screenHeight - 60],
         health: 4
       ))
     }
@@ -410,7 +410,7 @@ struct SpaceInvadersGameView: GView {
 
   func shootPlayerBullet() {
     bullets.append(Bullet(
-      position: [playerX + playerWidth / 2 - 2, screenHeight - 65],
+      position: [playerX + playerWidth / 2 - 2, screenHeight - 26],
       velocity: [0, -bulletSpeed],
       isPlayerBullet: true
     ))
@@ -479,7 +479,7 @@ struct SpaceInvadersGameView: GView {
 
     // Check if enemies reached player
     for enemy in enemies where enemy.alive {
-      if enemy.position.y + enemyHeight >= screenHeight - 60 {
+      if enemy.position.y + enemyHeight >= screenHeight - 24 {
         lives = 0
         gameOver = true
         return

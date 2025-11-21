@@ -13,28 +13,28 @@ final class BreakoutGame: Node2D {
 struct BreakoutThemes {
   let score = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 24],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let message = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 28],
+      "fontSizes": ["fontSize": 8],
       "colors": ["fontColor": Color.white],
     ],
   ])
 
   let gameOver = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 48],
+      "fontSizes": ["fontSize": 16],
       "colors": ["fontColor": Color.red],
     ],
   ])
 
   let victory = Theme([
     "Label": [
-      "fontSizes": ["fontSize": 48],
+      "fontSizes": ["fontSize": 16],
       "colors": ["fontColor": Color.green],
     ],
   ])
@@ -49,23 +49,23 @@ struct Brick: Identifiable, Equatable {
 }
 
 struct BreakoutGameView: GView {
-  let screenWidth: Float = 800
-  let screenHeight: Float = 600
-  let paddleWidth: Float = 100
-  let paddleHeight: Float = 20
-  let ballSize: Float = 12
-  let ballSpeed: Float = 350
-  let paddleSpeed: Float = 600
-  let brickWidth: Float = 70
-  let brickHeight: Float = 25
+  let screenWidth: Float = 320
+  let screenHeight: Float = 180
+  let paddleWidth: Float = 40
+  let paddleHeight: Float = 8
+  let ballSize: Float = 5
+  let ballSpeed: Float = 140
+  let paddleSpeed: Float = 240
+  let brickWidth: Float = 28
+  let brickHeight: Float = 10
   let brickRows = 6
   let brickCols = 10
-  let brickSpacing: Float = 5
+  let brickSpacing: Float = 2
   let themes = BreakoutThemes()
 
-  @State var ballPos: Vector2 = [400, 300]
-  @State var ballVel: Vector2 = [300, -300]
-  @State var paddleX: Float = 350
+  @State var ballPos: Vector2 = [160, 90]
+  @State var ballVel: Vector2 = [120, -120]
+  @State var paddleX: Float = 140
   @State var score = 0
   @State var lives = 3
   @State var gameStarted = false
@@ -100,7 +100,7 @@ struct BreakoutGameView: GView {
           .position([paddleWidth / 2, paddleHeight / 2])
       }
       .bind(\.position, to: $paddleX) { x in
-        [x, screenHeight - 50]
+        [x, screenHeight - 20]
       }
 
       // Ball
@@ -150,22 +150,22 @@ struct BreakoutGameView: GView {
         // Score
         Label$()
           .bind(\.text, to: $score) { "Score: \($0)" }
-          .offsetLeft(20)
-          .offsetTop(10)
+          .offsetLeft(4)
+          .offsetTop(4)
           .theme(themes.score)
 
         // Lives
         Label$()
           .bind(\.text, to: $lives) { "Lives: \($0)" }
-          .offsetLeft(Double(screenWidth - 120))
-          .offsetTop(10)
+          .offsetLeft(Double(screenWidth - 48))
+          .offsetTop(4)
           .theme(themes.score)
 
         // Level
         Label$()
           .bind(\.text, to: $level) { "Level: \($0)" }
-          .offsetLeft(Double(screenWidth / 2 - 40))
-          .offsetTop(10)
+          .offsetLeft(Double(screenWidth / 2 - 24))
+          .offsetTop(4)
           .theme(themes.score)
 
         // Start message
@@ -232,7 +232,7 @@ struct BreakoutGameView: GView {
   func initializeBricks() {
     bricks = []
     let startX = (screenWidth - Float(brickCols) * (brickWidth + brickSpacing) + brickSpacing) / 2
-    let startY: Float = 80
+    let startY: Float = 32
 
     let colors: [(Color, Int)] = [
       (Color(r: 1.0, g: 0.2, b: 0.2), 60),

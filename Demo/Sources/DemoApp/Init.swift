@@ -4,8 +4,6 @@ import SwiftGodotBuilder
 #initSwiftExtension(
   cdecl: "swift_entry_point",
   types: [
-    GEventRelay.self,
-    GProcessRelay.self,
     LevelDesigner.self,
     AsteroidsGame.self,
     PongGame.self,
@@ -13,5 +11,12 @@ import SwiftGodotBuilder
     BreakoutGame.self,
     SpaceInvadersGame.self,
     PlatformerGame.self,
-  ]
+    Chapter1Game.self,
+    Chapter2Game.self,
+    Chapter3Game.self,
+    Chapter4Game.self,
+    Chapter5Game.self,
+    Chapter6Game.self,
+    Chapter7Game.self,
+  ] + BuilderRegistry.types
 )
