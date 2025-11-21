@@ -8,35 +8,34 @@ struct PlayerView: GView {
   let maxFallSpeed: Float = 500.0
   let jumpForce: Float = -400.0
 
+  let terrainLayer: UInt32
+
+  // Combat
+  let isAttacking: State<Bool>
+
+  init(from entity: LDEntity, in level: LDLevel, _ project: LDProject, isAttacking: State<Bool>) {
+    self.isAttacking = isAttacking
+    self.terrainLayer = project.collisionLayer(for: "Collisions", in: level)
+  }
+
   var body: some GView {
     CharacterBody2D$ {
       // Visual representation (simple colored square for now)
       ColorBox$()
-        .color(.darkGray)
         .size([32, 32])
-        .position([-16, -16]) // Center the box
+        .position([-16, -16])
+        .bind(\\.color, to: isAttacking) { $0 ? .orange : .darkGray }
 
       // Collision shape
       CollisionShape2D$()
         .shape(RectangleShape2D(w: 32, h: 32))
 
-      // Area2D for detecting item pickup
-      Area2D$ {
-        CollisionShape2D$()
-          .shape(RectangleShape2D(w: 32, h: 32))
-      }
-      .onAreaEntered { area in
-        // Check if the area is an Item
-        if let item = area as? Item {
-          print("Picked up item!")
-          item.queueFree()  // Remove the item from the scene
-        }
-      }
-
       // Camera that follows the player
       Camera2D$()
         .enabled(true)
     }
+    .collisionMask(terrainLayer)
+    .collisionLayer(1)  // Player layer
     .position([400, 200])
     .onProcess { player, delta in
       var vel = player.velocity

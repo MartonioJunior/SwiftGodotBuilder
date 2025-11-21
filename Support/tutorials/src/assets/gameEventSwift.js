@@ -1,7 +1,5 @@
-export default `import SwiftGodot
-import SwiftGodotBuilder
-
-enum GameEvent: EmittableEvent {
-  case itemCollected(Item)
-  case enemyHit(Area2D)
-}`;
+export default `enum GameEvent: EmittableEvent {
+  case looted(items: [Item])
+  case damaged(target: Node)
+  case dropped(items: [Item])
+}`
