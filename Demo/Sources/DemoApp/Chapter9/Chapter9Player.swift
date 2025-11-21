@@ -2,14 +2,14 @@ import Foundation
 import SwiftGodot
 import SwiftGodotBuilder
 
-struct Chapter7Player: GView {
+struct Chapter9Player: GView {
   let spawnPoint: Vector2
   let screenWidth: Float
   let screenHeight: Float
   let gravity: Float
-  let state: ObservableState<Chapter7GameViewState>
+  let state: ObservableState<Chapter9GameViewState>
 
-  private var vm: Chapter7GameViewState { state.wrappedValue }
+  private var vm: Chapter9GameViewState { state.wrappedValue }
 
   // Player-specific constants
   let size: Float = 16
@@ -18,6 +18,16 @@ struct Chapter7Player: GView {
   let maxHealth: Int = 3
   let invincibilityDuration: Double = 1.0
   let attackDuration: Double = 0.2
+
+  // Advanced movement constants
+  let coyoteTime: Double = 0.15 // Time after leaving platform to still jump
+  let jumpBufferTime: Double = 0.1 // Time to buffer jump input before landing
+  let minJumpSpeed: Float = 100 // Minimum jump when releasing jump button early
+  let wallJumpSpeed: Float = 200 // Horizontal speed from wall jump
+  let wallJumpVerticalSpeed: Float = 180 // Vertical speed from wall jump
+  let dashSpeed: Float = 300 // Dash speed
+  let dashDuration: Double = 0.2 // How long dash lasts
+  let dashCooldown: Double = 1.0 // Cooldown between dashes
 
   @State var position: Vector2 = .zero
   @State var velocity: Vector2 = [0, 0]
@@ -29,12 +39,24 @@ struct Chapter7Player: GView {
   @State var wasOnFloor: Bool = false
   @State var movementTimer: Double = 0
 
+  // Advanced movement state
+  @State var facingRight: Bool = true
+  @State var coyoteTimer: Double = 0
+  @State var jumpBufferTimer: Double = 0
+  @State var isJumping: Bool = false
+  @State var hasDoubleJump: Bool = false
+  @State var isDashing: Bool = false
+  @State var dashTimer: Double = 0
+  @State var dashCooldownTimer: Double = 0
+  @State var dashDirection: Vector2 = .zero
+  @State var isOnWall: Bool = false
+
   init(
     spawnPoint: Vector2,
     screenWidth: Float,
     screenHeight: Float,
     gravity: Float,
-    state: ObservableState<Chapter7GameViewState>
+    state: ObservableState<Chapter9GameViewState>
   ) {
     self.spawnPoint = spawnPoint
     self.screenWidth = screenWidth
@@ -86,7 +108,9 @@ struct Chapter7Player: GView {
           .shape(RectangleShape2D(w: 12, h: 12))
           .position([6, 6])
       }
-      .position([8, 2])
+      .bind(\.position, to: $facingRight) { facing in
+        facing ? Vector2(x: 8, y: 2) : Vector2(x: -4, y: 2)
+      }
       .collisionLayer(.delta)
       .bind(\.processMode, to: $isAttacking) { attacking in
         attacking ? .inherit : .disabled
@@ -100,7 +124,7 @@ struct Chapter7Player: GView {
       node.visible = !isMenu
     }
     .ref($playerNode)
-    .onEvent(Chapter7Event.self) { _, event in
+    .onEvent(Chapter9Event.self) { _, event in
       switch event {
       case .gameReset:
         respawn()
@@ -126,31 +150,81 @@ struct Chapter7Player: GView {
 
   func updatePlayer(_ player: CharacterBody2D, _ delta: Double) {
     var vel = velocity
+    let onFloor = player.isOnFloor()
+    isOnWall = player.isOnWall()
 
-    // Apply gravity
-    vel.y += gravity * Float(delta)
+    // Dash logic - overrides normal movement
+    if isDashing {
+      vel = dashDirection * dashSpeed
+    } else {
+      // Apply gravity (reduced on walls for wall slide)
+      if isOnWall, vel.y > 0 {
+        vel.y += gravity * Float(delta) * 0.3 // Wall slide slower
+      } else {
+        vel.y += gravity * Float(delta)
+      }
 
-    // Horizontal movement
-    var input: Float = 0
-    if Action("move_left").isPressed {
-      input -= 1
-    }
-    if Action("move_right").isPressed {
-      input += 1
-    }
-    vel.x = input * moveSpeed
+      // Horizontal movement
+      var input: Float = 0
+      if Action("move_left").isPressed {
+        input -= 1
+        facingRight = false
+      }
+      if Action("move_right").isPressed {
+        input += 1
+        facingRight = true
+      }
+      vel.x = input * moveSpeed
 
-    // Jump
-    if Action("jump").isJustPressed, player.isOnFloor() {
-      vel.y = -jumpSpeed
-      Chapter7Event.jumped(position: position + Vector2(x: size / 2, y: size)).emit()
+      // Dash input
+      if Action("dash").isJustPressed, dashCooldownTimer <= 0 {
+        isDashing = true
+        dashTimer = dashDuration
+        dashCooldownTimer = dashCooldown
+        dashDirection = Vector2(x: facingRight ? 1 : -1, y: 0)
+      }
+
+      // Jump buffering - store jump input
+      if Action("jump").isJustPressed {
+        jumpBufferTimer = jumpBufferTime
+      }
+
+      // Check if we can jump (ground, coyote time, or wall)
+      let canJump = onFloor || coyoteTimer > 0 || isOnWall || hasDoubleJump
+
+      // Jump logic with buffering
+      if jumpBufferTimer > 0, canJump {
+        if isOnWall {
+          // Wall jump - push away from wall
+          vel.y = -wallJumpVerticalSpeed
+          vel.x = player.getWallNormal().x * wallJumpSpeed
+          facingRight = vel.x > 0
+        } else if hasDoubleJump, !onFloor {
+          // Double jump
+          vel.y = -jumpSpeed
+          hasDoubleJump = false
+        } else {
+          // Normal jump
+          vel.y = -jumpSpeed
+        }
+        isJumping = true
+        jumpBufferTimer = 0
+        coyoteTimer = 0
+        Chapter9Event.jumped(position: position + Vector2(x: size / 2, y: size)).emit()
+      }
+
+      // Variable jump height - release jump button for lower jump
+      if Action("jump").isJustReleased, isJumping, vel.y < 0 {
+        vel.y = max(vel.y, -minJumpSpeed)
+        isJumping = false
+      }
     }
 
     // Attack
     if Action("attack").isJustPressed, !isAttacking {
       isAttacking = true
       attackTimer = attackDuration
-      Chapter7Event.attacked(position: position).emit()
+      Chapter9Event.attacked(position: position).emit()
     }
 
     // Check landing before moveAndSlide (velocity gets reset on collision)
@@ -165,20 +239,20 @@ struct Chapter7Player: GView {
     velocity = player.velocity
     position = player.position
 
+    // Update coyote time
+    if onFloor {
+      coyoteTimer = coyoteTime
+      hasDoubleJump = true // Reset double jump on landing
+      isJumping = false
+    } else if coyoteTimer > 0 {
+      coyoteTimer -= delta
+    }
+
     // Landing impact - check velocity before it was reset by collision
     if wasInAir, player.isOnFloor(), fallingVelocity > 100 {
-      Chapter7Event.landed(position: position + Vector2(x: size / 2, y: size), impact: Float(fallingVelocity)).emit()
+      Chapter9Event.landed(position: position + Vector2(x: size / 2, y: size), impact: Float(fallingVelocity)).emit()
     }
     wasOnFloor = player.isOnFloor()
-
-    // Movement trail particles (keep this for now, no semantic event needed)
-    if abs(velocity.x) > 50, player.isOnFloor() {
-      movementTimer += delta
-      if movementTimer > 0.1 {
-        // TODO: Could be a 'moving' or 'running' event if needed
-        movementTimer = 0
-      }
-    }
 
     // Keep player in bounds
     if position.x < 0 {
@@ -213,6 +287,25 @@ struct Chapter7Player: GView {
         attackTimer = 0
       }
     }
+
+    // Jump buffer timer
+    if jumpBufferTimer > 0 {
+      jumpBufferTimer -= delta
+    }
+
+    // Dash timer
+    if isDashing {
+      dashTimer -= delta
+      if dashTimer <= 0 {
+        isDashing = false
+        dashTimer = 0
+      }
+    }
+
+    // Dash cooldown timer
+    if dashCooldownTimer > 0 {
+      dashCooldownTimer -= delta
+    }
   }
 
   func takeDamage(_ damage: Int) {
@@ -222,7 +315,7 @@ struct Chapter7Player: GView {
 
     if vm.playerHealth <= 0 {
       vm.playerHealth = 0
-      Chapter7Event.playerDied(position: position + Vector2(x: size / 2, y: size / 2)).emit()
+      Chapter9Event.playerDied(position: position + Vector2(x: size / 2, y: size / 2)).emit()
     } else {
       isInvincible = true
       invincibilityTimer = invincibilityDuration
@@ -237,5 +330,16 @@ struct Chapter7Player: GView {
     invincibilityTimer = invincibilityDuration
     isAttacking = false
     attackTimer = 0
+
+    // Reset advanced movement state
+    facingRight = true
+    coyoteTimer = 0
+    jumpBufferTimer = 0
+    isJumping = false
+    hasDoubleJump = false
+    isDashing = false
+    dashTimer = 0
+    dashCooldownTimer = 0
+    isOnWall = false
   }
 }

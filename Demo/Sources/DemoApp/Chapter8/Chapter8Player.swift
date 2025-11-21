@@ -2,14 +2,14 @@ import Foundation
 import SwiftGodot
 import SwiftGodotBuilder
 
-struct Chapter7Player: GView {
+struct Chapter8Player: GView {
   let spawnPoint: Vector2
   let screenWidth: Float
   let screenHeight: Float
   let gravity: Float
-  let state: ObservableState<Chapter7GameViewState>
+  let state: ObservableState<Chapter8GameViewState>
 
-  private var vm: Chapter7GameViewState { state.wrappedValue }
+  private var vm: Chapter8GameViewState { state.wrappedValue }
 
   // Player-specific constants
   let size: Float = 16
@@ -34,7 +34,7 @@ struct Chapter7Player: GView {
     screenWidth: Float,
     screenHeight: Float,
     gravity: Float,
-    state: ObservableState<Chapter7GameViewState>
+    state: ObservableState<Chapter8GameViewState>
   ) {
     self.spawnPoint = spawnPoint
     self.screenWidth = screenWidth
@@ -100,7 +100,7 @@ struct Chapter7Player: GView {
       node.visible = !isMenu
     }
     .ref($playerNode)
-    .onEvent(Chapter7Event.self) { _, event in
+    .onEvent(Chapter8Event.self) { _, event in
       switch event {
       case .gameReset:
         respawn()
@@ -143,14 +143,14 @@ struct Chapter7Player: GView {
     // Jump
     if Action("jump").isJustPressed, player.isOnFloor() {
       vel.y = -jumpSpeed
-      Chapter7Event.jumped(position: position + Vector2(x: size / 2, y: size)).emit()
+      Chapter8Event.jumped(position: position + Vector2(x: size / 2, y: size)).emit()
     }
 
     // Attack
     if Action("attack").isJustPressed, !isAttacking {
       isAttacking = true
       attackTimer = attackDuration
-      Chapter7Event.attacked(position: position).emit()
+      Chapter8Event.attacked(position: position).emit()
     }
 
     // Check landing before moveAndSlide (velocity gets reset on collision)
@@ -167,7 +167,7 @@ struct Chapter7Player: GView {
 
     // Landing impact - check velocity before it was reset by collision
     if wasInAir, player.isOnFloor(), fallingVelocity > 100 {
-      Chapter7Event.landed(position: position + Vector2(x: size / 2, y: size), impact: Float(fallingVelocity)).emit()
+      Chapter8Event.landed(position: position + Vector2(x: size / 2, y: size), impact: Float(fallingVelocity)).emit()
     }
     wasOnFloor = player.isOnFloor()
 
@@ -222,7 +222,7 @@ struct Chapter7Player: GView {
 
     if vm.playerHealth <= 0 {
       vm.playerHealth = 0
-      Chapter7Event.playerDied(position: position + Vector2(x: size / 2, y: size / 2)).emit()
+      Chapter8Event.playerDied(position: position + Vector2(x: size / 2, y: size / 2)).emit()
     } else {
       isInvincible = true
       invincibilityTimer = invincibilityDuration
