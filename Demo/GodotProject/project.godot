@@ -15,16 +15,19 @@ config/features=PackedStringArray("4.4")
 
 [display]
 
-window/size/viewport_width=800
-window/size/viewport_height=600
+window/size/viewport_width=320
+window/size/viewport_height=180
 window/size/window_width_override=1600
-window/size/window_height_override=1200
+window/size/window_height_override=900
 window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
 
 [gui]
 
-theme/default_theme_scale=0.5
+theme/custom="uid://vuwycap00f3i"
+theme/custom_font="uid://f0o0ri1rrhfu"
+theme/default_font_antialiasing=0
+theme/default_font_subpixel_positioning=0
 
 [rendering]
 
