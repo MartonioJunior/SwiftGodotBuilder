@@ -445,6 +445,44 @@ let theme = Theme([
 Control$().theme(theme)
 ```
 
+### StyleBox Styling
+
+Declarative StyleBox builders for UI styling.
+
+```swift
+// StyleBoxFlat$ - for solid colors, borders, shadows
+PanelContainer$ {
+  Label$().text("Styled Panel")
+}
+.panelStyle(
+  StyleBoxFlat$()
+    .bgColor(.black.withAlpha(0.9))
+    .borderColor(.cyan)
+    .borderWidth(2)
+    .cornerRadius(8)
+    .shadowColor(.black.withAlpha(0.5))
+    .shadowSize(12)
+)
+
+// Generic styleBox modifier
+Control$()
+  .styleBox("panel", StyleBoxFlat$().bgColor(.red))
+  .styleBox("focus", StyleBoxFlat$().borderColor(.white))
+
+#### Available StyleBox Builders
+
+- `StyleBoxFlat$()` - Solid colors, borders, rounded corners, shadows
+- `StyleBoxTexture$(texture:)` - Texture-based styling
+- `StyleBoxLine$()` - Simple line/border styling
+- `StyleBoxEmpty$()` - Invisible (no background)
+
+#### Convenience Methods (StyleBoxFlat$ only)
+
+- `.borderWidth(_:)` - Sets all 4 border widths
+- `.cornerRadius(_:)` - Sets all 4 corner radii
+- `.contentMargin(_:)` - Sets all 4 content margins
+- `.expandMargin(_:)` - Sets all 4 expand margins
+
 ### Collision (2D)
 
 Named layer helpers.
@@ -491,6 +529,13 @@ let pos: Vector2 = [100, 200]  // Array literal
 let doubled = pos * 2
 let scaled = pos * 1.5
 ```
+
+### Color Extensions
+
+```swift
+// Create colors with alpha
+let semiTransparent = Color.black.withAlpha(0.9)
+let glowColor = Color.cyan.withAlpha(0.5)
 
 ### Shape Extensions
 

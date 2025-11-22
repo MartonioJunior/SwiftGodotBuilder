@@ -117,10 +117,4 @@ final class LDProjectTests: XCTestCase {
     XCTAssertNotNil(foundTileset)
     XCTAssertEqual(foundTileset?.uid, firstTileset.uid)
   }
-
-  // MARK: - Loader Tests
-
-  // Note: LDLoader tests are not included in unit tests as they require
-  // Godot runtime initialization. Test LDLoader in integration tests within
-  // a running Godot project.
 }
