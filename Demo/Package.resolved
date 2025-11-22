@@ -20,6 +20,15 @@
       }
     },
     {
+      "identity" : "swiftdraw",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swhitty/SwiftDraw",
+      "state" : {
+        "branch" : "0.19.0",
+        "revision" : "a3553a4950c60a30d58dd7f05980857d57a42015"
+      }
+    },
+    {
       "identity" : "swiftgodot",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/migueldeicaza/SwiftGodot",
