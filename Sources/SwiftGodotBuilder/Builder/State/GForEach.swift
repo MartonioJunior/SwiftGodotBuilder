@@ -34,7 +34,7 @@ import SwiftGodot
 /// - Maintains consistent node order matching array order
 /// - Batches updates for better performance
 public struct ForEach<Element: Equatable, ID: Hashable>: GView {
-    private let items: GState<[Element]>
+    private let items: any ReactiveSource<[Element]>
     private let idKeyPath: KeyPath<Element, ID>
     private let content: (GState<Element>) -> any GView
     private var nodeName: String?
@@ -54,12 +54,12 @@ public struct ForEach<Element: Equatable, ID: Hashable>: GView {
     /// Creates a ForEach container that manages a dynamic list.
     ///
     /// - Parameters:
-    ///   - items: Binding to array of items (use $ prefix)
+    ///   - items: Reactive source of array items (GState or ObservableProperty)
     ///   - id: KeyPath to a Hashable property that uniquely identifies each item
     ///   - mode: Rendering mode (.standard or .deferred) - defaults to .standard
     ///   - content: Builder that creates the view for each item, receives binding to item
     public init(
-        _ items: GState<[Element]>,
+        _ items: some ReactiveSource<[Element]>,
         id: KeyPath<Element, ID>,
         mode: Mode = .standard,
         content: @escaping (GState<Element>) -> any GView
@@ -178,7 +178,7 @@ public struct ForEach<Element: Equatable, ID: Hashable>: GView {
         }
 
         // Watch for array changes and update the tree
-        items.onChange { [weak parent, mode, performUpdate] newItems in
+        items.observe { [weak parent, mode, performUpdate] newItems in
             guard parent != nil else { return }
 
             // Handle deferred mode

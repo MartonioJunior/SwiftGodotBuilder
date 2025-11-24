@@ -6,8 +6,10 @@ import SwiftGodot
 
 /// A state container that tracks changes to `@Observable` classes.
 ///
-/// `ObservableState` bridges Swift's `@Observable` macro with the GState reactive system,
+/// `ObservableState` integrates Swift's `@Observable` macro with the reactive system,
 /// allowing you to use observable classes as state in your Godot views.
+/// Observable properties work natively with reactive containers (If, Switch, ForEach)
+/// and bindings via the `ReactiveSource` protocol.
 ///
 /// ## Usage
 ///
@@ -297,6 +299,17 @@ public struct ObservableProperty<Root: AnyObject & Observable, Value> {
   }
 }
 
+// MARK: - ReactiveSource Conformance
+
+extension ObservableProperty: ReactiveSource {
+  /// Observe changes to this observable property.
+  ///
+  /// Delegates to the underlying ObservableState's observe mechanism.
+  public func observe(_ handler: @escaping (Value) -> Void) {
+    observableState.observe(keyPath, handler: handler)
+  }
+}
+
 // MARK: - ObservableState Dynamic Member Lookup
 
 public extension ObservableState {
@@ -351,5 +364,39 @@ public extension GNode {
     { observableState, sourceKeyPath in
       self.bind(kp, to: observableState, sourceKeyPath)
     }
+  }
+}
+
+// MARK: - Computed/Derived State for ObservableState
+
+public extension ObservableState {
+  /// Creates a computed state by transforming the observable object.
+  ///
+  /// The computed state automatically updates whenever the observable object changes.
+  ///
+  /// ## Usage
+  /// ```swift
+  /// @ObservableState var progress = GameProgress()
+  ///
+  /// var isUnlocked: GState<Bool> {
+  ///   progress.computed { progressValue in
+  ///     progressValue.isLevelUnlocked(levelId, levels: levels)
+  ///   }
+  /// }
+  ///
+  /// Button$().disabled(isUnlocked)
+  /// ```
+  ///
+  /// - Parameter transform: A closure that transforms the observable object into the computed value
+  /// - Returns: A new `GState` that reactively updates based on the observable object
+  func computed<U: Equatable>(_ transform: @escaping (T) -> U) -> GState<U> {
+    let derived = GState<U>(wrappedValue: transform(self.object))
+
+    // Observe changes to the entire object
+    observeAny { [derived] object in
+      derived.wrappedValue = transform(object)
+    }
+
+    return derived
   }
 }

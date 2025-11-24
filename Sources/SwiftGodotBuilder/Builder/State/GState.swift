@@ -4,6 +4,40 @@ import SwiftGodot
 /// A type alias for ``GState`` to provide a more convenient API surface.
 public typealias State = GState
 
+// MARK: - ReactiveSource Protocol
+
+/// A protocol that any reactive value source can conform to.
+///
+/// This protocol unifies `GState` and `ObservableProperty` under a common interface,
+/// allowing reactive containers and bindings to work seamlessly with both @State and
+/// @Observable properties.
+///
+/// ## Usage
+///
+/// Most users won't interact with this protocol directly - it's automatically
+/// used when you pass `@State` variables or `@Observable` properties to reactive
+/// containers like `If`, `Switch`, or binding methods.
+///
+/// ```swift
+/// @State var count = 0
+/// @ObservableState var viewModel = ViewModel()
+///
+/// // Both work seamlessly with ReactiveSource
+/// If($viewModel.isVisible) { ... }  // ObservableProperty: ReactiveSource
+/// Label$().text($count)  // GState: ReactiveSource
+/// ```
+public protocol ReactiveSource<Value> {
+  associatedtype Value
+
+  /// Observe changes to this reactive source.
+  ///
+  /// The handler is called immediately with the current value,
+  /// and then again each time the value changes.
+  ///
+  /// - Parameter handler: A closure that receives the new value
+  func observe(_ handler: @escaping (Value) -> Void)
+}
+
 // MARK: - State Property Wrapper
 
 /// A property wrapper that manages observable state in Godot nodes.
@@ -77,6 +111,17 @@ public final class GState<Value: Equatable> {
     for listener in listeners {
       listener(value)
     }
+  }
+}
+
+// MARK: - ReactiveSource Conformance
+
+extension GState: ReactiveSource {
+  /// Observe changes to this state.
+  ///
+  /// Simply delegates to `onChange` to maintain existing behavior.
+  public func observe(_ handler: @escaping (Value) -> Void) {
+    onChange(handler)
   }
 }
 

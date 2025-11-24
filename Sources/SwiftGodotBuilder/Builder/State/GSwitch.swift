@@ -45,18 +45,18 @@ import SwiftGodot
 ///   .mode(.destroy)  // Good for heavy scenes
 /// ```
 public struct Switch<Value: Hashable>: GView {
-  private let state: GState<Value>
+  private let state: any ReactiveSource<Value>
   private let cases: [Case<Value>]
   private var defaultContent: [any GView]
   private var renderMode: If.Mode = .hide
   private var nodeName: String?
 
-  /// Creates a switch container that renders content based on state value
+  /// Creates a switch container that renders content based on reactive source value
   /// - Parameters:
-  ///   - state: The state to watch
+  ///   - state: The reactive source to watch (GState or ObservableProperty)
   ///   - cases: The cases to match against
   public init(
-    _ state: GState<Value>,
+    _ state: some ReactiveSource<Value>,
     @CaseBuilder cases: () -> [Case<Value>]
   ) {
     self.state = state
@@ -66,7 +66,7 @@ public struct Switch<Value: Hashable>: GView {
 
   // Private initializer for method chaining
   private init(
-    state: GState<Value>,
+    state: any ReactiveSource<Value>,
     cases: [Case<Value>],
     defaultContent: [any GView],
     mode: If.Mode,
@@ -144,7 +144,7 @@ public struct Switch<Value: Hashable>: GView {
     var currentActiveNodes: [Node]? = nil
 
     // Watch state changes
-    state.onChange { [weak container] value in
+    state.observe { [weak container] value in
       guard let container = container else { return }
 
       // Find matching case
@@ -291,11 +291,11 @@ public struct Case<Value: Hashable> {
 @resultBuilder
 public enum CaseBuilder {
   public static func buildBlock<Value>(_ cases: Case<Value>...) -> [Case<Value>] {
-    cases
+    Array(cases)
   }
 
-  public static func buildArray<Value>(_ cases: [[Case<Value>]]) -> [Case<Value>] {
-    cases.flatMap { $0 }
+  public static func buildArray<Value>(_ cases: [Case<Value>]) -> [Case<Value>] {
+    cases
   }
 
   public static func buildOptional<Value>(_ cases: [Case<Value>]?) -> [Case<Value>] {
@@ -310,8 +310,8 @@ public enum CaseBuilder {
     second
   }
 
-  public static func buildExpression<Value>(_ caseItem: Case<Value>) -> [Case<Value>] {
-    [caseItem]
+  public static func buildExpression<Value>(_ caseItem: Case<Value>) -> Case<Value> {
+    caseItem
   }
 }
 
