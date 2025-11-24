@@ -1,13 +1,20 @@
 import Foundation
 import SwiftGodot
 
+// MARK: - StyleBox Builder Protocol
+
+/// Protocol for type-erased StyleBox builders.
+public protocol StyleBoxBuilderProtocol {
+  func toStyleBox() -> StyleBox
+}
+
 // MARK: - Generic StyleBox Builder
 
 /// Generic declarative StyleBox builder using dynamic member lookup.
 ///
 /// Provides a fluent API for configuring StyleBox properties without boilerplate.
 @dynamicMemberLookup
-public struct StyleBoxBuilder<T: StyleBox> {
+public struct StyleBoxBuilder<T: StyleBox>: StyleBoxBuilderProtocol {
   private let styleBox: T
 
   /// Creates a new StyleBox builder with the given StyleBox instance.
@@ -32,6 +39,11 @@ public struct StyleBoxBuilder<T: StyleBox> {
   ///
   /// - Returns: The configured StyleBox instance
   public func toObject() -> T {
+    styleBox
+  }
+
+  /// Converts the builder to a StyleBox (type-erased).
+  public func toStyleBox() -> StyleBox {
     styleBox
   }
 }
@@ -152,6 +164,39 @@ public extension GNode where T: Control {
     var s = self
     s.ops.append {
       $0.addThemeStyleboxOverride(name: StringName(name), stylebox: styleBox)
+    }
+    return s
+  }
+
+  /// Applies multiple StyleBoxes to this control using a dictionary.
+  ///
+  /// ### Example:
+  /// ```swift
+  /// Button$()
+  ///   .styleBoxes([
+  ///     "normal": StyleBoxFlat$().bgColor(.gray),
+  ///     "hover": StyleBoxFlat$().bgColor(.lightGray),
+  ///     "pressed": StyleBoxFlat$().bgColor(.darkGray)
+  ///   ])
+  /// ```
+  ///
+  /// - Parameter dict: Dictionary mapping StyleBox names to builders or StyleBox instances
+  func styleBoxes(_ dict: [String: Any]) -> Self {
+    var s = self
+    s.ops.append { node in
+      for (name, value) in dict {
+        let styleBox: StyleBox
+
+        if let builder = value as? any StyleBoxBuilderProtocol {
+          styleBox = builder.toStyleBox()
+        } else if let box = value as? StyleBox {
+          styleBox = box
+        } else {
+          continue
+        }
+
+        node.addThemeStyleboxOverride(name: StringName(name), stylebox: styleBox)
+      }
     }
     return s
   }
