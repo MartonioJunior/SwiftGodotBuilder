@@ -24,5 +24,7 @@ import SwiftGodotBuilder
     Chapter11Game.self,
     Chapter12Game.self,
     Chapter13Game.self,
+    Chapter14Game.self,
+    Chapter15Game.self,
   ] + BuilderRegistry.types
 )

@@ -713,7 +713,7 @@ final class Player: CharacterBody2D {
 
 ### LDtk Integration
 
-Complete workflow for loading LDtk levels.
+Complete workflow for loading LDtk levels and bridging enums.
 
 ```swift
 // Define type-safe enums (auto-generates LDExported.json on build)
@@ -721,11 +721,6 @@ enum Item: String, LDExported {
   case knife = "Knife"
   case boots = "Boots"
   case potion = "Potion"
-}
-
-enum EnemyType: String, LDExported {
-  case goblin = "Goblin"
-  case skeleton = "Skeleton"
 }
 
 struct GameView: GView {
@@ -736,12 +731,16 @@ struct GameView: GView {
   var body: some GView {
     Node2D$ {
       LDLevelView(project, level: "Level_0")
+        // Called on load for each type
         .onSpawn("Player") { entity, level, project in
+          // Collision layers from LDtk
           let wallLayer = project.collisionLayer(for: "walls", in: level)
+          // Typed fields
           let startItems: [Item] = entity.field("starting_items")?.asEnumArray() ?? []
           inventory.append(contentsOf: startItems)
 
-          CharacterBody2D$ {
+          // Use entity data to construct player
+          return CharacterBody2D$ {
             Sprite2D$()
               .res(\.texture, "player.png")
               .anchor([16, 22], within: entity.size, pivot: entity.pivotVector)
@@ -751,64 +750,11 @@ struct GameView: GView {
           .position(entity.position)
           .collisionMask(wallLayer)
         }
-
-        .onSpawn("Enemy") { entity, level, project in
-          let enemyType: EnemyType? = entity.field("type")?.asEnum()
-          let patrolPath: [Vector2] = entity.field("patrol")?.asVector2Array() ?? []
-          let enemyHealth: Int = entity.field("health")?.asInt() ?? 10
-
-          Area2D$ {
-            Sprite2D$()
-              .res(\.texture, "enemy_\(enemyType?.rawValue ?? "default").png")
-              .anchor([12, 16], within: entity.size)
-            CollisionShape2D$()
-              .shape(RectangleShape2D(w: 12, h: 16))
-          }
-          .position(entity.position)
-        }
-
-        .onSpawn("Chest") { entity, level, project in
-          let loot: [Item] = entity.field("loot")?.asEnumArray() ?? []
-          let locked: Bool = entity.field("locked")?.asBool() ?? false
-
-          Area2D$ {
-            Sprite2D$().res(\.texture, locked ? "chest_locked.png" : "chest.png")
-          }
-          .position(entity.position)
-          .onSignal(\.bodyEntered) { _, body in
-            inventory.append(contentsOf: loot)
-          }
-        }
-
-        .onSpawn("Door") { entity, level, project in
-          let destination: String? = entity.field("destination")?.asString()
-          let keyRequired: Item? = entity.field("key_required")?.asEnum()
-
-          Area2D$()
-            .position(entity.position)
-        }
-
+        // Post-process all entities
         .onSpawned { node, entity in
-          // Post-process all entities
-          if let debugMode = entity.field("debug")?.asBool(), debugMode {
-            node.addChild(node: Label$().text(entity.identifier).toNode())
-          }
+          // Add label to node
+          node.addChild(node: Label$().text(entity.identifier).toNode())
         }
-        .zIndexOffset(100)
-        .createEntityMarkers()
-
-      // HUD
-      CanvasLayer$ {
-        VBoxContainer$ {
-          Label$()
-            .bind(\.text, to: $health) { "Health: \($0)" }
-          Label$()
-            .bind(\.text, to: $inventory) { items in
-              "Items: \(items.map(\.rawValue).joined(separator: ", "))"
-            }
-        }
-        .offset(top: 10, left: 10)
-      }
     }
   }
 }
@@ -879,205 +825,32 @@ AseSprite$(path: "player", layer: "Main")
   }
 ```
 
-## Examples & Patterns
+### Bfxr Sound Effects
 
-### Complete Game Example
+Real-time synthesis of retro sound effects from [Bfxr](https://www.bfxr.net) `.bfxr` files.
 
 ```swift
-import SwiftGodot
-import SwiftGodotBuilder
-
-@Godot
-final class Game: Node2D {
-  override func _ready() {
-    setupInput()
-    let project = LDProject.load("res://game.ldtk")!
-    addChild(node: GameView(project: project).toNode())
+// Basic sound playback
+BfxrSound$("res://sounds/jump.bfxr")
+  .onReady { node in
+    node.playSound()
   }
 
-  func setupInput() {
-    Actions {
-      Action("move_left") { Key(.a); Key(.left) }
-      Action("move_right") { Key(.d); Key(.right) }
-      Action("jump") { Key(.space); Key(.w) }
-      Action("shoot") { MouseButton(1) }
-    }.install()
-  }
-}
-
-enum Item: String, LDExported {
-  case coin = "Coin"
-  case key = "Key"
-  case potion = "Potion"
-}
-
-enum GameEvent: EmittableEvent {
-  case itemCollected(Item)
-  case enemyKilled
-  case playerDied
-}
-
+// With reactive bindings
 struct GameView: GView {
-  let project: LDProject
-  @State var inventory: [Item] = []
-  @State var health: Int = 100
-  @State var score: Int = 0
+  @State var pitch: Double = 1.0
 
   var body: some GView {
     Node2D$ {
-      LDLevelView(project, level: "Main")
-        .onSpawn("Player") { entity, level, project in
-          PlayerView(
-            startPos: entity.position,
-            wallLayer: project.collisionLayer(for: "walls", in: level)
-          )
-        }
-        .onSpawn("Enemy") { entity, level, project in
-          EnemyView(
-            startPos: entity.position,
-            enemyType: entity.field("type")?.asEnum() ?? .goblin
-          )
-        }
-        .onSpawn("Collectible") { entity, level, project in
-          let item: Item? = entity.field("item")?.asEnum()
-
-          Area2D$ {
-            Sprite2D$().res(\.texture, "item_\(item?.rawValue ?? "unknown").png")
-          }
-          .position(entity.position)
-          .onSignal(\.bodyEntered) { node, _ in
-            if let item = item {
-              GameEvent.itemCollected(item).emit()
-              node.queueFree()
-            }
-          }
-        }
-
-      HUDView(inventory: $inventory, health: $health, score: $score)
-    }
-    .onEvent(GameEvent.self) { _, event in
-      switch event {
-      case .itemCollected(let item):
-        inventory.append(item)
-        score += 10
-      case .enemyKilled:
-        score += 100
-      case .playerDied:
-        health = 0
-      }
-    }
-  }
-}
-
-struct PlayerView: GView {
-  let startPos: Vector2
-  let wallLayer: UInt32
-  @State var position: Vector2
-  @State var velocity: Vector2 = .zero
-  @State var player: CharacterBody2D?
-
-  let gravity: Float = 980
-  let speed: Float = 200
-  let jumpSpeed: Float = 300
-
-  init(startPos: Vector2, wallLayer: UInt32) {
-    self.startPos = startPos
-    self.wallLayer = wallLayer
-    self._position = State(initialValue: startPos)
-  }
-
-  var body: some GView {
-    CharacterBody2D$ {
-      Sprite2D$().res(\.texture, "player.png")
-      CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 22))
-    }
-    .position($position)
-    .velocity($velocity)
-    .collisionMask(wallLayer)
-    .ref($player)
-    .onProcess { _, delta in
-      updatePlayer(delta)
-    }
-  }
-
-  func updatePlayer(_ delta: Double) {
-    guard let player = player else { return }
-
-    var vel = velocity
-    vel.y += gravity * Float(delta)
-
-    var inputX: Float = 0
-    if Action("move_left").isPressed { inputX -= 1 }
-    if Action("move_right").isPressed { inputX += 1 }
-    vel.x = inputX * speed
-
-    if Action("jump").isJustPressed && player.isOnFloor() {
-      vel.y = -jumpSpeed
-    }
-
-    player.velocity = vel
-    player.moveAndSlide()
-
-    velocity = player.velocity
-    position = player.position
-  }
-}
-
-struct EnemyView: GView {
-  let startPos: Vector2
-  let enemyType: EnemyType
-  @State var position: Vector2
-  @State var health: Int = 10
-
-  init(startPos: Vector2, enemyType: EnemyType) {
-    self.startPos = startPos
-    self.enemyType = enemyType
-    self._position = State(initialValue: startPos)
-  }
-
-  var body: some GView {
-    Area2D$ {
-      Sprite2D$().res(\.texture, "enemy_\(enemyType.rawValue).png")
-      CollisionShape2D$().shape(CircleShape2D(radius: 8))
-    }
-    .position($position)
-    .onSignal(\.bodyEntered) { node, _ in
-      health -= 10
-      if health <= 0 {
-        GameEvent.enemyKilled.emit()
-        node.queueFree()
-      }
-    }
-  }
-}
-
-enum EnemyType: String, LDExported {
-  case goblin = "Goblin"
-  case skeleton = "Skeleton"
-}
-
-struct HUDView: GView {
-  let inventory: State<[Item]>
-  let health: State<Int>
-  let score: State<Int>
-
-  var body: some GView {
-    CanvasLayer$ {
-      VBoxContainer$ {
-        Label$()
-          .bind(\.text, to: health) { "Health: \(String(repeating: "♥", count: max(0, $0)))" }
-        Label$()
-          .bind(\.text, to: score) { "Score: \($0)" }
-        Label$()
-          .bind(\.text, to: inventory) { items in
-            "Inventory: \(items.map(\.rawValue).joined(separator: ", "))"
-          }
-      }
-      .offset(top: 10, left: 10)
+      BfxrSound$("res://sounds/laser.bfxr")
+        .ref($laserSound)
+        .frequencyStart($pitch)
     }
   }
 }
 ```
+
+## Examples & Patterns
 
 ### Common Patterns
 
