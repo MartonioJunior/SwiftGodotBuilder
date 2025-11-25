@@ -125,7 +125,7 @@ struct Chapter15LevelCompleteOverlay: GView {
         }
         .theme(["separation": 4])
       }
-      .styleBox("panel", palette.victoryPanelStyle)
+      .theme("panel", palette.victoryPanelStyle)
     }
     .anchorsAndOffsets(.fullRect)
     .visible(state.isLevelComplete)
@@ -176,7 +176,7 @@ struct Chapter15GameOverOverlay: GView {
         }
         .theme(["separation": 4])
       }
-      .styleBox("panel", palette.gameOverPanelStyle)
+      .theme("panel", palette.gameOverPanelStyle)
     }
     .anchorsAndOffsets(.fullRect)
     .visible(state.isGameOver)
@@ -237,7 +237,7 @@ struct Chapter15PauseOverlay: GView {
         }
         .theme(["separation": 4])
       }
-      .styleBox("panel", palette.pausePanelStyle)
+      .theme("panel", palette.pausePanelStyle)
     }
     .anchorsAndOffsets(.fullRect)
     .visible(state.isPaused)
@@ -407,7 +407,7 @@ struct Chapter15SettingsOverlay: GView {
         }
         .theme(["marginTop": 4, "marginRight": 4, "marginBottom": 4, "marginLeft": 4])
       }
-      .styleBox("panel", palette.settingsPanelStyle)
+      .theme("panel", palette.settingsPanelStyle)
     }
     .anchorsAndOffsets(.fullRect)
     .visible(state.isSettings)
@@ -446,7 +446,7 @@ struct Chapter15CharacterOverlay: GView {
                   .theme(["fontSize": 16, "fontColor": palette.red])
               }
             }
-            .styleBox("panel", palette.healthSectionStyle)
+            .theme("panel", palette.healthSectionStyle)
 
             // Inventory section with styled background
             PanelContainer$ {
@@ -468,7 +468,7 @@ struct Chapter15CharacterOverlay: GView {
                   .theme(["fontColor": palette.gold])
               }
             }
-            .styleBox("panel", palette.inventorySectionStyle)
+            .theme("panel", palette.inventorySectionStyle)
 
             // Weapon section with styled background
             PanelContainer$ {
@@ -489,7 +489,7 @@ struct Chapter15CharacterOverlay: GView {
                   .theme(["fontColor": palette.cyan])
               }
             }
-            .styleBox("panel", palette.weaponSectionStyle)
+            .theme("panel", palette.weaponSectionStyle)
 
             // Stats section with styled background
             PanelContainer$ {
@@ -510,13 +510,13 @@ struct Chapter15CharacterOverlay: GView {
                   .theme(["fontColor": palette.lightGray])
               }
             }
-            .styleBox("panel", palette.statsSectionStyle)
+            .theme("panel", palette.statsSectionStyle)
           }
           .theme(["separation": 4])
         }
         .theme(["separation": 8])
       }
-      .styleBox("panel", palette.characterPanelStyle)
+      .theme("panel", palette.characterPanelStyle)
     }
     .anchorsAndOffsets(.fullRect)
     .visible($showOverlay)

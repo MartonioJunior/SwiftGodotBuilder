@@ -47,7 +47,7 @@ struct Chapter15LevelSelectOverlay: GView {
         }
         .theme(["separation": 3])
       }
-      .styleBox("panel", palette.panelStyle)
+      .theme("panel", palette.panelStyle)
     }
     .anchorsAndOffsets(.fullRect)
     .visible(state.isLevelSelect)
