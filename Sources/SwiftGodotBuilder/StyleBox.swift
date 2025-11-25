@@ -146,28 +146,6 @@ public extension StyleBoxBuilder where T == StyleBoxFlat {
 // MARK: - GNode Extensions
 
 public extension GNode where T: Control {
-  /// Applies a StyleBox to this control.
-  ///
-  /// - Parameters:
-  ///   - name: The name of the StyleBox override (e.g., "panel", "normal", "hover")
-  ///   - builder: Any StyleBoxBuilder
-  func styleBox<S: StyleBox>(_ name: String, _ builder: StyleBoxBuilder<S>) -> Self {
-    return styleBox(name, builder.toObject())
-  }
-
-  /// Applies a StyleBox to this control.
-  ///
-  /// - Parameters:
-  ///   - name: The name of the StyleBox override (e.g., "panel", "normal", "hover")
-  ///   - styleBox: The StyleBox instance
-  func styleBox(_ name: String, _ styleBox: StyleBox) -> Self {
-    var s = self
-    s.ops.append {
-      $0.addThemeStyleboxOverride(name: StringName(name), stylebox: styleBox)
-    }
-    return s
-  }
-
   /// Applies multiple StyleBoxes to this control using a dictionary.
   ///
   /// ### Example:
@@ -221,33 +199,33 @@ public extension GNode where T: PanelContainer {
   /// )
   /// ```
   func panelStyle<S: StyleBox>(_ builder: StyleBoxBuilder<S>) -> Self {
-    return styleBox("panel", builder)
+    return theme("panel", builder)
   }
 
   /// Applies a panel StyleBox to this PanelContainer.
   func panelStyle(_ styleBox: StyleBox) -> Self {
-    return self.styleBox("panel", styleBox)
+    return theme("panel", styleBox)
   }
 }
 
 public extension GNode where T: Button {
   /// Applies a normal state StyleBox to this Button.
   func normalStyle<S: StyleBox>(_ builder: StyleBoxBuilder<S>) -> Self {
-    return styleBox("normal", builder)
+    return theme("normal", builder)
   }
 
   /// Applies a hover state StyleBox to this Button.
   func hoverStyle<S: StyleBox>(_ builder: StyleBoxBuilder<S>) -> Self {
-    return styleBox("hover", builder)
+    return theme("hover", builder)
   }
 
   /// Applies a pressed state StyleBox to this Button.
   func pressedStyle<S: StyleBox>(_ builder: StyleBoxBuilder<S>) -> Self {
-    return styleBox("pressed", builder)
+    return theme("pressed", builder)
   }
 
   /// Applies a disabled state StyleBox to this Button.
   func disabledStyle<S: StyleBox>(_ builder: StyleBoxBuilder<S>) -> Self {
-    return styleBox("disabled", builder)
+    return theme("disabled", builder)
   }
 }

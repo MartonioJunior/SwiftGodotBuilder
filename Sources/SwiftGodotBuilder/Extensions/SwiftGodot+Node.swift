@@ -84,56 +84,24 @@ public extension Node {
 
   /// Query all children recursively that have metadata matching a key-value pair.
   ///
+  /// Supports any value type conforming to VariantConvertible (String, Int, Bool, Double, Vector2, etc.)
+  ///
   /// ### Usage:
   /// ```swift
   /// // Find all nodes with metadata "type" = "coin_spawn"
   /// let coinSpawns: [Node2D] = root.queryMeta(key: "type", value: "coin_spawn")
   /// let valuable: [Node2D] = root.queryMeta(key: "value", value: 100)
+  /// let flagged: [Node2D] = root.queryMeta(key: "active", value: true)
   /// ```
-  func queryMeta<T: Node>(
+  func queryMeta<T: Node, V: VariantConvertible>(
     key: String,
-    value: Variant,
+    value: V,
     as _: T.Type = T.self
   ) -> [T] {
+    guard let variant = value.toVariant() else { return [] }
     var results: [T] = []
-    queryMetaRecursive(key: key, value: value, node: self, results: &results)
+    queryMetaRecursive(key: key, value: variant, node: self, results: &results)
     return results
-  }
-
-  /// Query all children recursively that have string metadata matching a key-value pair.
-  func queryMeta<T: Node>(
-    key: String,
-    value: String,
-    as _: T.Type = T.self
-  ) -> [T] {
-    queryMeta(key: key, value: Variant(value))
-  }
-
-  /// Query all children recursively that have integer metadata matching a key-value pair.
-  func queryMeta<T: Node>(
-    key: String,
-    value: Int,
-    as _: T.Type = T.self
-  ) -> [T] {
-    queryMeta(key: key, value: Variant(value))
-  }
-
-  /// Query all children recursively that have boolean metadata matching a key-value pair.
-  func queryMeta<T: Node>(
-    key: String,
-    value: Bool,
-    as _: T.Type = T.self
-  ) -> [T] {
-    queryMeta(key: key, value: Variant(value))
-  }
-
-  /// Query all children recursively that have floating-point metadata matching a key-value pair.
-  func queryMeta<T: Node>(
-    key: String,
-    value: Double,
-    as _: T.Type = T.self
-  ) -> [T] {
-    queryMeta(key: key, value: Variant(value))
   }
 
   private func queryMetaRecursive<T: Node>(
@@ -188,33 +156,19 @@ public extension Node {
 
   /// Safely get metadata value with type casting.
   ///
+  /// Uses SwiftGodot's type-deduced Variant unwrapping for automatic type conversion.
+  /// Supports any type conforming to VariantConvertible.
+  ///
   /// ### Usage:
   /// ```swift
   /// let coinValue: Int? = node.getMetaValue("coin_value")
   /// let spawnType: String? = node.getMetaValue("type")
+  /// let pos: Vector2? = node.getMetaValue("spawn_pos")
   /// ```
-  func getMetaValue<T>(_ key: String) -> T? {
+  func getMetaValue<T: VariantConvertible>(_ key: String) -> T? {
     let keyName = StringName(key)
     guard hasMeta(name: keyName) else { return nil }
     guard let variant = getMeta(name: keyName, default: nil) else { return nil }
-
-    // Try common types
-    if T.self == Int.self {
-      return Int(variant) as? T
-    } else if T.self == String.self {
-      return String(variant) as? T
-    } else if T.self == Double.self {
-      return Double(variant) as? T
-    } else if T.self == Float.self {
-      return Float(variant) as? T
-    } else if T.self == Bool.self {
-      return Bool(variant) as? T
-    } else if T.self == Vector2.self {
-      return Vector2(variant) as? T
-    } else if T.self == Vector3.self {
-      return Vector3(variant) as? T
-    }
-
-    return nil
+    return variant.to()
   }
 }

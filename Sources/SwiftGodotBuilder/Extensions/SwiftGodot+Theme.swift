@@ -135,6 +135,30 @@ public extension GNode where T: Control {
     return s
   }
 
+  /// Applies a static StyleBox theme override.
+  ///
+  /// ```swift
+  /// Button$()
+  ///   .theme("normal", myStyleBox)
+  /// ```
+  func theme(_ name: String, _ styleBox: StyleBox) -> Self {
+    var s = self
+    s.ops.append { node in
+      node.addThemeStyleboxOverride(name: StringName(name), stylebox: styleBox)
+    }
+    return s
+  }
+
+  /// Applies a static StyleBoxBuilder theme override.
+  ///
+  /// ```swift
+  /// Button$()
+  ///   .theme("normal", StyleBoxFlat$().bgColor(.gray))
+  /// ```
+  func theme<S: StyleBox>(_ name: String, _ builder: StyleBoxBuilder<S>) -> Self {
+    theme(name, builder.toObject())
+  }
+
   /// Applies a reactive StyleBox theme override.
   ///
   /// The StyleBox will automatically update when the GState value changes.
@@ -153,7 +177,7 @@ public extension GNode where T: Control {
     return s
   }
 
-  /// Applies a reactive StyleBoxFlat theme override.
+  /// Applies a reactive StyleBox theme override (generic for StyleBox subclasses).
   ///
   /// The StyleBox will automatically update when the GState value changes.
   ///
