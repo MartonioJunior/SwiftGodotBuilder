@@ -267,4 +267,79 @@ public extension GState {
 
     return derived
   }
+
+  /// Creates a computed state by combining five states.
+  func computed<T2: Equatable, T3: Equatable, T4: Equatable, T5: Equatable, R: Equatable>(
+    with second: GState<T2>,
+    _ third: GState<T3>,
+    _ fourth: GState<T4>,
+    _ fifth: GState<T5>,
+    _ transform: @escaping (Value, T2, T3, T4, T5) -> R
+  ) -> GState<R> {
+    let derived = GState<R>(wrappedValue: transform(
+      self.value, second.value, third.value, fourth.value, fifth.value
+    ))
+
+    onChange { [derived] newValue in
+      derived.wrappedValue = transform(newValue, second.value, third.value, fourth.value, fifth.value)
+    }
+
+    second.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, newValue, third.value, fourth.value, fifth.value)
+    }
+
+    third.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, newValue, fourth.value, fifth.value)
+    }
+
+    fourth.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, third.value, newValue, fifth.value)
+    }
+
+    fifth.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, third.value, fourth.value, newValue)
+    }
+
+    return derived
+  }
+
+  /// Creates a computed state by combining six states.
+  func computed<T2: Equatable, T3: Equatable, T4: Equatable, T5: Equatable, T6: Equatable, R: Equatable>(
+    with second: GState<T2>,
+    _ third: GState<T3>,
+    _ fourth: GState<T4>,
+    _ fifth: GState<T5>,
+    _ sixth: GState<T6>,
+    _ transform: @escaping (Value, T2, T3, T4, T5, T6) -> R
+  ) -> GState<R> {
+    let derived = GState<R>(wrappedValue: transform(
+      self.value, second.value, third.value, fourth.value, fifth.value, sixth.value
+    ))
+
+    onChange { [derived] newValue in
+      derived.wrappedValue = transform(newValue, second.value, third.value, fourth.value, fifth.value, sixth.value)
+    }
+
+    second.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, newValue, third.value, fourth.value, fifth.value, sixth.value)
+    }
+
+    third.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, newValue, fourth.value, fifth.value, sixth.value)
+    }
+
+    fourth.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, third.value, newValue, fifth.value, sixth.value)
+    }
+
+    fifth.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, third.value, fourth.value, newValue, sixth.value)
+    }
+
+    sixth.onChange { [derived] newValue in
+      derived.wrappedValue = transform(self.value, second.value, third.value, fourth.value, fifth.value, newValue)
+    }
+
+    return derived
+  }
 }

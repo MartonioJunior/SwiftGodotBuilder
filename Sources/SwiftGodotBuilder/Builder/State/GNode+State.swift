@@ -172,4 +172,64 @@ public extension GNode {
     }
     return s
   }
+
+  /// Bind five GStates with a transformation function
+  /// Usage: .bind(\.text, to: $a, $b, $c, $d, $e) { a, b, c, d, e in "\(a) - \(b) - \(c) - \(d) - \(e)" }
+  func bind<V1, V2, V3, V4, V5, U>(
+    _ kp: ReferenceWritableKeyPath<T, U>,
+    to state1: GState<V1>,
+    _ state2: GState<V2>,
+    _ state3: GState<V3>,
+    _ state4: GState<V4>,
+    _ state5: GState<V5>,
+    transform: @escaping (V1, V2, V3, V4, V5) -> U
+  ) -> Self {
+    var s = self
+    s.ops.append { node in
+      let update = { [weak node] in
+        guard let node = node else { return }
+        node[keyPath: kp] = transform(
+          state1.wrappedValue, state2.wrappedValue, state3.wrappedValue,
+          state4.wrappedValue, state5.wrappedValue
+        )
+      }
+      state1.observe { _ in update() }
+      state2.observe { _ in update() }
+      state3.observe { _ in update() }
+      state4.observe { _ in update() }
+      state5.observe { _ in update() }
+    }
+    return s
+  }
+
+  /// Bind six GStates with a transformation function
+  /// Usage: .bind(\.text, to: $a, $b, $c, $d, $e, $f) { a, b, c, d, e, f in ... }
+  func bind<V1, V2, V3, V4, V5, V6, U>(
+    _ kp: ReferenceWritableKeyPath<T, U>,
+    to state1: GState<V1>,
+    _ state2: GState<V2>,
+    _ state3: GState<V3>,
+    _ state4: GState<V4>,
+    _ state5: GState<V5>,
+    _ state6: GState<V6>,
+    transform: @escaping (V1, V2, V3, V4, V5, V6) -> U
+  ) -> Self {
+    var s = self
+    s.ops.append { node in
+      let update = { [weak node] in
+        guard let node = node else { return }
+        node[keyPath: kp] = transform(
+          state1.wrappedValue, state2.wrappedValue, state3.wrappedValue,
+          state4.wrappedValue, state5.wrappedValue, state6.wrappedValue
+        )
+      }
+      state1.observe { _ in update() }
+      state2.observe { _ in update() }
+      state3.observe { _ in update() }
+      state4.observe { _ in update() }
+      state5.observe { _ in update() }
+      state6.observe { _ in update() }
+    }
+    return s
+  }
 }
