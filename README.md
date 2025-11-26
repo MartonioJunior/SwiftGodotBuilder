@@ -400,6 +400,86 @@ enum GameEvent: EmittableEvent {
 GameEvent.playerDied.emit()
 ```
 
+### Dialog DSL
+
+Screenplay-style dialog trees.
+
+```swift
+// Define speakers
+let Guard = Speaker("Guard")
+let Merchant = Speaker("Merchant")
+
+// Create dialogs with branches
+Dialog(id: "guard") {
+  Branch("main") {
+    Guard ~ "Halt! The path ahead is dangerous."
+
+    Choice("I can handle it.") {
+      Guard ~ "Ha! I like your spirit!"
+    }
+
+    Choice("Any tips?") {
+      Guard ~ "Watch for patterns."
+      Jump("tips")  // Jump to another branch
+    }
+
+    Choice("Bye.") {
+      End
+    }
+  }
+
+  Branch("tips") {
+    Guard ~ "Use checkpoints!"
+    Guard ~ "Good luck out there."
+  }
+}
+
+// Conditional choices
+Choice("Pay 10 gold", when: { game.gold >= 10 }) {
+  Emit("payGold", ["amount": 10])
+  Merchant ~ "Thank you!"
+}
+
+// Conditional blocks - runtime evaluated
+When({ game.hasKey }) {
+  Guard ~ "You have the key!"
+  Jump("unlocked")
+}
+
+// Per-NPC state via DialogState
+func makeDialog(state: DialogState) -> DialogDefinition {
+  Dialog(id: "guard") {
+    Branch("main") {
+      When({ state.isFirstVisit }) {
+        Guard ~ "Welcome, stranger!"
+      }
+      When({ state.visitCount > 1 }) {
+        Guard ~ "Back again?"
+      }
+    }
+  }
+}
+
+// Create dialog state (track visit counts in your game state)
+let state = DialogState(visitCount: myGameState.getVisitCount(for: "guard"))
+
+// Run dialog
+let runner = DialogRunner(dialog: myDialog)
+runner.onLine = { line in print("\(line.speaker): \(line.text)") }
+runner.onChoices = { choices in /* show UI */ }
+runner.onEnd = { /* close dialog */ }
+runner.start()
+runner.advance()           // Next line
+runner.selectChoice(0)     // Pick choice
+
+// Handle Emit() events
+.onEvent(DialogBusEvent.self) { _, event in
+  if case .emitted(let name, let data) = event, name == "payGold" {
+    player.gold -= data?["amount"] as? Int ?? 0
+  }
+}
+```
+
 ## Node Modifiers
 
 ### Control Layout
