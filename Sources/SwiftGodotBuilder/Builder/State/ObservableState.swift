@@ -1,5 +1,5 @@
 import Foundation
-@preconcurrency import Observation
+import Observation
 import SwiftGodot
 
 // MARK: - ObservableState Wrapper

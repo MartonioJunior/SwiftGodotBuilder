@@ -1,4 +1,4 @@
-@preconcurrency import SwiftGodot
+import SwiftGodot
 
 /// Configuration for CPUParticles2D emission parameters.
 ///

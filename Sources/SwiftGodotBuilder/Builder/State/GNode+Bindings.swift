@@ -1,5 +1,5 @@
+import Observation
 import SwiftGodot
-@preconcurrency import Observation
 
 // MARK: - Two-way binding for Range controls
 

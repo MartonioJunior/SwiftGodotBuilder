@@ -16,10 +16,3 @@ public func register(types: [Object.Type]) {
     register(type: t)
   }
 }
-
-// MARK: Sendable conformances
-
-// extension NodePath: @retroactive @unchecked Sendable {
-//   public func toSendable() -> String { description }
-//   public static func fromSendable(_ value: String) -> NodePath { NodePath(value) }
-// }

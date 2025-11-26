@@ -40,11 +40,13 @@ public extension Vector2 {
   @inlinable static func *= <S: BinaryInteger>(lhs: inout Self, rhs: S) { lhs = lhs * rhs }
 }
 
+// This is safe because Floats are Sendable
 extension Vector2: @retroactive @unchecked Sendable {
   public func toSendable() -> (Float, Float) { (x, y) }
   public static func fromSendable(_ value: (Float, Float)) -> Vector2 { Vector2(value.0, value.1) }
 }
 
+// This is safe because Int32s are Sendable
 extension Vector2i: @retroactive @unchecked Sendable {
   public func toSendable() -> (Int32, Int32) { (x, y) }
   public static func fromSendable(_ value: (Int32, Int32)) -> Vector2i { Vector2i(x: value.0, y: value.1) }

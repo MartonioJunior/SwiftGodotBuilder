@@ -11,3 +11,11 @@ public extension Color {
     Color(r: self.red, g: self.green, b: self.blue, a: Float(alpha))
   }
 }
+
+// This is safe because Floats are Sendable
+extension Color: @retroactive @unchecked Sendable {
+  public func toSendable() -> (Float, Float, Float, Float) { (red, green, blue, alpha) }
+  public static func fromSendable(_ value: (Float, Float, Float, Float)) -> Color {
+    Color(r: value.0, g: value.1, b: value.2, a: value.3)
+  }
+}
