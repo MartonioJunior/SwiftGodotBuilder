@@ -7,5 +7,6 @@ public enum BuilderRegistry {
     ColorBox.self,
     GProcessRelay.self,
     GEventRelay.self,
+    SVGSprite.self,
   ]
 }

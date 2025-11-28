@@ -400,7 +400,7 @@ enum GameEvent: EmittableEvent {
 GameEvent.playerDied.emit()
 ```
 
-### Dialog DSL
+## Dialog Trees
 
 Screenplay-style dialog trees.
 
@@ -791,7 +791,7 @@ final class Player: CharacterBody2D {
 
 ## Integrations
 
-### LDtk Integration
+### LDtk
 
 Complete workflow for loading LDtk levels and bridging enums.
 
@@ -884,6 +884,63 @@ CharacterBody2D$()
   .collisionMask(wallLayer | platformLayer)
 ```
 
+### SVGSprite
+
+Runtime SVG rendering with vertex manipulation effects.
+
+```swift
+// Basic usage
+SVGSprite$()
+  .path("icon.svg")
+  .size(16) // Default is 32
+  .colors([.red, .darkRed, .crimson]) // Per-element colors
+  .stroke(.white, width: 2)
+
+// Mixing effect types - chaining works fine
+SVGSprite$()
+  .colorCycle([.red, .orange, .yellow]) // color effect
+  .inflate(amount: 3.0)                 // vertex effect
+
+// Multiple vertex effects - use svgEffects builder
+SVGSprite$()
+  .path("icon.svg")
+  .svgEffects {
+    SVGInflate(amount: 3.0)                    // applied first
+    SVGNoise(amount: 1.5)                      // applied to inflated result
+  }
+
+// With reactive bindings
+@State var meltProgress: Double = 0
+
+SVGSprite$()
+  .path("enemy.svg")
+  .melt(progress: $meltProgress)  // Animate on death
+```
+
+#### Size & Color Effects
+
+Can be freely chained with each other and with vertex effects.
+
+- `SVGPulse` - `.pulse(speed, amplitude, baseSize)` - Oscillate sprite size
+- `SVGColorCycle` - `.colorCycle(colors, speed)` - Cycle fill through colors
+- `SVGStrokeCycle` - `.strokeCycle(colors, speed)` - Cycle stroke through colors
+- `SVGDualColorCycle` - `.dualColorCycle(fill:, stroke:)` - Cycle both through color arrays
+
+#### Vertex Effects
+
+Modify vertex positions. Use `svgEffects { }` to combine multiple.
+
+- `SVGWobble` - `.wobble(amount, speed)` - Radial vertex wobble
+- `SVGInflate` - `.inflate(amount, speed)` - Breathing expansion
+- `SVGSkew` - `.skew(amount, speed, animated)` - Shear/lean shape
+- `SVGNoise` - `.noise(amount, speed)` - Per-vertex jitter
+- `SVGRipple` - `.ripple(amplitude, frequency, speed)` - Concentric waves
+- `SVGTwist` - `.twist(amount, speed)` - Spiral/vortex
+- `SVGWave` - `.wave(amplitude, frequency, speed)` - Horizontal wave
+- `SVGExplode` - `.explode(progress, scale)` - Vertices expand outward
+- `SVGScatter` - `.scatter(progress, scale, rotate)` - Elements drift apart
+- `SVGMelt` - `.melt(progress, scale, waviness)` - Top-down drip
+
 ### AseSprite
 
 ```swift
@@ -905,7 +962,7 @@ AseSprite$(path: "player", layer: "Main")
   }
 ```
 
-### Bfxr Sound Effects
+### Bfxr
 
 Real-time synthesis of retro sound effects from [Bfxr](https://www.bfxr.net) `.bfxr` files.
 
@@ -926,192 +983,6 @@ struct GameView: GView {
         .ref($laserSound)
         .frequencyStart($pitch)
     }
-  }
-}
-```
-
-## Examples & Patterns
-
-### Common Patterns
-
-#### Character Controller
-
-```swift
-struct PlayerController: GView {
-  @State var position: Vector2 = .zero
-  @State var velocity: Vector2 = .zero
-  @State var player: CharacterBody2D?
-
-  let gravity: Float = 980
-  let speed: Float = 200
-  let jumpSpeed: Float = 300
-
-  var body: some GView {
-    CharacterBody2D$ {
-      Sprite2D$().res(\.texture, "player.png")
-      CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 22))
-    }
-    .position($position)
-    .velocity($velocity)
-    .ref($player)
-    .onProcess { _, delta in
-      guard let player = player else { return }
-
-      var vel = velocity
-      vel.y += gravity * Float(delta)
-
-      let input = RuntimeAction.axis(negative: "move_left", positive: "move_right")
-      vel.x = input * speed
-
-      if Action("jump").isJustPressed && player.isOnFloor() {
-        vel.y = -jumpSpeed
-      }
-
-      player.velocity = vel
-      player.moveAndSlide()
-
-      velocity = player.velocity
-      position = player.position
-    }
-  }
-}
-```
-
-#### Interactive Object
-
-```swift
-struct Chest: GView {
-  let position: Vector2
-  let loot: [Item]
-  @State var isOpen = false
-
-  var body: some GView {
-    Area2D$ {
-      If($isOpen) {
-        Sprite2D$().res(\.texture, "chest_open.png")
-      }
-      .Else {
-        Sprite2D$().res(\.texture, "chest_closed.png")
-      }
-      CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 16))
-    }
-    .position(position)
-    .onSignal(\.bodyEntered) { _, body in
-      guard !isOpen else { return }
-      isOpen = true
-      GameEvent.lootCollected(loot).emit()
-    }
-  }
-}
-```
-
-#### Health Bar
-
-```swift
-struct HealthBar: GView {
-  let health: State<Int>
-  let maxHealth: Int
-
-  var body: some GView {
-    ProgressBar$()
-      .maxValue(Double(maxHealth))
-      // Formatter used for type conversion
-      .bind(\.value, to: health) { Double($0) }
-      .size(.expandFill)
-  }
-}
-```
-
-#### Menu System
-
-```swift
-enum MenuPage {
-  case mainMenu
-  case levelSelect
-  case settings
-}
-
-struct MainMenu: GView {
-  @State var currentPage: MenuPage = .mainMenu
-
-  var body: some GView {
-    CanvasLayer$ {
-      VBoxContainer$ {
-        Label$().text("My Game")
-
-        Switch($currentPage) {
-          Case(.mainMenu) {
-            Button$().text("Start").onSignal(\.pressed) { _ in
-              currentPage = .levelSelect
-            }
-            Button$().text("Settings").onSignal(\.pressed) { _ in
-              currentPage = .settings
-            }
-            Button$().text("Quit").onSignal(\.pressed) { _ in
-              Engine.getSceneTree()?.quit()
-            }
-          }
-
-          Case(.levelSelect) {
-            Label$().text("Level Select")
-            Button$().text("Back").onSignal(\.pressed) { _ in
-              currentPage = .mainMenu
-            }
-          }
-
-          Case(.settings) {
-            Label$().text("Settings")
-            Button$().text("Back").onSignal(\.pressed) { _ in
-              currentPage = .mainMenu
-            }
-          }
-        }
-      }
-      .anchorsAndOffsets(.center)
-    }
-  }
-}
-```
-
-#### Inventory System
-
-```swift
-struct InventoryView: GView {
-  @State var items: [Item] = []
-
-  var body: some GView {
-    VBoxContainer$ {
-      Label$().text("Inventory")
-
-      ForEach($items, id: \.rawValue) { item in
-        HBoxContainer$ {
-          TextureRect$().res(\.texture, "icon_\(item.wrappedValue.rawValue).png")
-          Label$().text(item.wrappedValue.rawValue)
-          Button$().text("Drop").onSignal(\.pressed) { _ in
-            items.removeAll { $0 == item.wrappedValue }
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-#### Timer/Countdown
-
-```swift
-struct Countdown: GView {
-  @State var timeLeft: Double = 60.0
-  @State var isRunning: Bool = true
-
-  var body: some GView {
-    Label$()
-      .bind(\.text, to: $timeLeft) { String(format: "%.1f", $0) }
-      .onProcess { _, delta in
-        if isRunning && timeLeft > 0 {
-          timeLeft -= delta
-        }
-      }
   }
 }
 ```
