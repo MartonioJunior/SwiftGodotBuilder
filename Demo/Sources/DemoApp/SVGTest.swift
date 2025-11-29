@@ -1,4 +1,4 @@
-import Foundation
+
 import Observation
 import SwiftGodot
 import SwiftGodotBuilder
@@ -15,47 +15,13 @@ final class SVGTest: Node2D {
 
 @Observable
 class SVGDemoState {
-  var wobbleAmount: Double = 1
+  var wobbleAmount: Double = 3
   var pulseSpeed: Double = 2
   var explosionProgress: Double = 0
   var scatterProgress: Double = 0
   var twistAmount: Double = 0.5
   var waveAmplitude: Double = 3
   var noiseAmount: Double = 1
-  var skewAmount: Double = 0.3
-  var inflateAmount: Double = 3
-  var rippleAmplitude: Double = 2
-
-  // Paths for each sprite (20 total: 5 per row × 4 rows)
-  var paths: [String] = Array(repeating: "svg/star.svg", count: 20)
-
-  private var svgFiles: [String] = []
-
-  func randomizeAll() {
-    loadSvgFiles()
-    for i in 0 ..< paths.count {
-      if let file = svgFiles.randomElement() {
-        paths[i] = "svg/\(file)"
-      }
-    }
-  }
-
-  func pickRandom(_ index: Int) {
-    loadSvgFiles()
-    guard let file = svgFiles.randomElement() else { return }
-    paths[index] = "svg/\(file)"
-  }
-
-  private func loadSvgFiles() {
-    guard svgFiles.isEmpty else { return }
-    let files = DirAccess.getFilesAt(path: "res://svg/")
-    for i in 0 ..< Int(files.size()) {
-      let name = String(files[i])
-      if name.hasSuffix(".svg") {
-        svgFiles.append(name)
-      }
-    }
-  }
 }
 
 // MARK: - Main View
@@ -70,9 +36,9 @@ struct SVGTestView: GView {
         ScrollContainer$ {
           VBoxContainer$ {
             Row1ColorEffects(state: state)
-            Row2Deformations(state: state)
-            Row3GameEffects(state: state)
-            Row4Combinations(state: state)
+            Row2Oscillating(state: state)
+            Row3OneShot(state: state)
+            Row4Combinations()
           }
           .theme(["separation": 8])
         }
@@ -80,12 +46,11 @@ struct SVGTestView: GView {
         .sizeFlagsVertical(.expandFill)
       }
       .anchors(.fullRect)
-      .onReady { _ in state.wrappedValue.randomizeAll() }
     }
   }
 }
 
-// MARK: - Row 1: Static + Color effects
+// MARK: - Row 1: Color effects
 
 struct Row1ColorEffects: GView {
   let state: ObservableState<SVGDemoState>
@@ -93,204 +58,146 @@ struct Row1ColorEffects: GView {
   var body: some GView {
     HBoxContainer$ {
       LabeledCell("Static") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[0])
-            .colors([.purple, .magenta, .violet])
-            .position([16, 16])
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(0) }
-      }
-
-      LabeledCell("Pulse") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[1])
-            .colors([.yellow, .gold, .orange])
-            .position([16, 16])
-            .pulse(speed: state.pulseSpeed)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(1) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.gold, .orange, .yellow])
+          .position([16, 16])
       }
 
       LabeledCell("ColorCycle") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[2])
-            .position([16, 16])
-            .colorCycle([.red, .orange, .yellow, .green, .blue, .purple], speed: 0.5)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(2) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .position([16, 16])
+          .colorCycle([.red, .orange, .yellow, .green, .cyan, .purple], speed: 0.5)
       }
 
       LabeledCell("StrokeCycle") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[3])
-            .colors([.white, .lightGray, .lightGray])
-            .stroke(.white, width: 2)
-            .position([16, 16])
-            .strokeCycle([.cyan, .blue, .purple], speed: 0.8)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(3) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.white, .lightGray, .silver])
+          .stroke(.white, width: 2)
+          .position([16, 16])
+          .strokeCycle([.cyan, .blue, .purple], speed: 0.8)
       }
 
       LabeledCell("DualCycle") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[4])
-            .stroke(.white, width: 2)
-            .position([16, 16])
-            .dualColorCycle(fill: [.red, .orange, .yellow], stroke: [.cyan, .white])
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(4) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .stroke(.white, width: 2)
+          .position([16, 16])
+          .dualColorCycle(fill: [.red, .orange, .yellow], stroke: [.cyan, .white])
+      }
+
+      LabeledCell("Pulse") {
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.red, .darkRed, .crimson])
+          .stroke(.darkRed, width: 2)
+          .position([16, 16])
+          .pulse(speed: state.pulseSpeed)
       }
     }
     .theme(["separation": 8])
   }
 }
 
-// MARK: - Row 2: Basic vertex deformations
+// MARK: - Row 2: Oscillating effects (time-based, automatic)
 
-struct Row2Deformations: GView {
+struct Row2Oscillating: GView {
   let state: ObservableState<SVGDemoState>
 
   var body: some GView {
     HBoxContainer$ {
       LabeledCell("Wobble") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[5])
-            .colors([.red, .darkRed, .crimson])
-            .position([16, 16])
-            .wobble(amount: state.wobbleAmount)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(5) }
-      }
-
-      LabeledCell("Explode") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[6])
-            .colors([.gray, .darkGray, .lightGray])
-            .position([16, 16])
-            .explode(progress: state.explosionProgress)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(6) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.limeGreen, .green, .darkGreen])
+          .stroke(.green, width: 1)
+          .position([16, 16])
+          .wobble(amount: state.wobbleAmount)
       }
 
       LabeledCell("Wave") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[7])
-            .colors([.orangeRed, .orange, .yellow])
-            .position([16, 16])
-            .wave(amplitude: state.waveAmplitude, frequency: 0.2, speed: 3.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(7) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.orangeRed, .orange, .yellow])
+          .stroke(.orange, width: 1)
+          .position([16, 16])
+          .wave(amplitude: state.waveAmplitude, frequency: 0.2, speed: 3.0)
       }
 
       LabeledCell("Inflate") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[8])
-            .colors([.steelBlue, .lightSteelBlue, .slateGray])
-            .position([16, 16])
-            .inflate(amount: state.inflateAmount, speed: 2.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(8) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.skyBlue, .white, .gold])
+          .stroke(.white, width: 1)
+          .position([16, 16])
+          .inflate(amount: 4.0, speed: 2.0)
       }
 
       LabeledCell("Ripple") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[9])
-            .colors([.aqua, .teal, .darkCyan])
-            .position([16, 16])
-            .ripple(amplitude: state.rippleAmplitude, frequency: 0.4, speed: 4.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(9) }
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.aqua, .teal, .darkCyan])
+          .stroke(.teal, width: 2)
+          .position([16, 16])
+          .ripple(amplitude: 2.0, frequency: 0.4, speed: 4.0)
+      }
+
+      LabeledCell("Skew") {
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.yellow, .gold, .orange])
+          .stroke(.gold, width: 1)
+          .position([16, 16])
+          .skew(amount: 0.4, speed: 1.5)
+      }
+
+      LabeledCell("Twist") {
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.orange, .yellow, .gold])
+          .stroke(.gold, width: 1)
+          .position([16, 16])
+          .twist(amount: state.twistAmount, speed: 2.0)
       }
     }
     .theme(["separation": 8])
   }
 }
 
-// MARK: - Row 3: Game-focused effects
+// MARK: - Row 3: One-shot effects (progress-driven)
 
-struct Row3GameEffects: GView {
+struct Row3OneShot: GView {
   let state: ObservableState<SVGDemoState>
 
   var body: some GView {
     HBoxContainer$ {
-      LabeledCell("Skew") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[10])
-            .colors([.green, .limeGreen, .darkGreen])
-            .position([16, 16])
-            .skew(amount: state.skewAmount, speed: 1.5)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(10) }
-      }
-
-      LabeledCell("Noise") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[11])
-            .colors([.cyan, .white, .lightCyan])
-            .position([16, 16])
-            .noise(amount: state.noiseAmount, speed: 15.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(11) }
-      }
-
-      LabeledCell("Twist") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[12])
-            .colors([.purple, .magenta, .violet])
-            .position([16, 16])
-            .twist(amount: state.twistAmount, speed: 2.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(12) }
+      LabeledCell("Explode") {
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.orange, .red, .yellow])
+          .stroke(.gold, width: 1)
+          .position([16, 16])
+          .explode(progress: state.explosionProgress)
       }
 
       LabeledCell("Scatter") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[13])
-            .colors([.orange, .red, .yellow])
-            .position([16, 16])
-            .scatter(progress: state.scatterProgress, scale: 30.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(13) }
+        SVGSprite$()
+          .path("svg/water.svg")
+          .colors([.orange, .red, .yellow])
+          .stroke(.white, width: 1)
+          .position([16, 16])
+          .scatter(progress: state.scatterProgress, scale: 30.0)
       }
 
-      LabeledCell("Spin") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[14])
-            .colors([.gold, .yellow, .orange])
-            .position([16, 16])
-            .twist(amount: 1.0, speed: 3.0)
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(14) }
+      LabeledCell("Noise") {
+        SVGSprite$()
+          .path("svg/star.svg")
+          .colors([.white, .lightGray, .gray])
+          .stroke(.crimson, width: 1)
+          .position([16, 16])
+          .noise(amount: state.noiseAmount, speed: 15.0)
       }
     }
     .theme(["separation": 8])
@@ -300,81 +207,69 @@ struct Row3GameEffects: GView {
 // MARK: - Row 4: Composable combinations
 
 struct Row4Combinations: GView {
-  let state: ObservableState<SVGDemoState>
-
   var body: some GView {
     HBoxContainer$ {
       LabeledCell("Pulse+Wob") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[15])
-            .colors([.hotPink, .deepPink, .pink])
-            .position([16, 16])
-            .svgEffects {
-              SVGPulse(speed: state.pulseSpeed)
-              SVGWobble(amount: state.wobbleAmount)
-            }
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(15) }
+        SVGSprite$()
+          // .path("svg/cat.svg")
+          .path("svg/star.svg")
+          .colors([.hotPink, .deepPink, .pink])
+          .stroke(.deepPink, width: 2)
+          .position([16, 16])
+          .svgEffects {
+            SVGPulse(speed: 2.0)
+            SVGWobble(amount: 2.0)
+          }
       }
 
       LabeledCell("Color+Wave") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[16])
-            .position([16, 16])
-            .svgEffects {
-              SVGColorCycle([.green, .limeGreen, .darkGreen], speed: 0.5)
-              SVGWave(amplitude: 2.0)
-            }
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(16) }
+        SVGSprite$()
+          // .path("svg/dragon.svg")
+          .path("svg/star.svg")
+          .stroke(.orange, width: 1)
+          .position([16, 16])
+          .svgEffects {
+            SVGColorCycle([.red, .orange, .yellow], speed: 0.5)
+            SVGWave(amplitude: 2.0)
+          }
       }
 
       LabeledCell("Infl+Noise") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[17])
-            .colors([.yellow, .white])
-            .position([16, 16])
-            .svgEffects {
-              SVGInflate(amount: 3.0, speed: 3.0)
-              SVGNoise(amount: 1.5, speed: 20.0)
-            }
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(17) }
+        SVGSprite$()
+          // .path("svg/bugs.svg")
+          .path("svg/star.svg")
+          .colors([.limeGreen, .green, .darkGreen])
+          .stroke(.darkGreen, width: 1)
+          .position([16, 16])
+          .svgEffects {
+            SVGInflate(amount: 3.0, speed: 3.0)
+            SVGNoise(amount: 1.5, speed: 20.0)
+          }
       }
 
       LabeledCell("Skew+Rip") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[18])
-            .colors([.dodgerBlue, .deepSkyBlue, .lightBlue])
-            .position([16, 16])
-            .svgEffects {
-              SVGSkew(amount: 0.2, speed: 1.0)
-              SVGRipple(amplitude: 1.5, frequency: 0.5, speed: 3.0)
-            }
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(18) }
+        SVGSprite$()
+          // .path("svg/fish.svg")
+          .path("svg/star.svg")
+          .colors([.dodgerBlue, .deepSkyBlue, .lightBlue])
+          .stroke(.deepSkyBlue, width: 1)
+          .position([16, 16])
+          .svgEffects {
+            SVGSkew(amount: 0.2, speed: 1.0)
+            SVGRipple(amplitude: 1.5, frequency: 0.5, speed: 3.0)
+          }
       }
 
       LabeledCell("Twist+Col") {
-        Button$ {
-          SVGSprite$()
-            .path(state.paths[19])
-            .position([16, 16])
-            .svgEffects {
-              SVGTwist(amount: 0.8, speed: 3.0)
-              SVGColorCycle([.purple, .magenta, .cyan], speed: 1.0)
-            }
-        }
-        .flat(true).focusMode(.none).minSize([64, 64])
-        .onSignal(\.pressed) { _ in state.wrappedValue.pickRandom(19) }
+        SVGSprite$()
+          // .path("svg/clover.svg")
+          .path("svg/star.svg")
+          .stroke(.white, width: 2)
+          .position([16, 16])
+          .svgEffects {
+            SVGTwist(amount: 0.8, speed: 3.0)
+            SVGColorCycle([.green, .limeGreen, .yellow], speed: 1.0)
+          }
       }
     }
     .theme(["separation": 8])
@@ -394,7 +289,7 @@ struct LabeledCell<Content: GView>: GView {
 
   var body: some GView {
     VBoxContainer$ {
-      content
+      Control$ { content }.minSize([64, 64])
       Label$().text(label).horizontalAlignment(.center).minSize([64, 0])
     }
     .theme(["separation": 0])
@@ -414,7 +309,7 @@ struct ControlPanel: GView {
           Label$().text("Wobble").minSize([50, 0])
           HSlider$()
             .minValue(0)
-            .maxValue(2)
+            .maxValue(1)
             .step(0.1)
             .value(state.wobbleAmount)
             .minSize([60, 0])
@@ -469,35 +364,9 @@ struct ControlPanel: GView {
             .value(state.noiseAmount)
             .minSize([60, 0])
         }
-
-        HBoxContainer$ {
-          Label$().text("Skew").minSize([50, 0])
-          HSlider$()
-            .minValue(0)
-            .maxValue(1)
-            .step(0.05)
-            .value(state.skewAmount)
-            .minSize([60, 0])
-
-          Label$().text("Inflate").minSize([40, 0])
-          HSlider$()
-            .minValue(0)
-            .maxValue(8)
-            .step(0.1)
-            .value(state.inflateAmount)
-            .minSize([60, 0])
-
-          Label$().text("Ripple").minSize([40, 0])
-          HSlider$()
-            .minValue(0)
-            .maxValue(5)
-            .step(0.1)
-            .value(state.rippleAmplitude)
-            .minSize([60, 0])
-        }
       }
       .theme(["separation": 4])
-      .minSize([0, 80])
+      .minSize([0, 56])
       Control$().sizeFlagsHorizontal(.expandFill)
     }
   }

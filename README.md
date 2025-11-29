@@ -148,6 +148,65 @@ Node2D$()
   }
 ```
 
+### Custom Components
+
+Create reusable GView components with content slots using `@GViewBuilder`.
+
+```swift
+// Component with a content slot
+struct LabeledCell<Content: GView>: GView {
+  let label: String
+  let content: Content
+
+  init(_ label: String, @GViewBuilder content: () -> Content) {
+    self.label = label
+    self.content = content()
+  }
+
+  var body: some GView {
+    VBoxContainer$ {
+      Control$ { content }.minSize([64, 64])
+      Label$().text(label).horizontalAlignment(.center)
+    }
+  }
+}
+
+// Single child
+LabeledCell("Health") {
+  ProgressBar$().value(80)
+}
+
+// Multiple children (automatically grouped)
+LabeledCell("Stats") {
+  Label$().text("HP: 100")
+  Label$().text("MP: 50")
+}
+```
+
+Components can also accept state bindings:
+
+```swift
+struct Card<Content: GView>: GView {
+  let title: String
+  let content: Content
+
+  init(_ title: String, @GViewBuilder content: () -> Content) {
+    self.title = title
+    self.content = content()
+  }
+
+  var body: some GView {
+    PanelContainer$ {
+      VBoxContainer$ {
+        Label$().text(title)
+        HSeparator$()
+        content
+      }
+    }
+  }
+}
+```
+
 ## Reactive Data
 
 ### State Management

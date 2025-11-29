@@ -175,6 +175,7 @@ public class SVGSprite: Node2D {
   }
 
   /// Sets the vertices for a specific element.
+  /// Also updates the corresponding stroke element if one exists.
   ///
   /// - Parameters:
   ///   - vertices: The new vertex array
@@ -187,6 +188,17 @@ public class SVGSprite: Node2D {
       polygon.polygon = vertices
     } else if let line = element.node as? Line2D {
       line.points = vertices
+    }
+
+    // Also update corresponding stroke if it exists
+    if index < strokeElements.count {
+      let stroke = strokeElements[index]
+      // Strokes need to be closed - add first point at end if not already closed
+      var strokePoints = vertices
+      if strokePoints.size() > 0 && strokePoints[0] != strokePoints[Int(strokePoints.size()) - 1] {
+        strokePoints.append(strokePoints[0])
+      }
+      stroke.points = strokePoints
     }
   }
 
