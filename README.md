@@ -150,7 +150,7 @@ Node2D$()
 
 ### Custom Components
 
-Create reusable GView components with content slots using `@GViewBuilder`.
+Create reusable components with slots.
 
 ```swift
 // Component with a content slot
@@ -180,30 +180,6 @@ LabeledCell("Health") {
 LabeledCell("Stats") {
   Label$().text("HP: 100")
   Label$().text("MP: 50")
-}
-```
-
-Components can also accept state bindings:
-
-```swift
-struct Card<Content: GView>: GView {
-  let title: String
-  let content: Content
-
-  init(_ title: String, @GViewBuilder content: () -> Content) {
-    self.title = title
-    self.content = content()
-  }
-
-  var body: some GView {
-    PanelContainer$ {
-      VBoxContainer$ {
-        Label$().text(title)
-        HSeparator$()
-        content
-      }
-    }
-  }
 }
 ```
 
@@ -976,29 +952,17 @@ SVGSprite$()
   .melt(progress: $meltProgress)  // Animate on death
 ```
 
-#### Size & Color Effects
+#### Color Effects
 
 Can be freely chained with each other and with vertex effects.
 
-- `SVGPulse` - `.pulse(speed, amplitude, baseSize)` - Oscillate sprite size
-- `SVGColorCycle` - `.colorCycle(colors, speed)` - Cycle fill through colors
-- `SVGStrokeCycle` - `.strokeCycle(colors, speed)` - Cycle stroke through colors
-- `SVGDualColorCycle` - `.dualColorCycle(fill:, stroke:)` - Cycle both through color arrays
+`.pulse(speed, amplitude, baseSize)`, `.colorCycle(colors, speed)`, `.strokeCycle(colors, speed)`, `.dualColorCycle(fill:, stroke:)`
 
 #### Vertex Effects
 
 Modify vertex positions. Use `svgEffects { }` to combine multiple.
 
-- `SVGWobble` - `.wobble(amount, speed)` - Radial vertex wobble
-- `SVGInflate` - `.inflate(amount, speed)` - Breathing expansion
-- `SVGSkew` - `.skew(amount, speed, animated)` - Shear/lean shape
-- `SVGNoise` - `.noise(amount, speed)` - Per-vertex jitter
-- `SVGRipple` - `.ripple(amplitude, frequency, speed)` - Concentric waves
-- `SVGTwist` - `.twist(amount, speed)` - Spiral/vortex
-- `SVGWave` - `.wave(amplitude, frequency, speed)` - Horizontal wave
-- `SVGExplode` - `.explode(progress, scale)` - Vertices expand outward
-- `SVGScatter` - `.scatter(progress, scale, rotate)` - Elements drift apart
-- `SVGMelt` - `.melt(progress, scale, waviness)` - Top-down drip
+`.wobble(amount, speed)`, `.inflate(amount, speed)`, `.skew(amount, speed, animated)`, `.noise(amount, speed)`, `.ripple(amplitude, frequency, speed)`, `.twist(amount, speed)`, `.wave(amplitude, frequency, speed)`, `.explode(progress, scale)`, `.scatter(progress, scale, rotate)`, `.melt(progress, scale, waviness)`
 
 ### AseSprite
 
@@ -1023,7 +987,7 @@ AseSprite$(path: "player", layer: "Main")
 
 ### Bfxr
 
-Real-time synthesis of retro sound effects from [Bfxr](https://www.bfxr.net) `.bfxr` files.
+Real-time synthesis of retro sound effects from [`.bfxr`](https://www.bfxr.net) files.
 
 ```swift
 // Basic sound playback
@@ -1044,4 +1008,161 @@ struct GameView: GView {
     }
   }
 }
+```
+
+## Transitions
+
+```swift
+struct GameUI: GView {
+  @ObservableState var transitionState = TransitionState()
+
+  var body: some GView {
+    CanvasLayer$ {
+      // Game UI here
+    }
+
+    TransitionManager(state: $transitionState, screenSize: [428, 240])
+  }
+}
+
+// Simple fade
+transitionState.fadeTransition(onMidpoint: {
+  loadNextLevel()
+})
+
+// Wipe with custom duration
+transitionState.wipeTransition(duration: 0.8)
+
+// Iris centered on player
+let playerCenter: Vector2 = [0.3, 0.6] // normalized 0-1
+transitionState.irisOutTransition(center: playerCenter)
+
+// Hold at midpoint for minimum duration
+transitionState.fadeTransition(holdDuration: 0.5, onMidpoint: {
+  loadLevel()
+})
+
+// Wait for async work to complete
+transitionState.fadeTransition(waitForResume: true, onMidpoint: {
+  loadLevelAsync {
+    transitionState.resume() // Continue transition when ready
+  }
+})
+
+// Both: minimum hold time + wait for async
+transitionState.irisOutTransition(
+  holdDuration: 0.3,
+  waitForResume: true,
+  onMidpoint: { startLoading() },
+  onComplete: { print("Done!") }
+)
+```
+
+### Transition Types
+
+- **fade** - Screen fades to black and back
+- **wipe** - Horizontal wipe across screen
+- **irisOut** - Circle shrinks to point, then expands
+
+### Transition Events
+
+```swift
+.onEvent(TransitionEvent.self) { _, event in
+  switch event {
+  case .started(let type): print("Started \(type)")
+  case .midpoint: print("Midpoint reached")
+  case .completed(let type): print("Completed \(type)")
+  }
+}
+```
+
+## Tweens
+
+```swift
+// One-shot tween
+btn.tween(.scale([1.1, 1.1]), duration: 0.1)
+   .ease(.out).trans(.quad)
+
+// Fade out and remove
+enemy.tween(.alpha(0.0), duration: 0.3)
+   .onFinished { enemy.queueFree() }
+
+// Managed tween (kills previous)
+@State var currentTween: TweenHandle?
+
+currentTween = btn.tween(.scale([1.1, 1.1]), duration: 0.1, killing: currentTween)
+   .trans(.quad).ease(.out)
+```
+
+### Sequences
+
+```swift
+// Bounce effect
+btn.tween { seq in
+  seq.to(.scale([1.0, 0.8]), duration: 0.05)
+     .trans(.quad).ease(.out)
+     .to(.scale([1.0, 1.15]), duration: 0.08)
+     .trans(.quad).ease(.out)
+     .to(.scale([1.0, 1.0]), duration: 0.12)
+     .trans(.bounce).ease(.out)
+}
+
+// Looping pulse
+icon.tween { seq in
+  seq.to(.scale([1.05, 1.05]), duration: 0.5)
+     .trans(.sine).ease(.inOut)
+     .to(.scale([1.0, 1.0]), duration: 0.5)
+     .trans(.sine).ease(.inOut)
+}
+.loop()
+
+// Loop specific number of times
+node.tween { seq in
+  seq.to(.rotation(Float.pi * 2), duration: 1.0)
+}
+.loop(3)
+```
+
+### Available Anim Properties
+
+- **Scale**: `.scale(Vector2)`, `.scaleX(Float)`, `.scaleY(Float)`
+- **Position**: `.position(Vector2)`, `.positionX(Float)`, `.positionY(Float)`, `.globalPosition(Vector2)`
+- **Rotation**: `.rotation(Float)`, `.rotationDegrees(Float)`
+- **Color**: `.modulate(Color)`, `.alpha(Float)`, `.selfModulate(Color)`, `.selfAlpha(Float)`
+- **Size**: `.size(Vector2)`, `.minSize(Vector2)`, `.pivotOffset(Vector2)`
+- **Other**: `.skew(Float)`, `.volumeDb(Float)`, `.pitchScale(Float)`
+- **Custom**: `.custom(property: String, value: Variant)`
+
+### Reactive Tween Modifiers
+
+Animate properties in response to state changes.
+
+```swift
+// Toggle animation - animate between two values based on bool state
+@State var isHovered = false
+
+Button$()
+  .tweenToggle($isHovered, Anim.Scale.self,
+               whenTrue: [1.1, 1.1], whenFalse: [1.0, 1.0],
+               duration: 0.1)
+  .onSignal(\.mouseEntered) { _ in isHovered = true }
+  .onSignal(\.mouseExited) { _ in isHovered = false }
+
+// Conditional animation - run different animations based on state value
+@State var selectedTab = 0
+
+TabButton$()
+  .tweenWhen($selectedTab, equals: 0) { btn in
+    btn.tween(.scale([1.1, 1.1]), duration: 0.1).ease(.out)
+  } otherwise: { btn in
+    btn.tween(.scale([1.0, 1.0]), duration: 0.1).ease(.out)
+  }
+
+// On change - custom handler for any state change
+@State var health = 100
+
+HealthBar$()
+  .tweenOnChange($health) { bar, newHealth in
+    bar.tween(.scaleX(Float(newHealth) / 100.0), duration: 0.2).ease(.out)
+  }
 ```
