@@ -195,7 +195,8 @@ public extension GNode {
   ) -> Self {
     var s = self
     s.ops.append { [observableState] node in
-      observableState.observe(sourceKeyPath) { value in
+      observableState.observe(sourceKeyPath) { [weak node] value in
+        guard let node else { return }
         node[keyPath: kp] = value
       }
     }
@@ -217,7 +218,8 @@ public extension GNode {
   ) -> Self {
     var s = self
     s.ops.append { [observableState] node in
-      observableState.observe(sourceKeyPath) { value in
+      observableState.observe(sourceKeyPath) { [weak node] value in
+        guard let node else { return }
         node[keyPath: kp] = transform(value)
       }
     }
@@ -243,7 +245,8 @@ public extension GNode {
   ) -> Self {
     var s = self
     s.ops.append { [observableState] node in
-      observableState.observe(sourceKeyPath) { value in
+      observableState.observe(sourceKeyPath) { [weak node] value in
+        guard let node else { return }
         handler(node, value)
       }
     }
@@ -266,7 +269,8 @@ public extension GNode {
   ) -> Self {
     var s = self
     s.ops.append { [observableState] node in
-      observableState.observeAny { object in
+      observableState.observeAny { [weak node] object in
+        guard let node else { return }
         handler(node, object)
       }
     }

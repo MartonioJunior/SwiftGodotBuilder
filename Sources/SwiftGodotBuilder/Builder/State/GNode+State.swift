@@ -9,7 +9,8 @@ public extension GNode {
     { state in
       var s = self
       s.ops.append { node in
-        state.observe { value in
+        state.observe { [weak node] value in
+          guard let node else { return }
           node[keyPath: kp] = value
         }
       }
@@ -22,7 +23,8 @@ public extension GNode {
     { state in
       var s = self
       s.ops.append { node in
-        state.observe { value in
+        state.observe { [weak node] value in
+          guard let node else { return }
           node[keyPath: kp] = StringName(value)
         }
       }
@@ -35,7 +37,8 @@ public extension GNode {
     { state in
       var s = self
       s.ops.append { node in
-        state.observe { raw in
+        state.observe { [weak node] raw in
+          guard let node else { return }
           guard let e = E(rawValue: raw) else {
             GD.printErr("⚠️ Invalid rawValue for \(E.self):", raw)
             return
@@ -56,7 +59,8 @@ public extension GNode {
   func bind<V, R: ReactiveSource<V>>(_ kp: ReferenceWritableKeyPath<T, V>, to source: R) -> Self {
     var s = self
     s.ops.append { node in
-      source.observe { value in
+      source.observe { [weak node] value in
+        guard let node else { return }
         node[keyPath: kp] = value
       }
     }
@@ -68,7 +72,8 @@ public extension GNode {
   func bind<V, U, R: ReactiveSource<V>>(_ kp: ReferenceWritableKeyPath<T, U>, to source: R, transform: @escaping (V) -> U) -> Self {
     var s = self
     s.ops.append { node in
-      source.observe { value in
+      source.observe { [weak node] value in
+        guard let node else { return }
         node[keyPath: kp] = transform(value)
       }
     }
@@ -80,7 +85,8 @@ public extension GNode {
   func bind<V, U, R: ReactiveSource<V>>(_ kp: ReferenceWritableKeyPath<T, U>, to source: R, _ sourceKeyPath: KeyPath<V, U>) -> Self {
     var s = self
     s.ops.append { node in
-      source.observe { value in
+      source.observe { [weak node] value in
+        guard let node else { return }
         node[keyPath: kp] = value[keyPath: sourceKeyPath]
       }
     }
@@ -92,7 +98,8 @@ public extension GNode {
   func watch<V, R: ReactiveSource<V>>(_ source: R, _ handler: @escaping (T, V) -> Void) -> Self {
     var s = self
     s.ops.append { node in
-      source.observe { value in
+      source.observe { [weak node] value in
+        guard let node else { return }
         handler(node, value)
       }
     }
