@@ -76,6 +76,67 @@ public struct NeverGView: GView {
   }
 }
 
+/// A result builder for composing GView content in custom components.
+///
+/// Works with both single and multiple children:
+/// ```swift
+/// // Single child - returns it directly
+/// struct Wrapper<Content: GView>: GView {
+///   let content: Content
+///   init(@GViewBuilder content: () -> Content) {
+///     self.content = content()
+///   }
+/// }
+///
+/// // Multiple children - wraps in GViewGroup
+/// Wrapper {
+///   Label$().text("One")
+///   Label$().text("Two")
+/// }
+/// ```
+@resultBuilder
+public enum GViewBuilder {
+  public static func buildBlock<V: GView>(_ v: V) -> V { v }
+
+  public static func buildBlock(_ views: any GView...) -> GViewGroup {
+    GViewGroup(views: views)
+  }
+
+  public static func buildOptional<V: GView>(_ v: V?) -> any GView {
+    v ?? GViewGroup(views: [])
+  }
+
+  public static func buildEither<V: GView>(first: V) -> V { first }
+  public static func buildEither<V: GView>(second: V) -> V { second }
+}
+
+/// A group of views that flattens its children into the parent node.
+public struct GViewGroup: GView {
+  public let views: [any GView]
+
+  public var shouldFlattenChildren: Bool { true }
+
+  public func toNode() -> Node {
+    // Shouldn't be called directly - parent should use toNodeWithParent
+    let container = Node()
+    for view in views {
+      container.addChild(node: view.toNode())
+    }
+    return container
+  }
+
+  public func toNodeWithParent(_ parent: Node) -> Node? {
+    for view in views {
+      if view.shouldFlattenChildren {
+        _ = view.toNodeWithParent(parent)
+      } else {
+        parent.addChild(node: view.toNode())
+      }
+    }
+    return nil
+  }
+}
+
 /// A result builder that collects `GView` children for container nodes.
 @_documentation(visibility: private)
 @resultBuilder
