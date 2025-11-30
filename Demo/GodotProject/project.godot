@@ -24,8 +24,8 @@ window/stretch/scale_mode="integer"
 
 [gui]
 
-theme/custom="uid://vuwycap00f3i"
-theme/custom_font="uid://f0o0ri1rrhfu"
+theme/custom="res://theme.tres"
+theme/custom_font="res://Tiny5-Regular.ttf"
 theme/default_font_antialiasing=0
 theme/default_font_subpixel_positioning=0
 

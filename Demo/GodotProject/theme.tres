@@ -1,6 +1,6 @@
 [gd_resource type="Theme" load_steps=2 format=3 uid="uid://vuwycap00f3i"]
 
-[ext_resource type="FontFile" uid="uid://f0o0ri1rrhfu" path="res://Tiny5-Regular.ttf" id="1_e1x85"]
+[ext_resource type="FontFile" uid="uid://btsc0smphi48e" path="res://Tiny5-Regular.ttf" id="1_e1x85"]
 
 [resource]
 default_font = ExtResource("1_e1x85")

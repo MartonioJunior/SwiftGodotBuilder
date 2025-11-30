@@ -211,7 +211,6 @@ struct Row4Combinations: GView {
     HBoxContainer$ {
       LabeledCell("Pulse+Wob") {
         SVGSprite$()
-          // .path("svg/cat.svg")
           .path("svg/star.svg")
           .colors([.hotPink, .deepPink, .pink])
           .stroke(.deepPink, width: 2)
@@ -224,7 +223,6 @@ struct Row4Combinations: GView {
 
       LabeledCell("Color+Wave") {
         SVGSprite$()
-          // .path("svg/dragon.svg")
           .path("svg/star.svg")
           .stroke(.orange, width: 1)
           .position([16, 16])
@@ -236,7 +234,6 @@ struct Row4Combinations: GView {
 
       LabeledCell("Infl+Noise") {
         SVGSprite$()
-          // .path("svg/bugs.svg")
           .path("svg/star.svg")
           .colors([.limeGreen, .green, .darkGreen])
           .stroke(.darkGreen, width: 1)
@@ -249,7 +246,6 @@ struct Row4Combinations: GView {
 
       LabeledCell("Skew+Rip") {
         SVGSprite$()
-          // .path("svg/fish.svg")
           .path("svg/star.svg")
           .colors([.dodgerBlue, .deepSkyBlue, .lightBlue])
           .stroke(.deepSkyBlue, width: 1)
@@ -262,7 +258,6 @@ struct Row4Combinations: GView {
 
       LabeledCell("Twist+Col") {
         SVGSprite$()
-          // .path("svg/clover.svg")
           .path("svg/star.svg")
           .stroke(.white, width: 2)
           .position([16, 16])
