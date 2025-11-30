@@ -26,6 +26,7 @@ public enum Anim {
   case positionX(Float)
   case positionY(Float)
   case globalPosition(Vector2)
+  case offset(Vector2)
 
   // MARK: - Rotation
 
@@ -34,6 +35,7 @@ public enum Anim {
 
   // MARK: - Color/Alpha
 
+  case color(Color)
   case modulate(Color)
   case alpha(Float)
   case selfModulate(Color)
@@ -43,6 +45,27 @@ public enum Anim {
 
   case size(Vector2)
   case minSize(Vector2)
+
+  // MARK: - Value (Progress/Range)
+
+  case value(Double)
+  case ratio(Double)
+
+  // MARK: - Camera2D
+
+  case zoom(Vector2)
+
+  // MARK: - Light2D
+
+  case energy(Float)
+
+  // MARK: - Line2D
+
+  case width(Float)
+
+  // MARK: - Sprite
+
+  case frame(Int)
 
   // MARK: - Other
 
@@ -68,14 +91,22 @@ public enum Anim {
     case .positionX: return "position:x"
     case .positionY: return "position:y"
     case .globalPosition: return "global_position"
+    case .offset: return "offset"
     case .rotation: return "rotation"
     case .rotationDegrees: return "rotation_degrees"
+    case .color: return "color"
     case .modulate: return "modulate"
     case .alpha: return "modulate:a"
     case .selfModulate: return "self_modulate"
     case .selfAlpha: return "self_modulate:a"
     case .size: return "size"
     case .minSize: return "custom_minimum_size"
+    case .value: return "value"
+    case .ratio: return "ratio"
+    case .zoom: return "zoom"
+    case .energy: return "energy"
+    case .width: return "width"
+    case .frame: return "frame"
     case .pivotOffset: return "pivot_offset"
     case .skew: return "skew"
     case .volumeDb: return "volume_db"
@@ -94,14 +125,22 @@ public enum Anim {
     case let .positionX(v): return Variant(v)
     case let .positionY(v): return Variant(v)
     case let .globalPosition(v): return Variant(v)
+    case let .offset(v): return Variant(v)
     case let .rotation(v): return Variant(v)
     case let .rotationDegrees(v): return Variant(v)
+    case let .color(v): return Variant(v)
     case let .modulate(v): return Variant(v)
     case let .alpha(v): return Variant(v)
     case let .selfModulate(v): return Variant(v)
     case let .selfAlpha(v): return Variant(v)
     case let .size(v): return Variant(v)
     case let .minSize(v): return Variant(v)
+    case let .value(v): return Variant(v)
+    case let .ratio(v): return Variant(v)
+    case let .zoom(v): return Variant(v)
+    case let .energy(v): return Variant(v)
+    case let .width(v): return Variant(v)
+    case let .frame(v): return Variant(Int64(v))
     case let .pivotOffset(v): return Variant(v)
     case let .skew(v): return Variant(v)
     case let .volumeDb(v): return Variant(v)

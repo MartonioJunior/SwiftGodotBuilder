@@ -303,6 +303,32 @@ public struct ObservableProperty<Root: AnyObject & Observable, Value> {
   }
 }
 
+// MARK: - State Matching Helpers
+
+public extension ObservableProperty where Value: Equatable {
+  /// Returns a computed GState<Bool> that's true when the value equals the given value.
+  ///
+  /// Usage:
+  /// ```swift
+  /// .visible(router.scene.is(.paused))
+  /// ```
+  func `is`(_ value: Value) -> GState<Bool> {
+    observableState.computed { $0[keyPath: keyPath] == value }
+  }
+}
+
+public extension ObservableProperty where Value: Hashable {
+  /// Returns a computed GState<Bool> that's true when the value is in the given set.
+  ///
+  /// Usage:
+  /// ```swift
+  /// .visible(router.scene.isIn(.inGame))
+  /// ```
+  func isIn(_ set: Set<Value>) -> GState<Bool> {
+    observableState.computed { set.contains($0[keyPath: keyPath]) }
+  }
+}
+
 // MARK: - ReactiveSource Conformance
 
 extension ObservableProperty: ReactiveSource {
@@ -402,5 +428,69 @@ public extension ObservableState {
     }
 
     return derived
+  }
+}
+
+// MARK: - SceneRouter Convenience Methods
+
+/// Convenience methods for `ObservableState` wrapping a `SceneRouterProtocol`.
+///
+/// These enable cleaner syntax without `.wrappedValue`:
+///
+/// ## Usage
+/// ```swift
+/// @ObservableState var router = SceneRouter(initial: GameState.splash)
+///
+/// // Navigation (instead of router.wrappedValue.navigate)
+/// router.navigate(to: .playing, transition: .fade())
+/// router.navigate(to: .playing, transition: .fade()) {
+///   state.reset()
+/// }
+///
+/// // Scene access (instead of router.wrappedValue.scene)
+/// router.scene = .playing
+/// if router.scene == .paused { ... }
+/// guard router.scene.isActive else { return }
+/// ```
+public extension ObservableState where T: SceneRouterProtocol {
+  /// The current scene. Read/write access without `.wrappedValue`.
+  var scene: T.Scene {
+    get { object.scene }
+    set { object.scene = newValue }
+  }
+
+  /// The transition state for visual effects.
+  var transitionState: TransitionState {
+    object.transitionState
+  }
+
+  /// Navigate to a new scene with an optional transition effect.
+  ///
+  /// - Parameters:
+  ///   - scene: The destination scene
+  ///   - transition: The transition style to use (default: `.fade()`)
+  ///   - onComplete: Optional callback when the transition completes
+  func navigate(
+    to scene: T.Scene,
+    transition: TransitionStyle = .fade(),
+    onComplete: (() -> Void)? = nil
+  ) {
+    object.navigate(to: scene, transition: transition, onComplete: onComplete)
+  }
+
+  /// Navigate to a new scene with a transition, executing additional work at the midpoint.
+  ///
+  /// - Parameters:
+  ///   - scene: The destination scene
+  ///   - transition: The transition style to use
+  ///   - atMidpoint: Additional work to perform at midpoint (after scene change)
+  ///   - onComplete: Optional callback when the transition completes
+  func navigate(
+    to scene: T.Scene,
+    transition: TransitionStyle,
+    atMidpoint: @escaping () -> Void,
+    onComplete: (() -> Void)? = nil
+  ) {
+    object.navigate(to: scene, transition: transition, atMidpoint: atMidpoint, onComplete: onComplete)
   }
 }

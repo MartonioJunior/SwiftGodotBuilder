@@ -1,6 +1,31 @@
 import SwiftGodot
 
 public extension GNode where T: Node {
+  // MARK: - On Ready Animation
+
+  /// Runs a tween animation when the node becomes ready.
+  ///
+  /// Automatically waits one frame after ready to ensure the node is fully initialized.
+  ///
+  /// ## Usage
+  /// ```swift
+  /// Label$()
+  ///   .modulate(Color(r: 1, g: 1, b: 1, a: 0))
+  ///   .tweenOnReady { label in
+  ///     label.tween(.alpha(1.0), duration: 0.3).ease(.out)
+  ///   }
+  /// ```
+  ///
+  /// - Parameter handler: Closure called with the node to perform animations
+  /// - Returns: The modified GNode
+  func tweenOnReady(_ handler: @escaping (T) -> Void) -> Self {
+    onReady { node in
+      Engine.onNextFrame {
+        handler(node)
+      }
+    }
+  }
+
   // MARK: - Toggle Animations (Bool State)
 
   /// Animates a Vector2 property when a bool state toggles.

@@ -43,6 +43,16 @@ public struct TransitionManager: GView {
     screenHeight = screenSize.y
   }
 
+  /// Create a transition manager from a scene router
+  /// - Parameters:
+  ///   - router: The scene router containing the transition state
+  ///   - screenSize: The screen dimensions as [width, height]
+  public init<R: SceneRouterProtocol>(router: ObservableState<R>, screenSize: Vector2) {
+    transitionState = ObservableState(wrappedValue: router.wrappedValue.transitionState)
+    screenWidth = screenSize.x
+    screenHeight = screenSize.y
+  }
+
   public var body: some GView {
     CanvasLayer$ {
       FadeOverlay(transitionState: transitionState)
