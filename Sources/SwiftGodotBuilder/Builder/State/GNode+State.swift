@@ -18,6 +18,21 @@ public extension GNode {
     }
   }
 
+  /// Dynamic member lookup for GState binding with transform
+  /// Usage: .rotation($playerRotation) { Double($0) }
+  subscript<V, U>(dynamicMember kp: ReferenceWritableKeyPath<T, V>) -> (GState<U>, @escaping (U) -> V) -> Self {
+    { state, transform in
+      var s = self
+      s.ops.append { node in
+        state.observe { [weak node] value in
+          guard let node else { return }
+          node[keyPath: kp] = transform(value)
+        }
+      }
+      return s
+    }
+  }
+
   /// Dynamic member lookup for GState with transform to StringName
   subscript(dynamicMember kp: ReferenceWritableKeyPath<T, StringName>) -> (GState<String>) -> Self {
     { state in
