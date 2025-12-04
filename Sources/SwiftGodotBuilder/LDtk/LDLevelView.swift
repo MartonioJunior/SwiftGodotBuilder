@@ -95,6 +95,9 @@ public struct LDLevelView: GView {
         child?.queueFree()
       }
 
+      // Skip empty level IDs
+      guard !levelId.isEmpty else { return }
+
       // Build the new level
       let levelNode = Self.buildLevel(
         project: project,

@@ -34,6 +34,7 @@ import SwiftGodotBuilder
     Chapter21Game.self,
     Chapter22Game.self,
     Chapter23Game.self,
+    Chapter24Game.self,
     SVGTest.self,
   ] + BuilderRegistry.types
 )

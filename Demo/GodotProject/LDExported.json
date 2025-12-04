@@ -1,11 +1,24 @@
 {
-  "Item" : [
-    "Knife",
-    "Healing_Plant",
-    "Meat",
-    "Boots",
-    "Water",
-    "Gem",
-    "Gloves"
+  "HazardEffect": [
+    "Damage",
+    "InstantKill",
+    "Water"
+  ],
+  "Item": [
+    "Coin",
+    "Key",
+    "Ammo",
+    "Health"
+  ],
+  "NPCType": [
+    "OldMan",
+    "Merchant",
+    "Guard",
+    "Advisors"
+  ],
+  "TriggerType": [
+    "Checkpoint",
+    "Door",
+    "Exit"
   ]
 }
