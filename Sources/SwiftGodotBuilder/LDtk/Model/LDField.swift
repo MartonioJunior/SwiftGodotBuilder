@@ -106,10 +106,17 @@ public extension LDFieldValue {
     return nil
   }
 
-  /// Get as Float/Double, returns nil if not a float
-  func asFloat() -> Double? {
+  /// Get as Double, returns nil if not a numeric type
+  func asDouble() -> Double? {
     if case let .float(value) = self { return value }
     if case let .int(value) = self { return Double(value) }
+    return nil
+  }
+
+  /// Get as Float, returns nil if not a numeric type
+  func asFloat() -> Float? {
+    if case let .float(value) = self { return Float(value) }
+    if case let .int(value) = self { return Float(value) }
     return nil
   }
 
@@ -168,8 +175,14 @@ public extension LDFieldValue {
     return array.compactMap { $0.asInt() }
   }
 
-  /// Get as array of Floats/Doubles
-  func asFloatArray() -> [Double]? {
+  /// Get as array of Doubles
+  func asDoubleArray() -> [Double]? {
+    guard let array = asArray() else { return nil }
+    return array.compactMap { $0.asDouble() }
+  }
+
+  /// Get as array of Floats
+  func asFloatArray() -> [Float]? {
     guard let array = asArray() else { return nil }
     return array.compactMap { $0.asFloat() }
   }

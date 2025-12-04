@@ -18,7 +18,7 @@ public struct LDEntityBuildConfig {
   public var entityFilter: ((LDEntity) -> Bool)?
 
   /// Optional post-processor - called after node creation
-  public var onSpawned: ((Node2D, LDEntity) -> Void)?
+  public var onSpawned: ((LDEntity, Node2D) -> Void)?
 
   public init() {}
 }
@@ -144,7 +144,7 @@ public class LDEntityBuilder {
     node.zIndex = config.zIndexOffset
 
     // Apply post-processor if configured
-    config.onSpawned?(node, entity)
+    config.onSpawned?(entity, node)
 
     return node
   }

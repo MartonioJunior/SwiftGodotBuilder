@@ -118,6 +118,10 @@ public struct LDProject: Codable {
     }
   }
 
+  public var levelIds: [String] {
+    allLevels.map { $0.identifier }
+  }
+
   /// Get background color as Godot Color
   public var backgroundColor: Color? {
     Color.fromHex(bgColor)

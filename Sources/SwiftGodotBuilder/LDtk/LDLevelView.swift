@@ -15,65 +15,120 @@ import SwiftGodot
 ///   .zIndexOffset(10)
 /// ```
 ///
-/// ### With Entity Mappers:
+/// ### With Entity Handlers:
 /// ```swift
 /// LDLevelView(project, level: "Level_0")
-///   .onSpawn("Player") { entity, level in
+///   .onEntitySpawn("Player") { entity, level, project in
 ///     CharacterBody2D$ {
 ///       Sprite2D$().res(\.texture, "player.png")
 ///     }
-///     .position(entity.position)
+///     .position(entity.positionCenter)
+///   }
+///   .onEntity("PlayerSpawn") { entity, _, _ in
+///     // Side effects only, no node spawned
+///     spawnPosition = entity.position
 ///   }
 /// ```
 public struct LDLevelView: GView {
   /// Pre-loaded project instance
   private let project: LDProject
 
-  /// Level identifier to load
-  private let levelIdentifier: String
+  /// Reactive level identifier source (all inits populate this)
+  private let levelSource: any ReactiveSource<String>
 
   /// Build configuration
   private var config: LDLevelBuildConfig
 
-  /// Local entity mappers (registered for this level only)
-  private var localMappers: [String: LDEntityMapper] = [:]
+  /// Entity mappers (registered for this level)
+  private var mappers: [String: LDEntityMapper] = [:]
 
-  /// Whether to use global registry or only local mappers
-  private var useGlobalRegistry: Bool = true
-
-  /// Initialize with a pre-loaded project
+  /// Initialize with a pre-loaded project and static level identifier
   /// - Parameters:
   ///   - project: Pre-loaded LDProject (must have been loaded via LDProject.load())
   ///   - level: Level identifier to build
   public init(_ project: LDProject, level levelIdentifier: String) {
     self.project = project
-    self.levelIdentifier = levelIdentifier
+    levelSource = GState(wrappedValue: levelIdentifier)
+    config = LDLevelBuildConfig()
+  }
+
+  /// Initialize with a pre-loaded project and reactive level identifier
+  ///
+  /// When the level identifier changes, the view automatically rebuilds with the new level.
+  ///
+  /// ### Usage:
+  /// ```swift
+  /// LDLevelView(project, level: $state.currentLevelId)
+  ///   .onEntitySpawn("Player") { entity, level, project in
+  ///     PlayerView(entity: entity)
+  ///   }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - project: Pre-loaded LDProject (must have been loaded via LDProject.load())
+  ///   - level: Reactive source for the level identifier
+  public init(_ project: LDProject, level: some ReactiveSource<String>) {
+    self.project = project
+    levelSource = level
     config = LDLevelBuildConfig()
   }
 
   public func toNode() -> Node {
-    // Create level builder with pre-loaded project
-    let levelBuilder = LDLevelBuilder(project: project)
+    buildReactiveNode(levelSource: levelSource)
+  }
 
-    // Create a mutable copy of config for local modifications
-    var buildConfig = config
+  /// Builds a container node that reactively rebuilds when the level changes
+  private func buildReactiveNode(levelSource: any ReactiveSource<String>) -> Node {
+    let container = Node2D()
+    container.name = "LDLevelContainer"
 
-    // Set up entity mappers if we have local mappers
-    if !localMappers.isEmpty {
-      // Use global registry as base if enabled
-      if useGlobalRegistry {
-        buildConfig.entityConfig.registry = LDEntityMapperRegistry.shared
+    // Capture self's configuration for use in the observer
+    let project = self.project
+    let config = self.config
+    let mappers = self.mappers
+
+    levelSource.observe { [weak container] levelId in
+      guard let container else { return }
+
+      // Remove old level
+      for child in container.getChildren() {
+        child?.queueFree()
       }
 
-      // Register local mappers on top
-      for (_, mapper) in localMappers {
-        buildConfig.entityConfig.registry.register(mapper)
+      // Build the new level
+      let levelNode = Self.buildLevel(
+        project: project,
+        identifier: levelId,
+        config: config,
+        mappers: mappers
+      )
+
+      // Add to container (use onNextFrame to avoid "Parent node is busy" errors)
+      Engine.onNextFrame {
+        container.addChild(node: levelNode)
       }
     }
 
+    return container
+  }
+
+  /// Static helper to build a level with the given configuration
+  private static func buildLevel(
+    project: LDProject,
+    identifier: String,
+    config: LDLevelBuildConfig,
+    mappers: [String: LDEntityMapper]
+  ) -> Node {
+    let levelBuilder = LDLevelBuilder(project: project)
+
+    // Register mappers
+    for (_, mapper) in mappers {
+      config.entityConfig.registry.register(mapper)
+    }
+
     // Build the level
-    guard let levelNode = levelBuilder.buildLevel(identifier: levelIdentifier, config: buildConfig) else {
-      GD.printErr("Failed to build LDtk level: \(levelIdentifier)")
+    guard let levelNode = levelBuilder.buildLevel(identifier: identifier, config: config) else {
+      GD.printErr("Failed to build LDtk level: \(identifier)")
       return Node2D()
     }
 
@@ -119,7 +174,7 @@ public struct LDLevelView: GView {
   }
 
   /// Add a post-processor for spawned entity nodes.
-  public func onSpawned(_ processor: @escaping (Node2D, LDEntity) -> Void) -> Self {
+  public func onSpawned(_ processor: @escaping (LDEntity, Node2D) -> Void) -> Self {
     var view = self
     view.config.entityConfig.onSpawned = processor
     return view
@@ -132,16 +187,14 @@ public struct LDLevelView: GView {
     return view
   }
 
-  // MARK: - Entity Mapper Registration
+  // MARK: - Entity Handlers
 
-  /// Register an entity mapper for this level only using GView builder.
+  /// Spawn a node for an entity using a GView builder.
   /// - Parameters:
-  ///   - identifier: Entity identifier to map
-  ///   - builder: Closure that creates a GView for the entity with access to the project
-  public func onSpawn(_ identifier: String, builder: @escaping (LDEntity, LDLevel, LDProject) -> any GView) -> Self {
+  ///   - identifier: Entity identifier to handle
+  ///   - builder: Closure that creates a GView for the entity
+  public func onEntitySpawn(_ identifier: String, builder: @escaping (LDEntity, LDLevel, LDProject) -> any GView) -> Self {
     var view = self
-
-    // Capture the project instance
     let capturedProject = project
 
     let mapper = LDClosureEntityMapper(identifier: identifier) { entity, level in
@@ -156,136 +209,42 @@ public struct LDLevelView: GView {
       return node2D
     }
 
-    view.localMappers[identifier] = mapper
+    view.mappers[identifier] = mapper
     return view
   }
 
-  /// Register an entity mapper using a closure that directly creates a Node2D.
+  /// Spawn a node for an entity using a Node2D builder.
+  /// Return nil to skip spawning.
   /// - Parameters:
-  ///   - identifier: Entity identifier to map
-  ///   - builder: Closure that creates a Node2D with access to the project
-  public func onSpawn(_ identifier: String, builder: @escaping (LDEntity, LDLevel, LDProject) -> Node2D?) -> Self {
+  ///   - identifier: Entity identifier to handle
+  ///   - builder: Closure that creates a Node2D (or nil)
+  public func onEntitySpawn(_ identifier: String, builder: @escaping (LDEntity, LDLevel, LDProject) -> Node2D?) -> Self {
     var view = self
-
-    // Capture the project instance
     let capturedProject = project
 
     let mapper = LDClosureEntityMapper(identifier: identifier) { entity, level in
       builder(entity, level, capturedProject)
     }
 
-    view.localMappers[identifier] = mapper
+    view.mappers[identifier] = mapper
     return view
   }
 
-  /// Use only local entity mappers (don't use global registry).
-  public func useOnlyLocalMappers() -> Self {
+  /// Handle an entity for side effects without spawning a node.
+  /// Use for marker entities like spawn points that only provide position data.
+  /// - Parameters:
+  ///   - identifier: Entity identifier to handle
+  ///   - handler: Closure that processes the entity data
+  public func onEntity(_ identifier: String, handler: @escaping (LDEntity, LDLevel, LDProject) -> Void) -> Self {
     var view = self
-    view.useGlobalRegistry = false
-    return view
-  }
-}
+    let capturedProject = project
 
-// MARK: - Global Entity Mapper Registration
-
-/// Register entity mappers globally using declarative syntax.
-///
-/// ### Usage:
-/// ```swift
-/// LDMappers {
-///   LDMapper("Player") { entity, level in
-///     CharacterBody2D$ {
-///       Sprite2D$().res(\.texture, "player.png")
-///     }
-///     .position(entity.position)
-///   }
-///
-///   LDMapper("Enemy") { entity, level in
-///     Area2D$ {
-///       Sprite2D$().res(\.texture, "enemy.png")
-///     }
-///     .position(entity.position)
-///   }
-/// }
-/// ```
-public struct LDMappers {
-  public init(@EntityMapperBuilder _ mappers: () -> [LDEntityMapper]) {
-    let registry = LDEntityMapperRegistry.shared
-    for mapper in mappers() {
-      registry.register(mapper)
-    }
-  }
-}
-
-/// A declarative entity mapper registration (global).
-/// Note: For project-specific entity mappers with access to LDProject,
-/// use the .onSpawn() method on LDLevelView instead.
-public struct LDMapper {
-  /// Register a mapper using GView builder syntax.
-  /// The builder receives entity and level, but no project access.
-  public init(_ identifier: String, builder: @escaping (LDEntity, LDLevel) -> any GView) {
     let mapper = LDClosureEntityMapper(identifier: identifier) { entity, level in
-      let gView = builder(entity, level)
-      let node = gView.toNode()
-
-      guard let node2D = node as? Node2D else {
-        GD.printErr("Entity mapper for '\(identifier)' must return a Node2D")
-        return nil
-      }
-
-      return node2D
+      handler(entity, level, capturedProject)
+      return nil
     }
 
-    LDEntityMapperRegistry.shared.register(mapper)
-  }
-
-  /// Register a mapper using direct Node2D creation.
-  /// The builder receives entity and level, but no project access.
-  public init(_ identifier: String, builder: @escaping (LDEntity, LDLevel) -> Node2D?) {
-    let mapper = LDClosureEntityMapper(identifier: identifier, builder: builder)
-    LDEntityMapperRegistry.shared.register(mapper)
-  }
-}
-
-// MARK: - Result Builder for Entity Mappers
-
-@resultBuilder
-public enum EntityMapperBuilder {
-  public static func buildBlock(_ mappers: [LDEntityMapper]...) -> [LDEntityMapper] {
-    mappers.flatMap { $0 }
-  }
-
-  public static func buildArray(_ mappers: [[LDEntityMapper]]) -> [LDEntityMapper] {
-    mappers.flatMap { $0 }
-  }
-
-  public static func buildOptional(_ mapper: [LDEntityMapper]?) -> [LDEntityMapper] {
-    mapper ?? []
-  }
-
-  public static func buildEither(first: [LDEntityMapper]) -> [LDEntityMapper] {
-    first
-  }
-
-  public static func buildEither(second: [LDEntityMapper]) -> [LDEntityMapper] {
-    second
-  }
-
-  public static func buildExpression(_ mapper: LDEntityMapper) -> [LDEntityMapper] {
-    [mapper]
-  }
-
-  public static func buildExpression(_ mappers: [LDEntityMapper]) -> [LDEntityMapper] {
-    mappers
-  }
-}
-
-// Make LDMapper conform to LDEntityMapper for result builder
-extension LDMapper: LDEntityMapper {
-  public var entityIdentifier: String { "" }
-
-  public func createNode(from _: LDEntity, level _: LDLevel) -> Node2D? {
-    // This is never called - LDMapper is just for registration syntax
-    return nil
+    view.mappers[identifier] = mapper
+    return view
   }
 }

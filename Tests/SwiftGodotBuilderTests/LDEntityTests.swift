@@ -59,8 +59,8 @@ final class LDEntityTests: XCTestCase {
 
   func testEntityInstancePositionCalculation() {
     for entity in level.allEntities {
-      // position applies pivot adjustments for Godot centering
-      let pos = entity.position
+      // positionCenter applies pivot adjustments for Godot centering
+      let pos = entity.positionCenter
       let pivotOffsetX = Float(entity.pivot[0]) * Float(entity.width)
       let pivotOffsetY = Float(entity.pivot[1]) * Float(entity.height)
       let halfWidth = Float(entity.width) / 2.0

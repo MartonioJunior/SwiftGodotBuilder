@@ -106,7 +106,7 @@ public struct LDDefaultEntityMapper: LDEntityMapper {
   public func createNode(from entity: LDEntity, level _: LDLevel) -> Node2D? {
     let node = Node2D()
     node.name = StringName(entity.identifier)
-    node.position = entity.position
+    node.position = entity.positionCenter
 
     // Store entity data as metadata for later processing
     node.setMeta(name: "ldtk_entity_iid", value: Variant(entity.iid))

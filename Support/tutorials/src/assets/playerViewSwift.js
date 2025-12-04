@@ -15,7 +15,7 @@ export default `struct PlayerView: GView {
   // NEW: Initializer for LDtk entity spawning
   init(from entity: LDEntity, in level: LDLevel, project: LDProject, isAttacking: State<Bool>) {
     self.isAttacking = isAttacking
-    self.startPosition = entity.position
+    self.startPosition = entity.positionCenter
     self.collisionMask = project.collisionLayer(for: "walls", in: level)
   }
 

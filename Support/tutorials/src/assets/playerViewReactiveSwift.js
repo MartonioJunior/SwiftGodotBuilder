@@ -22,7 +22,7 @@ struct PlayerView: GView {
     self.isAttacking = isAttacking
     self.terrainLayer = project.collisionLayer(for: "Collisions", in: level)
     // NEW: Initialize position from entity
-    self._playerPos = State(initialValue: entity.position)
+    self._playerPos = State(initialValue: entity.positionCenter)
   }
 
   var body: some GView {

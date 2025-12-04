@@ -168,7 +168,7 @@ public struct LDEntity: Codable {
   }
 
   /// Get position as Vector2, adjusted for entity center
-  public var position: Vector2 {
+  public var positionCenter: Vector2 {
     let pivotOffsetX = Float(pivot[0]) * Float(width)
     let pivotOffsetY = Float(pivot[1]) * Float(height)
     let halfWidth = Float(width) / 2.0

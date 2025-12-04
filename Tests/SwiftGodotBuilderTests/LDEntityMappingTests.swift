@@ -212,8 +212,8 @@ final class LDEntityMappingTests: XCTestCase {
       XCTAssertFalse(entity.iid.isEmpty, "Entity should have iid")
 
       // Position should be accessible
-      let pos = entity.position
-      XCTAssertNotNil(pos, "Entity should have position")
+      let pos = entity.positionCenter
+      XCTAssertNotNil(pos, "Entity should have positionCenter")
 
       // Field instances should be accessible
       XCTAssertNotNil(entity.fieldInstances, "Entity should have field instances array")
