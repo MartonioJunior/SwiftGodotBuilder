@@ -414,6 +414,9 @@ extension Chapter23 {
       defeatTimer = 0
 
       // Re-initialize boss fight state (delay to ensure watchers see the change)
+      // Guard against level changes - if we navigated away from boss level, skip
+      guard vm.currentLevelId == 4 else { return }
+
       Engine.onNextFrame { [maxHealth] in
         vm.startBossFight(maxHealth: maxHealth)
       }

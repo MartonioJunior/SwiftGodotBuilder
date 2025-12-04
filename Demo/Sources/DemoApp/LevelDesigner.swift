@@ -47,7 +47,7 @@ struct PlayerView: GView {
   @State var player: CharacterBody2D?
 
   init(from entity: LDEntity, in level: LDLevel, _ project: LDProject) {
-    playerPos = entity.position
+    playerPos = entity.positionCenter
     levelWidth = Int32(level.pxWid)
     levelHeight = Int32(level.pxHei)
     terrainLayer = project.collisionLayer(for: "walls", in: level)
@@ -118,7 +118,7 @@ struct DoorView: GView {
 
   init(from entity: LDEntity) {
     frame = entity.size
-    position = entity.position
+    position = entity.positionCenter
     isLocked = entity.field("locked")?.asBool() ?? true
   }
 
@@ -147,7 +147,7 @@ struct ChestView: GView {
 
   init(from entity: LDEntity) {
     frame = entity.size
-    position = entity.position
+    position = entity.positionCenter
     contents = entity.field("content")?.asEnumArray() ?? []
   }
 
@@ -184,7 +184,7 @@ struct MobView: GView {
   @State var mob: Node2D?
 
   init(from entity: LDEntity, in level: LDLevel) {
-    startPos = entity.position
+    startPos = entity.positionCenter
     frame = entity.size
     mobPos = startPos
 
@@ -283,27 +283,27 @@ struct LevelDesignerView: GView {
 
   var body: some GView {
     Node2D$ {
-      LDLevelView(project, level: "Your_typical_2D_platformer")
-        .onSpawn("Player") { entity, level, project in
-          let startingItems: [Item] = entity.field("items")?.asEnumArray() ?? []
-          playerInventory.append(contentsOf: startingItems)
+      // LDLevelView(project, level: "Your_typical_2D_platformer")
+      //   .onEntitySpawn("Player") { entity, level, project in
+      //     let startingItems: [Item] = entity.field("items")?.asEnumArray() ?? []
+      //     playerInventory.append(contentsOf: startingItems)
 
-          return PlayerView(from: entity, in: level, project)
-        }
-        .onSpawn("Chest") { entity, _, _ in
-          ChestView(from: entity)
-        }
-        .onSpawn("Mob") { entity, level, _ in
-          MobView(from: entity, in: level)
-        }
-        .onSpawn("Door") { entity, _, _ in
-          DoorView(from: entity)
-        }
-        .onSpawned { node, entity in
-          // Add debugging labels to all entities
-          let label = Label$().text(entity.identifier)
-          node.addChild(node: label.toNode())
-        }
+      //     return PlayerView(from: entity, in: level, project)
+      //   }
+      //   .onEntitySpawn("Chest") { entity, _, _ in
+      //     ChestView(from: entity)
+      //   }
+      //   .onEntitySpawn("Mob") { entity, level, _ in
+      //     MobView(from: entity, in: level)
+      //   }
+      //   .onEntitySpawn("Door") { entity, _, _ in
+      //     DoorView(from: entity)
+      //   }
+      //   .onSpawned { node, entity in
+      //     // Add debugging labels to all entities
+      //     let label = Label$().text(entity.identifier)
+      //     node.addChild(node: label.toNode())
+      //   }
 
       InventoryHUD(items: $playerInventory, health: $playerHealth)
     }
