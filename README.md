@@ -846,8 +846,8 @@ struct GameView: GView {
   var body: some GView {
     Node2D$ {
       LDLevelView(project, level: "Level_0")
-        // Called on load for each type
-        .onSpawn("Player") { entity, level, project in
+        // Spawn nodes for entities
+        .onEntitySpawn("Player") { entity, level, project in
           // Collision layers from LDtk
           let wallLayer = project.collisionLayer(for: "walls", in: level)
           // Typed fields
@@ -862,11 +862,11 @@ struct GameView: GView {
             CollisionShape2D$()
               .shape(RectangleShape2D(w: 16, h: 22))
           }
-          .position(entity.position)
+          .position(entity.positionCenter)
           .collisionMask(wallLayer)
         }
         // Post-process all entities
-        .onSpawned { node, entity in
+        .onSpawned { entity, node in
           // Add label to node
           node.addChild(node: Label$().text(entity.identifier).toNode())
         }
