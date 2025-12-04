@@ -17,6 +17,10 @@ bash -c 'rm -f ../*.{d,dia,swiftdeps,swiftmodule}'
 # Codesign all dylibs
 codesign --force --deep --sign - GodotProject/bin/*.dylib
 
-# Start Godot
+# Start Godot - unless "norun" argument is given
+if [ "$1" == "norun" ]; then
+  exit 0
+fi
+
 godot --path GodotProject/ --disable-crash-handler
 
