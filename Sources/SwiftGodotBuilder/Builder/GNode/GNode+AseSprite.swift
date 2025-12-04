@@ -8,14 +8,14 @@ public extension GNode where T == AseSprite {
   ///
   /// ### Usage:
   /// ```swift
-  /// let dinoView = GNode<AseSprite>(path: "DinoSprites", layer: "MORT")
+  /// AseSprite$(path: "DinoSprites", layer: "MORT")
+  ///   .onReady { sprite in sprite.play(name: "Walk") }
   /// ```
   init(
     _ name: String? = UUID().uuidString,
     path: String,
     layer: String? = nil,
     options: AseOptions = .init(),
-    autoplay: String? = nil,
     @NodeBuilder _ children: () -> [any GView] = { [] }
   ) {
     self.init(name, children, make: {
@@ -23,7 +23,6 @@ public extension GNode where T == AseSprite {
       a.sourcePath = path
       a.layerName = layer
       a.aseOptions = options
-      a.autoplayAnimation = autoplay
       return a
     })
   }

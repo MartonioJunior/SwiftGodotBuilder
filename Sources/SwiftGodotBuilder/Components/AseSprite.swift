@@ -26,9 +26,12 @@ import SwiftGodot
 /// // Using convenience init
 /// let enemy = AseSprite("enemy.json",
 ///                       layer: "Base",
-///                       options: .init(trimming: .applyPivotOrCenter),
-///                       autoplay: "Walk")
+///                       options: .init(trimming: .applyPivotOrCenter))
 ///
+/// // Play animation after sprite is ready
+/// enemy.onReady { sprite in
+///   sprite.play(name: "Walk")
+/// }
 /// ```
 @Godot
 public class AseSprite: AnimatedSprite2D {
@@ -43,14 +46,10 @@ public class AseSprite: AnimatedSprite2D {
   /// Options controlling tag inclusion, timing, trimming, and ordering.
   public var aseOptions: AseOptions = .init()
 
-  /// Optional animation to start automatically
-  // if not set, uses the first tag.
-  public var autoplayAnimation: String? = nil
-
   // MARK: Internal state
 
   private var offsetsByAnim: [StringName: [Int: Vector2]] = [:]
-  private var lastConfig: (path: String, layer: String?, options: AseOptions, autoplay: String?)?
+  private var lastConfig: (path: String, layer: String?, options: AseOptions)?
 
   // MARK: Lifecycle
 
@@ -58,36 +57,29 @@ public class AseSprite: AnimatedSprite2D {
   ///
   /// - Parameters:
   ///   - path: Path to the Aseprite JSON (may omit `.json` suffix).
-  ///   - layer: Optional layer filter name
-  // pass `nil` to include all layers.
+  ///   - layer: Optional layer filter name; pass `nil` to include all layers.
   ///   - options: Ase decoding/build options (defaults to `.delaysGCD` timing).
-  ///   - autoplay: Optional animation name to start immediately.
   public convenience init(_ path: String,
                           layer: String? = nil,
-                          options: AseOptions = .init(),
-                          autoplay: String? = nil)
+                          options: AseOptions = .init())
   {
     self.init()
-    loadAse(path, layer: layer, options: options, autoplay: autoplay)
+    loadAse(path, layer: layer, options: options)
   }
 
   /// Loads an Aseprite export into this sprite.
   ///
   /// - Parameters:
   ///   - path: Path to the Aseprite JSON (may omit `.json` suffix).
-  ///   - layer: Optional layer filter name
-  // pass `nil` to include all layers.
+  ///   - layer: Optional layer filter name; pass `nil` to include all layers.
   ///   - options: Ase decoding/build options (defaults to `.delaysGCD` timing).
-  ///   - autoplay: Optional animation name to start immediately.
   public func loadAse(_ path: String,
                       layer: String? = nil,
-                      options: AseOptions = .init(),
-                      autoplay: String? = nil)
+                      options: AseOptions = .init())
   {
     sourcePath = path
     layerName = layer
     aseOptions = options
-    autoplayAnimation = autoplay
     buildFromAse()
   }
 
@@ -100,12 +92,11 @@ public class AseSprite: AnimatedSprite2D {
 
   /// Decodes, builds, and assigns the `SpriteFrames` from the configured path/options.
   private func buildFromAse() {
-    let cfg = (sourcePath, layerName, aseOptions, autoplayAnimation)
+    let cfg = (sourcePath, layerName, aseOptions)
 
     // loadAse triggers a build, then _ready can rebuild again. Track a stamp and bail if unchanged.
     if lastConfig?.path == cfg.0 && lastConfig?.layer == cfg.1 &&
-      String(reflecting: lastConfig?.2) == String(reflecting: cfg.2) &&
-      lastConfig?.autoplay == cfg.3 { return }
+      String(reflecting: lastConfig?.2) == String(reflecting: cfg.2) { return }
 
     lastConfig = cfg
 
@@ -119,8 +110,6 @@ public class AseSprite: AnimatedSprite2D {
 
     spriteFrames = built.frames
     offsetsByAnim = built.perFrameOffsets
-
-    if let start = autoplayAnimation { play(name: StringName(start)) }
 
     applyPerFrameOffset()
   }
