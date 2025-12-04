@@ -197,4 +197,5 @@ public extension GNode where T == BfxrSound {
                 node.bfxrPath = bfxrPath
             }
     }
+
 }
