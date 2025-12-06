@@ -165,6 +165,11 @@ public struct LDLevel: Codable {
   public func entity(withIdentifier identifier: String) -> LDEntity? {
     allEntities.first(where: { $0.identifier == identifier })
   }
+
+  /// Get entity by IID
+  public func entity(iid: String) -> LDEntity? {
+    allEntities.first(where: { $0.iid == iid })
+  }
 }
 
 // MARK: - Level Background Position Info
