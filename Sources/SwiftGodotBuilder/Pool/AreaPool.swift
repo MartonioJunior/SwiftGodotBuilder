@@ -114,13 +114,15 @@ public final class AreaPool {
 
   private func returnToPool(index: Int) {
     let projectile = active[index]
-    // This didn't fix the issue
-    // projectile.node.visible = false
-    // projectile.node.position = [-9999, -9999] // Move off-screen to prevent overlap detection on reuse
-    // projectile.node.getParent()?.removeChild(node: projectile.node)
-    projectile.node.monitorable = false
-    projectile.node.monitoring = false
-    pool.release(projectile.node)
     active.remove(at: index)
+
+    // Defer physics property changes to avoid "Function blocked during in/out signal" errors
+    let node = projectile.node
+    Engine.onNextFrame { [weak self, weak node] in
+      guard let self, let node else { return }
+      node.monitorable = false
+      node.monitoring = false
+      self.pool.release(node)
+    }
   }
 }
