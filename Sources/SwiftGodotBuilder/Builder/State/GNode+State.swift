@@ -123,10 +123,6 @@ public extension GNode {
 }
 
 // MARK: - Multi-State Binding Extensions
-//
-// Note: Multi-state bindings currently require GState because they need access
-// to wrappedValue. These could be extended to ReactiveSource if we add a
-// way to read current values without observation.
 
 public extension GNode {
   /// Bind two GStates with a transformation function

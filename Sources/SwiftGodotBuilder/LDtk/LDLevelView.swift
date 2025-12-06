@@ -8,13 +8,6 @@ import SwiftGodot
 /// LDLevelView(project, level: "Level_0")
 /// ```
 ///
-/// ### With Configuration:
-/// ```swift
-/// LDLevelView(project, level: "Level_0")
-///   .generateCollision(values: [1, 2])
-///   .zIndexOffset(10)
-/// ```
-///
 /// ### With Entity Handlers:
 /// ```swift
 /// LDLevelView(project, level: "Level_0")
@@ -33,7 +26,7 @@ public struct LDLevelView: GView {
   /// Pre-loaded project instance
   private let project: LDProject
 
-  /// Reactive level identifier source (all inits populate this)
+  /// Reactive level identifier source
   private let levelSource: any ReactiveSource<String>
 
   /// Build configuration
@@ -141,38 +134,9 @@ public struct LDLevelView: GView {
   // MARK: - Configuration Modifiers
 
   /// Explicitly enable or disable entity spawning.
-  /// Note: Entity spawning is enabled by default. Use `.spawnEntities(false)` to disable.
   public func spawnEntities(_ enabled: Bool = true) -> Self {
     var view = self
     view.config.spawnEntities = enabled
-    return view
-  }
-
-  /// Set z-index offset for layers.
-  public func zIndexOffset(_ offset: Int32) -> Self {
-    var view = self
-    view.config.zIndexOffset = offset
-    return view
-  }
-
-  /// Create marker nodes for unmapped entities.
-  public func createEntityMarkers(_ enabled: Bool = true) -> Self {
-    var view = self
-    view.config.entityConfig.createMarkersForUnmapped = enabled
-    return view
-  }
-
-  /// Set entity z-index offset.
-  public func entityZIndexOffset(_ offset: Int32) -> Self {
-    var view = self
-    view.config.entityConfig.zIndexOffset = offset
-    return view
-  }
-
-  /// Add an entity filter to control which entities are spawned.
-  public func entityFilter(_ filter: @escaping (LDEntity) -> Bool) -> Self {
-    var view = self
-    view.config.entityConfig.entityFilter = filter
     return view
   }
 
@@ -180,13 +144,6 @@ public struct LDLevelView: GView {
   public func onSpawned(_ processor: @escaping (LDEntity, Node2D) -> Void) -> Self {
     var view = self
     view.config.entityConfig.onSpawned = processor
-    return view
-  }
-
-  /// Add custom layer processor.
-  public func onLayer(_ processor: @escaping (LDLayer) -> Node?) -> Self {
-    var view = self
-    view.config.onLayer = processor
     return view
   }
 

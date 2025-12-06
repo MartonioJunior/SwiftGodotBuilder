@@ -14,13 +14,6 @@ public struct LDLevelBuildConfig {
   /// Entity build configuration (used when spawnEntities is true)
   public var entityConfig: LDEntityBuildConfig = .init()
 
-  /// Z-index offset for layers (useful for stacking multiple levels)
-  public var zIndexOffset: Int32 = 0
-
-  /// Custom layer processor - called for each layer before building
-  /// Return nil to skip the layer, or a custom node to use instead
-  public var onLayer: ((LDLayer) -> Node?)?
-
   public init() {}
 }
 
@@ -102,7 +95,6 @@ public class LDLevelBuilder {
     // Create root node for the level
     let levelNode = Node2D()
     levelNode.name = StringName(level.identifier)
-    levelNode.position = level.worldPosition
 
     // Add background ColorRect if requested
     if let bgColor = level.backgroundColor ?? project.defaultLevelBackgroundColor {
@@ -124,26 +116,11 @@ public class LDLevelBuilder {
     }
 
     // Build layers in reverse order (bottom to top)
-    // Space layers by 100 to allow entities within each layer to have their own z-ordering
-    let layerZSpacing: Int32 = 100
-    for (index, layerInstance) in layerInstances.reversed().enumerated() {
-      // Check custom processor first
-      if let customProcessor = config.onLayer {
-        if let customNode = customProcessor(layerInstance) {
-          customNode.name = StringName(layerInstance.identifier)
-          levelNode.addChild(node: customNode)
-          continue
-        }
-        // If custom processor returns nil, skip this layer
-        continue
-      }
-
-      let zIndex = config.zIndexOffset + (Int32(index) * layerZSpacing)
-
+    for layerInstance in layerInstances.reversed() {
       // Build based on layer type
       switch layerInstance.type {
       case .tiles, .autoLayer:
-        if let tileMapLayer = tileMapBuilder.buildTileMapLayer(from: layerInstance, zIndex: zIndex) {
+        if let tileMapLayer = tileMapBuilder.buildTileMapLayer(from: layerInstance) {
           levelNode.addChild(node: tileMapLayer)
         } else {
           GD.printErr("LDLevelBuilder: Failed to build TileMapLayer for '\(layerInstance.identifier)'")
@@ -151,7 +128,7 @@ public class LDLevelBuilder {
 
       case .intGrid:
         // Build visual tiles if available
-        if let tileMapLayer = tileMapBuilder.buildTileMapLayer(from: layerInstance, zIndex: zIndex) {
+        if let tileMapLayer = tileMapBuilder.buildTileMapLayer(from: layerInstance) {
           levelNode.addChild(node: tileMapLayer)
         }
 
@@ -169,7 +146,6 @@ public class LDLevelBuilder {
         )
 
         if let collisionNode = collisionNode {
-          collisionNode.zIndex = zIndex
           levelNode.addChild(node: collisionNode)
         }
 
@@ -180,7 +156,6 @@ public class LDLevelBuilder {
             from: layerInstance,
             level: level,
             config: config.entityConfig,
-            zIndex: zIndex
           ) {
             levelNode.addChild(node: entityLayerNode)
           }
