@@ -702,6 +702,33 @@ Engine.onNextPhysicsFrame {
 }
 ```
 
+### SpriteSheet
+
+Reference individual sprites from a spritesheet by name.
+
+```swift
+enum ItemSprite: Int, SpriteSheet {
+  case heart = 0
+  case key = 1
+  // tile 2 blank
+  case coin = 3, coinSide = 13, coinBack = 23
+  case sword = 4
+
+  static let sheetPath = "res://items.png"
+  static let tileSize: Vector2 = [16, 16]
+  static let columns = 10
+
+  // Define animations
+  static let coinSpin = SpriteAnimation(frames: [.coin, .coinSide, .coinBack, .coinSide], fps: 4)
+}
+
+// Static sprite
+Sprite2D$().texture(ItemSprite.heart.texture)
+
+// Animated sprite (uses Godot's AnimatedSprite2D)
+AnimatedSpriteSheet(ItemSprite.coinSpin)
+```
+
 ### Particle Effects
 
 ```swift
@@ -841,7 +868,7 @@ enum Item: String, LDExported {
 struct GameView: GView {
   let project: LDProject
   @State var inventory: [Item] = []
-  @State var health: Int = 100
+  @State var spawnPosition: Vector2 = .zero
 
   var body: some GView {
     Node2D$ {
@@ -854,7 +881,6 @@ struct GameView: GView {
           let startItems: [Item] = entity.field("starting_items")?.asEnumArray() ?? []
           inventory.append(contentsOf: startItems)
 
-          // Use entity data to construct player
           return CharacterBody2D$ {
             Sprite2D$()
               .res(\.texture, "player.png")
@@ -865,9 +891,12 @@ struct GameView: GView {
           .position(entity.positionCenter)
           .collisionMask(wallLayer)
         }
-        // Post-process all entities
+        // Side effects only (no node spawned)
+        .onEntity("Enemy") { entity, _, _ in
+          enemySpawnPosition = entity.positionCenter
+        }
+        // Post-process all spawned entities
         .onSpawned { entity, node in
-          // Add label to node
           node.addChild(node: Label$().text(entity.identifier).toNode())
         }
     }
@@ -875,8 +904,18 @@ struct GameView: GView {
 }
 
 // Usage
-let project = LDProject.load("res://game.ldtk")!
+let project = try! LDProject.load(path: "res://game.ldtk")
 addChild(node: GameView(project: project).toNode())
+```
+
+#### Reactive Level Switching
+
+```swift
+// Level changes automatically rebuild the view
+LDLevelView(project, level: $state.currentLevelId)
+  .onEntitySpawn("Player") { entity, level, project in
+    PlayerView(entity: entity)
+  }
 ```
 
 #### LDtk Field Accessors
@@ -886,7 +925,8 @@ All LDtk field types are supported:
 ```swift
 // Single values
 entity.field("health")?.asInt() -> Int?
-entity.field("speed")?.asFloat() -> Double?
+entity.field("speed")?.asDouble() -> Double?
+entity.field("speed")?.asFloat() -> Float?
 entity.field("locked")?.asBool() -> Bool?
 entity.field("name")?.asString() -> String?
 entity.field("tint")?.asColor() -> Color?
@@ -897,7 +937,8 @@ entity.field("item_type")?.asEnum<Item>() -> Item?
 
 // Arrays
 entity.field("scores")?.asIntArray() -> [Int]?
-entity.field("distances")?.asFloatArray() -> [Double]?
+entity.field("distances")?.asDoubleArray() -> [Double]?
+entity.field("distances")?.asFloatArray() -> [Float]?
 entity.field("flags")?.asBoolArray() -> [Bool]?
 entity.field("tags")?.asStringArray() -> [String]?
 entity.field("waypoints")?.asPointArray() -> [LDPoint]?
@@ -1012,6 +1053,10 @@ struct GameView: GView {
 
 ## Transitions
 
+- **fade** - Screen fades to black and back
+- **wipe** - Horizontal wipe across screen
+- **irisOut** - Circle shrinks to point, then expands
+
 ```swift
 struct GameUI: GView {
   @ObservableState var transitionState = TransitionState()
@@ -1058,13 +1103,7 @@ transitionState.irisOutTransition(
 )
 ```
 
-### Transition Types
-
-- **fade** - Screen fades to black and back
-- **wipe** - Horizontal wipe across screen
-- **irisOut** - Circle shrinks to point, then expands
-
-### Transition Events
+#### Transition Events
 
 ```swift
 .onEvent(TransitionEvent.self) { _, event in
@@ -1094,7 +1133,7 @@ currentTween = btn.tween(.scale([1.1, 1.1]), duration: 0.1, killing: currentTwee
    .trans(.quad).ease(.out)
 ```
 
-### Sequences
+#### Sequences
 
 ```swift
 // Bounce effect
@@ -1123,7 +1162,7 @@ node.tween { seq in
 .loop(3)
 ```
 
-### Available Anim Properties
+#### Available Anim Properties
 
 - **Scale**: `.scale(Vector2)`, `.scaleX(Float)`, `.scaleY(Float)`
 - **Position**: `.position(Vector2)`, `.positionX(Float)`, `.positionY(Float)`, `.globalPosition(Vector2)`
@@ -1133,7 +1172,7 @@ node.tween { seq in
 - **Other**: `.skew(Float)`, `.volumeDb(Float)`, `.pitchScale(Float)`
 - **Custom**: `.custom(property: String, value: Variant)`
 
-### Reactive Tween Modifiers
+#### Reactive Tween Modifiers
 
 Animate properties in response to state changes.
 
