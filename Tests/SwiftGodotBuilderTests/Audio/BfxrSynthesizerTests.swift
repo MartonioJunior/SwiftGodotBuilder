@@ -1,5 +1,5 @@
-import XCTest
 @testable import SwiftGodotBuilder
+import XCTest
 
 final class BfxrSynthesizerTests: XCTestCase {
     // MARK: - Parameter Parsing Tests
@@ -85,7 +85,7 @@ final class BfxrSynthesizerTests: XCTestCase {
 
         // Generate a few samples
         var samples: [Double] = []
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             samples.append(synth.generateSample())
         }
 
@@ -136,7 +136,7 @@ final class BfxrSynthesizerTests: XCTestCase {
 
         // Generate samples
         var samples: [Double] = []
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             samples.append(synth.generateSample())
         }
 
@@ -160,19 +160,18 @@ final class BfxrSynthesizerTests: XCTestCase {
         // Attack phase: samples should be increasing in amplitude
         let attackSamples = Array(allSamples.prefix(500))
         var isIncreasing = true
-        for i in 1..<min(100, attackSamples.count) {
-            if abs(attackSamples[i]) < abs(attackSamples[i-1]) {
+        for i in 1 ..< min(100, attackSamples.count) {
+            if abs(attackSamples[i]) < abs(attackSamples[i - 1]) {
                 isIncreasing = false
                 break
             }
         }
-        // Note: This is a simplified test, actual envelope may have oscillations
 
         // Decay phase: samples near the end should be decreasing
         let decaySamples = Array(allSamples.suffix(500))
-        var prevMax: Double = 1.0
+        var prevMax = 1.0
         for i in stride(from: 0, to: decaySamples.count - 100, by: 100) {
-            let windowMax = decaySamples[i..<min(i+100, decaySamples.count)].map { abs($0) }.max() ?? 0
+            let windowMax = decaySamples[i ..< min(i + 100, decaySamples.count)].map { abs($0) }.max() ?? 0
             if i > 0 {
                 XCTAssertLessThanOrEqual(windowMax, prevMax + 0.1, "Decay should reduce amplitude")
             }
@@ -227,7 +226,7 @@ final class BfxrSynthesizerTests: XCTestCase {
     }
 
     func testAllWaveTypes() {
-        for waveType in 0...5 {
+        for waveType in 0 ... 5 {
             var params = BfxrParams()
             params.masterVolume = 0.5
             params.waveType = waveType
@@ -255,7 +254,7 @@ final class BfxrSynthesizerTests: XCTestCase {
         let synth = BfxrSynthesizer(params: params)
 
         // Generate some samples
-        for _ in 0..<1000 {
+        for _ in 0 ..< 1000 {
             _ = synth.generateSample()
         }
 

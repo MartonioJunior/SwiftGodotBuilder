@@ -116,7 +116,7 @@ final class LDEntityMappingTests: XCTestCase {
     let config = LDEntityBuildConfig()
 
     XCTAssertTrue(config.createMarkersForUnmapped, "Should create markers by default")
-    XCTAssertEqual(config.zIndexOffset, 11, "Z-index offset should be 11 by default")
+    XCTAssertEqual(config.zIndexOffset, 0, "Z-index offset should be 0 by default")
     XCTAssertNil(config.entityFilter, "Should have no filter by default")
     XCTAssertNil(config.onSpawned, "Should have no post-processor by default")
   }
