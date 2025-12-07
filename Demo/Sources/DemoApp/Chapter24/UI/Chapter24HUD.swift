@@ -11,7 +11,7 @@ extension Chapter24 {
     var body: some GView {
       VBoxContainer$ {
         Label$()
-          .text("CHAPTER 22")
+          .text("CHAPTER 24")
           .horizontalAlignment(.center)
           .theme(["fontColor": palette.whiteTranslucent])
 
