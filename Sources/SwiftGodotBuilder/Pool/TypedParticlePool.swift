@@ -68,7 +68,7 @@ public final class TypedParticlePool<Key: Hashable, T: Node2D> {
   }
 
   /// Spawns a particle of the given type at position
-  public func spawn(type: Key, at position: Vector2) {
+  public func spawn(type: Key, at position: Vector2, scale: Vector2 = [1, 1]) {
     guard let parent = parentNode else { return }
 
     // Find an available particle or create new
@@ -89,6 +89,7 @@ public final class TypedParticlePool<Key: Hashable, T: Node2D> {
     guard let n = node else { return }
 
     n.position = position
+    n.scale = scale
     n.visible = true
     activateNode(n)
     activeCount[type, default: 0] += 1
