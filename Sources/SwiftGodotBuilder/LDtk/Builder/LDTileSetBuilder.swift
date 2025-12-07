@@ -79,8 +79,18 @@ public class LDTileSetBuilder {
 
     // Create tiles for the atlas
     // LDtk uses a continuous tile ID system, we need to create tiles for all valid positions
-    let tilesWide = tilesetDef.cWid
-    let tilesHigh = tilesetDef.cHei
+    // Calculate actual valid tile count from texture size to handle mismatches
+    let textureWidth = Int(texture.getWidth())
+    let textureHeight = Int(texture.getHeight())
+    let gridSize = tilesetDef.tileGridSize
+    let padding = tilesetDef.padding
+    let spacing = tilesetDef.spacing
+
+    // Calculate how many full tiles fit in the texture (accounting for padding and spacing)
+    let availableWidth = textureWidth - 2 * padding
+    let availableHeight = textureHeight - 2 * padding
+    let tilesWide = (availableWidth + spacing) / (gridSize + spacing)
+    let tilesHigh = (availableHeight + spacing) / (gridSize + spacing)
 
     for y in 0 ..< tilesHigh {
       for x in 0 ..< tilesWide {

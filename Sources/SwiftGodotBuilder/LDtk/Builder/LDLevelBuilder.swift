@@ -1,6 +1,12 @@
 import Foundation
 import SwiftGodot
 
+// MARK: - Tile Layer Handler
+
+/// Closure type for custom tile layer handling
+/// Returns a Node2D to use instead of the default TileMapLayer, or nil to skip the layer entirely
+public typealias LDTileLayerHandler = (LDLayer, LDLevel, LDProject) -> Node2D?
+
 // MARK: - Level Build Configuration
 
 /// Configuration options for building LDtk levels
@@ -13,6 +19,10 @@ public struct LDLevelBuildConfig {
 
   /// Entity build configuration (used when spawnEntities is true)
   public var entityConfig: LDEntityBuildConfig = .init()
+
+  /// Custom handlers for tile layers (by layer identifier)
+  /// When a handler is registered, it replaces the default TileMapLayer building
+  public var tileLayerHandlers: [String: LDTileLayerHandler] = [:]
 
   public init() {}
 }
@@ -117,6 +127,14 @@ public class LDLevelBuilder {
 
     // Build layers in reverse order (bottom to top)
     for layerInstance in layerInstances.reversed() {
+      // Check for custom tile layer handler first
+      if let handler = config.tileLayerHandlers[layerInstance.identifier] {
+        if let customNode = handler(layerInstance, level, project) {
+          levelNode.addChild(node: customNode)
+        }
+        continue
+      }
+
       // Build based on layer type
       switch layerInstance.type {
       case .tiles, .autoLayer:

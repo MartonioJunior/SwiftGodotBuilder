@@ -207,4 +207,55 @@ public struct LDLevelView: GView {
     view.mappers[identifier] = mapper
     return view
   }
+
+  // MARK: - Tile Layer Handlers
+
+  /// Spawn a custom node for a tile layer using a GView builder.
+  /// Use this to override the default TileMapLayer building for specific layers.
+  ///
+  /// ### Usage:
+  /// ```swift
+  /// LDLevelView(project, level: "Level_0")
+  ///   .onTileLayerSpawn("Breakable") { layer, level, project in
+  ///     BreakableTerrainView(layer: layer)
+  ///   }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - identifier: Layer identifier to handle
+  ///   - builder: Closure that creates a GView for the layer
+  public func onTileLayerSpawn(_ identifier: String, builder: @escaping (LDLayer, LDLevel, LDProject) -> any GView) -> Self {
+    var view = self
+    let capturedProject = project
+
+    view.config.tileLayerHandlers[identifier] = { layer, level, _ in
+      let gView = builder(layer, level, capturedProject)
+      let node = gView.toNode()
+
+      guard let node2D = node as? Node2D else {
+        GD.printErr("Tile layer handler for '\(identifier)' must return a Node2D")
+        return nil
+      }
+
+      return node2D
+    }
+
+    return view
+  }
+
+  /// Spawn a custom node for a tile layer using a Node2D builder.
+  /// Return nil to skip the layer entirely.
+  /// - Parameters:
+  ///   - identifier: Layer identifier to handle
+  ///   - builder: Closure that creates a Node2D (or nil)
+  public func onTileLayerSpawn(_ identifier: String, builder: @escaping (LDLayer, LDLevel, LDProject) -> Node2D?) -> Self {
+    var view = self
+    let capturedProject = project
+
+    view.config.tileLayerHandlers[identifier] = { layer, level, _ in
+      builder(layer, level, capturedProject)
+    }
+
+    return view
+  }
 }
