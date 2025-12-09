@@ -17,21 +17,18 @@ import SwiftGodot
 ///
 /// - Note: Enable the "Split Layers" option when exporting a file with multiple layers.
 ///
-/// - Note: Animation names are case-sensitive.
+/// - Note: Animation names are case-sensitive (both layer names and tag names).
 ///
 /// - Note: You may omit the `.json` suffix when specifying the JSON path.
 ///
 /// ### Example
 /// ```swift
-/// // Using convenience init
-/// let enemy = AseSprite("enemy.json",
-///                       layer: "Base",
-///                       options: .init(trimming: .applyPivotOrCenter))
-///
-/// // Play animation after sprite is ready
-/// enemy.onReady { sprite in
-///   sprite.play(name: "Walk")
-/// }
+/// // Multi-layer sprite with runtime layer switching
+/// AseSprite$(path: "hero", currentLayer: "sword")
+///   .layer($weaponType) { $0 == .melee ? "sword" : "bow" }
+///   .watch(animationToPlay) { sprite, animName in
+///     sprite.playAnimation(animName)  // Plays "sword_Walk" or "bow_Walk"
+///   }
 /// ```
 @Godot
 public class AseSprite: AnimatedSprite2D {
@@ -40,8 +37,10 @@ public class AseSprite: AnimatedSprite2D {
   /// Path to the Aseprite JSON (may omit `.json` suffix).
   public var sourcePath: String = ""
 
-  /// Optional layer filter (only frames from this Ase layer are included).
-  public var layerName: String? = nil
+  /// Current layer for animation prefixing.
+  /// All layers are always loaded with prefixed animation names (e.g., "sword_Walk").
+  /// Set this to control which layer's animations play via `playAnimation()`.
+  public var currentLayer: String = ""
 
   /// Options controlling tag inclusion, timing, trimming, and ordering.
   public var aseOptions: AseOptions = .init()
@@ -49,7 +48,7 @@ public class AseSprite: AnimatedSprite2D {
   // MARK: Internal state
 
   private var offsetsByAnim: [StringName: [Int: Vector2]] = [:]
-  private var lastConfig: (path: String, layer: String?, options: AseOptions)?
+  private var lastConfig: (path: String, options: AseOptions)?
 
   // MARK: Lifecycle
 
@@ -57,28 +56,23 @@ public class AseSprite: AnimatedSprite2D {
   ///
   /// - Parameters:
   ///   - path: Path to the Aseprite JSON (may omit `.json` suffix).
-  ///   - layer: Optional layer filter name; pass `nil` to include all layers.
   ///   - options: Ase decoding/build options (defaults to `.delaysGCD` timing).
   public convenience init(_ path: String,
-                          layer: String? = nil,
                           options: AseOptions = .init())
   {
     self.init()
-    loadAse(path, layer: layer, options: options)
+    loadAse(path, options: options)
   }
 
   /// Loads an Aseprite export into this sprite.
   ///
   /// - Parameters:
   ///   - path: Path to the Aseprite JSON (may omit `.json` suffix).
-  ///   - layer: Optional layer filter name; pass `nil` to include all layers.
   ///   - options: Ase decoding/build options (defaults to `.delaysGCD` timing).
   public func loadAse(_ path: String,
-                      layer: String? = nil,
                       options: AseOptions = .init())
   {
     sourcePath = path
-    layerName = layer
     aseOptions = options
     buildFromAse()
   }
@@ -88,20 +82,44 @@ public class AseSprite: AnimatedSprite2D {
     if !sourcePath.isEmpty { buildFromAse() }
   }
 
+  // MARK: Animation Playback
+
+  /// Play an animation, automatically prefixing with currentLayer.
+  /// Use this instead of play(name:) to automatically apply the current layer prefix.
+  public func playAnimation(_ name: String) {
+    let animName: StringName
+    if !currentLayer.isEmpty {
+      animName = StringName("\(currentLayer)_\(name)")
+    } else {
+      animName = StringName(name)
+    }
+    play(name: animName)
+  }
+
+  /// Play an animation with StringName, automatically prefixing with currentLayer.
+  public func playAnimation(_ name: StringName) {
+    if !currentLayer.isEmpty {
+      let prefixed = StringName("\(currentLayer)_\(name)")
+      play(name: prefixed)
+    } else {
+      play(name: name)
+    }
+  }
+
   // MARK: Build / Offsets
 
   /// Decodes, builds, and assigns the `SpriteFrames` from the configured path/options.
   private func buildFromAse() {
-    let cfg = (sourcePath, layerName, aseOptions)
+    let cfg = (sourcePath, aseOptions)
 
     // loadAse triggers a build, then _ready can rebuild again. Track a stamp and bail if unchanged.
-    if lastConfig?.path == cfg.0 && lastConfig?.layer == cfg.1 &&
-      String(reflecting: lastConfig?.2) == String(reflecting: cfg.2) { return }
+    if lastConfig?.path == cfg.0 &&
+      String(reflecting: lastConfig?.options) == String(reflecting: cfg.1) { return }
 
     lastConfig = cfg
 
     guard let built = try? { () -> BuiltFrames in
-      let decoded = try Self.decodeAse(sourcePath, options: aseOptions, layer: layerName)
+      let decoded = try Self.decodeAse(sourcePath, options: aseOptions)
       return Self.buildFrames(decoded, options: aseOptions)
     }() else {
       GD.printErr("⚠️ AseSprite build failed for", sourcePath)
@@ -143,7 +161,7 @@ private extension AseSprite {
 
   enum AseError: Error { case readFailed(String) }
 
-  static func decodeAse(_ jsonPath: String, options: AseOptions, layer: String?) throws -> AseDecoded {
+  static func decodeAse(_ jsonPath: String, options: AseOptions) throws -> AseDecoded {
     let full = jsonPath.hasSuffix(".json") ? jsonPath : jsonPath + ".json"
     let text = FileAccess.getFileAsString(path: full)
     guard !text.isEmpty else { throw AseError.readFailed(full) }
@@ -151,17 +169,16 @@ private extension AseSprite {
     let file = try JSONDecoder().decode(AseJson.self, from: Data(text.utf8))
     let atlasPath = file.meta.image.isEmpty ? withExtension(full, "png") : file.meta.image
 
+    // Always load all keys (all layers)
     let seed = file.frameOrder ?? Array(file.frames.keys)
-    let filtered = (layer?.isEmpty == false) ? filterKeys(seed, forLayer: layer!) : seed
-    let seeded = filtered.isEmpty ? seed : filtered
 
     let ordered: [String]
     if let override = options.keyOrdering {
-      ordered = override(seeded)
+      ordered = override(seed)
     } else if file.frameOrder != nil {
-      ordered = seeded
+      ordered = seed
     } else {
-      ordered = orderKeys(seeded, nil)
+      ordered = orderKeys(seed, nil)
     }
 
     return .init(file: file, orderedKeys: ordered, atlasPath: atlasPath)
@@ -173,58 +190,101 @@ private extension AseSprite {
   }
 
   static func buildFrames(_ decoded: AseDecoded, options: AseOptions) -> BuiltFrames {
+    // Always build all layers with prefixed animation names
+    return buildAllLayerFrames(decoded, options: options)
+  }
+
+  /// Build animations for all layers with prefixed names (e.g., "sword_Walk", "bow_Walk")
+  /// For single-layer exports without "Split Layers", animations use tag names directly without prefix.
+  static func buildAllLayerFrames(_ decoded: AseDecoded, options: AseOptions) -> BuiltFrames {
     let file = decoded.file
-    let keys = decoded.orderedKeys
+    let allKeys = file.frameOrder ?? Array(file.frames.keys)
     let atlas = ResourceLoader.load(path: decoded.atlasPath) as? Texture2D
     let frames = SpriteFrames()
     var offsetsByAnim: [StringName: [Int: Vector2]] = [:]
 
+    // Get all unique layer names
+    let layerNames = Set(allKeys.compactMap { extractLayerName(from: $0) })
+
     let tags = file.meta.frameTags.filter { options.includeTags($0.name) }
-    let chosenTags = tags.isEmpty
-      ? [AseTag(name: "default", from: 0, to: max(0, keys.count - 1), direction: .forward)]
-      : tags
+    let defaultTag = [AseTag(name: "default", from: 0, to: 0, direction: .forward)]
 
-    for tag in chosenTags {
-      let animName = StringName(options.tagMap[tag.name] ?? tag.name)
-      frames.addAnimation(anim: animName)
-      frames.setAnimationLoop(anim: animName, loop: true)
+    // If no layer names found (single-layer export without "Split Layers"),
+    // use nil to indicate no prefix should be added
+    let effectiveLayerNames: [String?] = layerNames.isEmpty ? [nil] : Array(layerNames)
 
-      let indices = indicesFor(tag: tag)
-      let delaysMs = indices.map { file.frames[keys[$0]]!.duration }
-      let timing = pickTiming(delaysMs, options.timing)
-
-      let fps: Double
-      let frameDuration: (Int) -> Double
-
-      switch timing {
-      case let .uniform(fixed): fps = fixed
-        frameDuration = { _ in 1.0 }
-      case let .gcd(capped): fps = capped
-        frameDuration = { ms in max(1.0, (Double(ms) * fps / 1000.0).rounded()) }
-      case .exact: fps = 0
-        frameDuration = { ms in Double(ms) / 1000.0 }
+    for layerName in effectiveLayerNames {
+      // Filter keys for this layer (or use all keys if no layer name)
+      let layerKeys: [String]
+      if let layerName {
+        layerKeys = filterKeys(allKeys, forLayer: layerName)
+      } else {
+        layerKeys = allKeys
       }
+      let orderedKeys = orderKeys(layerKeys, options.keyOrdering)
 
-      frames.setAnimationSpeed(anim: animName, fps: fps)
+      let chosenTags = tags.isEmpty ? defaultTag : tags
 
-      var perAnimOffsets: [Int: Vector2] = [:]
+      var addedAnimations: Set<String> = []
+      for tag in chosenTags {
+        // Prefix animation name with layer if present, otherwise use tag name directly
+        let tagName = options.tagMap[tag.name] ?? tag.name
+        let animNameStr: String
+        if let layerName {
+          animNameStr = "\(layerName)_\(tagName)"
+        } else {
+          animNameStr = tagName
+        }
 
-      for (animFrameIndex, sourceIndex) in indices.enumerated() {
-        let key = keys[sourceIndex]
-        guard let f = file.frames[key] else { continue }
+        // Skip duplicate animation names (can happen with duplicate tags in Aseprite)
+        guard !addedAnimations.contains(animNameStr) else { continue }
+        addedAnimations.insert(animNameStr)
 
-        let atlasTex = AtlasTexture()
-        atlasTex.atlas = atlas
-        atlasTex.region = Rect2(x: Float(f.frame.x), y: Float(f.frame.y), width: Float(f.frame.w), height: Float(f.frame.h))
-        frames.addFrame(anim: animName, texture: atlasTex, duration: frameDuration(f.duration))
+        let animName = StringName(animNameStr)
+        frames.addAnimation(anim: animName)
+        frames.setAnimationLoop(anim: animName, loop: true)
 
-        if options.trimming == .applyPivotOrCenter, f.trimmed {
-          if let off = offsetForTrimmed(frame: f, slices: file.meta.slices) {
-            perAnimOffsets[animFrameIndex] = off
+        let indices = indicesFor(tag: tag, maxIndex: orderedKeys.count - 1)
+        let delaysMs = indices.compactMap { idx -> Int? in
+          guard idx < orderedKeys.count else { return nil }
+          return file.frames[orderedKeys[idx]]?.duration
+        }
+        let timing = pickTiming(delaysMs, options.timing)
+
+        let fps: Double
+        let frameDuration: (Int) -> Double
+
+        switch timing {
+        case let .uniform(fixed): fps = fixed
+          frameDuration = { _ in 1.0 }
+        case let .gcd(capped): fps = capped
+          frameDuration = { ms in max(1.0, (Double(ms) * fps / 1000.0).rounded()) }
+        case .exact: fps = 0
+          frameDuration = { ms in Double(ms) / 1000.0 }
+        }
+
+        frames.setAnimationSpeed(anim: animName, fps: fps)
+
+        var perAnimOffsets: [Int: Vector2] = [:]
+
+        for (animFrameIndex, sourceIndex) in indices.enumerated() {
+          guard sourceIndex < orderedKeys.count else { continue }
+          let key = orderedKeys[sourceIndex]
+          guard let f = file.frames[key] else { continue }
+
+          let atlasTex = AtlasTexture()
+          atlasTex.atlas = atlas
+          atlasTex.region = Rect2(x: Float(f.frame.x), y: Float(f.frame.y), width: Float(f.frame.w), height: Float(f.frame.h))
+          frames.addFrame(anim: animName, texture: atlasTex, duration: frameDuration(f.duration))
+
+          if options.trimming == .applyPivotOrCenter, f.trimmed {
+            if let off = offsetForTrimmed(frame: f, slices: file.meta.slices) {
+              perAnimOffsets[animFrameIndex] = off
+            }
           }
         }
+        if !perAnimOffsets.isEmpty { offsetsByAnim[animName] = perAnimOffsets }
       }
-      if !perAnimOffsets.isEmpty { offsetsByAnim[animName] = perAnimOffsets }
     }
 
     return .init(frames: frames, perFrameOffsets: offsetsByAnim)
@@ -263,8 +323,10 @@ private func gcd(_ a: Int, _ b: Int) -> Int {
 
 // MARK: - Tags, directions, offsets
 
-private func indicesFor(tag: AseTag) -> [Int] {
-  let a = tag.from, b = tag.to
+private func indicesFor(tag: AseTag, maxIndex: Int? = nil) -> [Int] {
+  let a = tag.from
+  let b = maxIndex.map { min(tag.to, $0) } ?? tag.to
+  guard b >= 0 else { return [] }
   switch tag.direction {
   case .forward: return a <= b ? Array(a ... b) : Array(stride(from: a, through: b, by: -1))
   case .reverse: return a <= b ? Array((a ... b).reversed()) : Array(stride(from: a, through: b, by: -1))
@@ -556,4 +618,53 @@ struct AseSliceKey: Decodable {
 struct AsePoint: Decodable {
   let x: Int
   let y: Int
+}
+
+// MARK: - Static Utilities
+
+public extension AseSprite {
+  /// Returns the frame size for a given animation tag from an Aseprite JSON export.
+  /// - Parameters:
+  ///   - path: Path to the Aseprite JSON (may omit `.json` suffix)
+  ///   - tag: Animation tag name to look up
+  /// - Returns: Frame size as Vector2, or [8, 8] fallback if not found
+  static func frameSize(path: String, tag: String) -> Vector2 {
+    let full = path.hasSuffix(".json") ? path : path + ".json"
+    let text = FileAccess.getFileAsString(path: full)
+    guard !text.isEmpty else { return [8, 8] }
+
+    guard let file = try? JSONDecoder().decode(AseJson.self, from: Data(text.utf8)) else {
+      return [8, 8]
+    }
+
+    // Find the tag
+    guard let tagInfo = file.meta.frameTags.first(where: { $0.name == tag }) else {
+      // Tag not found - use first frame's sourceSize if available
+      if let firstFrame = file.frames.values.first {
+        return [Float(firstFrame.sourceSize.w), Float(firstFrame.sourceSize.h)]
+      }
+      return [8, 8]
+    }
+
+    // Get frame keys in order
+    let orderedKeys = file.frameOrder ?? Array(file.frames.keys).sorted()
+
+    // Get the first frame of the tag
+    guard tagInfo.from < orderedKeys.count,
+          let frame = file.frames[orderedKeys[tagInfo.from]]
+    else {
+      return [8, 8]
+    }
+
+    return [Float(frame.sourceSize.w), Float(frame.sourceSize.h)]
+  }
+}
+
+// MARK: - AnimatedSprite2D Convenience Extension
+
+public extension AnimatedSprite2D {
+  /// Play an animation by String name (convenience wrapper that converts to StringName)
+  func play(_ name: String) {
+    play(name: StringName(name))
+  }
 }
