@@ -685,16 +685,6 @@ Node2D$()
   }
 ```
 
-### ColorBox
-
-Polygon2D-based colored rectangle for game world (not UI).
-
-```swift
-ColorBox$([100, 50])
-  .color(.red)
-  .position([200, 300])
-```
-
 ## Extensions
 
 ### Vector2 Extensions
@@ -1455,70 +1445,86 @@ HealthBar$()
   }
 ```
 
-## Built-in Components
+## Built-in Views
 
-Pre-built components for common patterns:
+### Layout
 
 ```swift
-// Spacers for layout
 Spacer(16)      // Fixed height spacer
 SpacerV()       // Vertical expand-fill
 SpacerH()       // Horizontal expand-fill
+```
 
-// Styled buttons with focus support
+### Buttons
+
+```swift
 StyledButton("Play", width: 80, color: .cyan) { startGame() }
 AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
 BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
+```
 
-// Labels
+### Labels
+
+```swift
 HeaderLabel("Game Over", size: 24, color: .red)
 InfoLabel("Press any key", color: .gray)
-LiveInfoLabel(state.scoreDisplay, color: .gold)    // Reactive text
+LiveInfoLabel(state.scoreDisplay, color: .gold)  // Reactive text
+```
 
-// Palette - shared color/style definitions
-let palette = Palette.shared
-palette.cyan, palette.red, palette.gold  // Common colors
-palette.buttonStyles(palette.cyan, withFocus: true)  // StyleBox builders
-palette.panelStyle, palette.victoryPanelStyle  // Panel presets
+### ColorBox
 
-// UserSettings - persistable audio/display settings
-let settings = UserSettings()  // Auto-loads from disk
-settings.masterVolume, settings.sfxVolume, settings.musicVolume
-settings.masterVolumeDisplay  // "70%"
+Polygon2D-based colored rectangle (like ColorRect for outside the UI).
 
-// AudioManager - syncs volume settings with AudioServer
+```swift
+ColorBox$([100, 50])
+  .color(.red)
+  .position([200, 300])
+```
+
+### AudioManager
+
+Syncs volume settings with AudioServer.
+
+```swift
 AudioManager(settings: $settings) {
-  // Your SFX player nodes here
   BfxrSound$().bfxrPath("sounds/Jump.bfxr")
 }
+```
 
-// CreditsOverlay - scrolling BBCode credits with star particles
+### Overlays
+
+```swift
+// Scrolling BBCode credits with star particles
 CreditsOverlay(
   isVisible: $showCredits,
   creditsText: "[center][color=#00FFFF]My Game[/color]..."
 ) {
-  showCredits = false  // onDismiss
+  showCredits = false
 }
 
-// SplashOverlay - animated title with "press any button" prompt
+// Animated title with "press any button" prompt
 SplashOverlay(
   isVisible: $showSplash,
   title: "My Game",
-  prompt: "PRESS START"  // optional, defaults to "PRESS ANY BUTTON"
+  prompt: "PRESS START"
 ) {
-  showSplash = false  // onDismiss
+  showSplash = false
 }
 
-// DialogBox - typewriter text with choice buttons (uses DialogRunner)
+// Typewriter text with choice buttons
 DialogBox(
   isVisible: $showDialog,
   dialogRunner: { myDialogRunner },
   speakerColors: ["Hero": .cyan, "Villain": .red]
 ) {
-  showDialog = false  // onEnd
+  showDialog = false
 }
+```
 
-// FloatingTextSpawner - damage numbers, popups
+### Spawners
+
+```swift
+// Damage numbers, popups
 FloatingTextSpawner(GameEvent.self) { event in
   if case let .damageDealt(amount, position) = event {
     return (text: "\(amount)", position: position, color: .red)
@@ -1526,16 +1532,39 @@ FloatingTextSpawner(GameEvent.self) { event in
   return nil
 }
 
-// NodeSpawner - spawn nodes in response to events
+// Spawn nodes in response to events
 NodeSpawner(GameEvent.self) { event in
-  if case let .collectibleSpawned(definition, position) = event {
-    return CollectibleView(position: position, definition).toNode()
+  if case let .collectibleSpawned(def, pos) = event {
+    return CollectibleView(position: pos, def).toNode()
   }
   return nil
 } resetWhen: { event in
   if case .gameReset = event { return true }
   return false
 }
+```
+
+## Utilities
+
+### Palette
+
+Shared color/style definitions.
+
+```swift
+let palette = Palette.shared
+palette.cyan, palette.red, palette.gold
+palette.buttonStyles(palette.cyan, withFocus: true)
+palette.panelStyle, palette.victoryPanelStyle
+```
+
+### UserSettings
+
+Persistable audio/display settings.
+
+```swift
+let settings = UserSettings()  // Auto-loads from disk
+settings.masterVolume, settings.sfxVolume, settings.musicVolume
+settings.masterVolumeDisplay  // "70%"
 ```
 
 ## Property Wrappers
