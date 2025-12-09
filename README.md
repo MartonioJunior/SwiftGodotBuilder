@@ -183,89 +183,6 @@ LabeledCell("Stats") {
 }
 ```
 
-### Built-in Components
-
-Pre-built components for common patterns:
-
-```swift
-// Spacers for layout
-Spacer(16)      // Fixed height spacer
-SpacerV()       // Vertical expand-fill
-SpacerH()       // Horizontal expand-fill
-
-// Styled buttons with focus support
-StyledButton("Play", width: 80, color: .cyan) { startGame() }
-AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
-BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
-
-// Labels
-HeaderLabel("Game Over", size: 24, color: .red)
-InfoLabel("Press any key", color: .gray)
-LiveInfoLabel(state.scoreDisplay, color: .gold)    // Reactive text
-
-// Palette - shared color/style definitions
-let palette = Palette.shared
-palette.cyan, palette.red, palette.gold  // Common colors
-palette.buttonStyles(palette.cyan, withFocus: true)  // StyleBox builders
-palette.panelStyle, palette.victoryPanelStyle  // Panel presets
-
-// UserSettings - persistable audio/display settings
-let settings = UserSettings()  // Auto-loads from disk
-settings.masterVolume, settings.sfxVolume, settings.musicVolume
-settings.masterVolumeDisplay  // "70%"
-
-// AudioManager - syncs volume settings with AudioServer
-AudioManager(settings: $settings) {
-  // Your SFX player nodes here
-  BfxrSound$().bfxrPath("sounds/Jump.bfxr")
-}
-
-// CreditsOverlay - scrolling BBCode credits with star particles
-CreditsOverlay(
-  isVisible: $showCredits,
-  creditsText: "[center][color=#00FFFF]My Game[/color]..."
-) {
-  showCredits = false  // onDismiss
-}
-
-// SplashOverlay - animated title with "press any button" prompt
-SplashOverlay(
-  isVisible: $showSplash,
-  title: "My Game",
-  prompt: "PRESS START"  // optional, defaults to "PRESS ANY BUTTON"
-) {
-  showSplash = false  // onDismiss
-}
-
-// DialogBox - typewriter text with choice buttons (uses DialogRunner)
-DialogBox(
-  isVisible: $showDialog,
-  dialogRunner: { myDialogRunner },
-  speakerColors: ["Hero": .cyan, "Villain": .red]
-) {
-  showDialog = false  // onEnd
-}
-
-// FloatingTextSpawner - damage numbers, popups
-FloatingTextSpawner(GameEvent.self) { event in
-  if case let .damageDealt(amount, position) = event {
-    return (text: "\(amount)", position: position, color: .red)
-  }
-  return nil
-}
-
-// NodeSpawner - spawn nodes in response to events
-NodeSpawner(GameEvent.self) { event in
-  if case let .collectibleSpawned(definition, position) = event {
-    return CollectibleView(position: position, definition).toNode()
-  }
-  return nil
-} resetWhen: { event in
-  if case .gameReset = event { return true }
-  return false
-}
-```
-
 ## Reactive Data
 
 ### State Management
@@ -473,9 +390,60 @@ Label$().text(store.state(\.score)) { "Score: \($0)" }
 // Send events
 store.commit(.takeDamage(10))
 store.commit(.addScore(100))
+
+// With middleware for logging/side effects
+let store = Store(
+  initialState: GameState(),
+  reducer: gameReducer,
+  middleware: [.logging(name: "Game")]
+)
+
+// Custom middleware
+let analytics = Middleware<GameState, GameEvent> { event, state, dispatch in
+  Analytics.track(event)
+}
 ```
 
+### Persistable
 
+Auto-save `@Observable` classes to disk.
+
+```swift
+@Observable
+class GameSettings: Persistable {
+  static let PersistenceKey = "settings"
+
+  var masterVolume = 0.7
+  var musicVolume = 0.6
+  var fullscreen = false
+
+  init() { loadPersistence() }
+
+  func toDictionary() -> VariantDictionary {
+    let dict = VariantDictionary()
+    dict["masterVolume"] = Variant(masterVolume)
+    dict["musicVolume"] = Variant(musicVolume)
+    dict["fullscreen"] = Variant(fullscreen)
+    return dict
+  }
+
+  func fromDictionary(_ dict: VariantDictionary) {
+    if let v: Double = dict["masterVolume"]?.to() { masterVolume = v }
+    if let v: Double = dict["musicVolume"]?.to() { musicVolume = v }
+    if let v: Bool = dict["fullscreen"]?.to() { fullscreen = v }
+  }
+}
+
+// Auto-save on any property change
+Node2D$().watchAny($settings) { _, _ in
+  settings.savePersistence()
+}
+
+// Manual operations
+settings.savePersistence()
+settings.deletePersistence()
+settings.resetPersistence()
+```
 
 ### EventBus
 
@@ -717,7 +685,17 @@ Node2D$()
   }
 ```
 
-## Extensions & Helpers
+### ColorBox
+
+Polygon2D-based colored rectangle for game world (not UI).
+
+```swift
+ColorBox$([100, 50])
+  .color(.red)
+  .position([200, 300])
+```
+
+## Extensions
 
 ### Vector2 Extensions
 
@@ -784,6 +762,8 @@ Engine.onNextPhysicsFrame {
   print("Next physics frame!")
 }
 ```
+
+## Helpers
 
 ### SpriteSheet
 
@@ -898,39 +878,58 @@ let movement = RuntimeAction.vector(
 )
 ```
 
+### Combat Helpers
 
-
-### Property Wrappers
-
-Call `bindProps()` in `_ready()` in a `@Godot` class to activate all property wrappers.
+Melee weapon timing with startup/active/recovery phases.
 
 ```swift
-@Godot
-final class Player: CharacterBody2D {
-  @Child("Sprite") var sprite: Sprite2D?
-  @Child("Health", deep: true) var healthBar: ProgressBar?
-  @Children var buttons: [Button]
-  @Ancestor var level: Level?
-  @Sibling("AudioPlayer") var audio: AudioStreamPlayer?
-  @Autoload("GameManager") var gameManager: GameManager?
-  @Group("enemies") var enemies: [Enemy]
-  @Service var events: EventBus<GameEvent>?
-  @Prefs("musicVolume", default: 0.5) var volume: Double
+let sword = WeaponConfig(
+  name: "Sword",
+  hitboxSize: [8, 8],
+  hitboxOffset: 7,
+  startupTime: 0.05,
+  activeTime: 0.1,
+  recoveryTime: 0.1,
+  damage: 1,
+  knockback: 80,
+  canHitMultiple: false,
+  sweepArc: nil
+)
 
-  @OnSignal("StartButton", \Button.pressed)
-  func onStartPressed(_ sender: Button) {
-    print("Started!")
+var phase: AttackPhase = .idle
+var timer = 0.0
+
+func startAttack() {
+  phase = .startup
+  timer = sword.startupTime
+}
+
+func update(delta: Double) {
+  timer -= delta
+  if timer <= 0 {
+    phase = phase.next()
+    timer = phase.duration(weapon: sword)
   }
+  if phase.hitboxActive { /* deal damage */ }
+}
+```
 
-  override func _ready() {
-    bindProps()
+### MsgLog
 
-    sprite?.visible = true
-    enemies.forEach { print($0) }
+Thread-safe logging singleton.
 
-    // Refresh group query
-    let currentEnemies = $enemies()
-  }
+```swift
+MsgLog.shared.debug("Debug message")
+MsgLog.shared.info("Info message")
+MsgLog.shared.warn("Warning")
+MsgLog.shared.error("Error")
+
+// Set minimum level
+MsgLog.shared.minLevel = .warn
+
+// Custom sink
+MsgLog.shared.sink = { level, message in
+  print("[\(level)] \(message)")
 }
 ```
 
@@ -941,8 +940,8 @@ final class Player: CharacterBody2D {
 Complete workflow for loading LDtk levels and bridging enums.
 
 ```swift
-// Define type-safe enums (auto-generates LDExported.json on build)
-enum Item: String, LDExported {
+// Define type-safe enums matching LDtk enum values
+enum Item: String, LDEnum {
   case knife = "Knife"
   case boots = "Boots"
   case potion = "Potion"
@@ -1043,6 +1042,54 @@ CharacterBody2D$()
   .collisionMask(wallLayer | platformLayer)
 ```
 
+#### Tile Layer Handlers
+
+Override default tile layer rendering with custom handlers.
+
+```swift
+LDLevelView(project, level: "Level_0")
+  .onTileLayerSpawn("Breakable") { layer, level, project in
+    LDBreakableTerrainView(layer: layer, project: project)
+      .terrainCollisionLayer(.terrain)
+      .detectionMask(.combat)
+      .onTileDestroyed { position in
+        GameEvent.terrainDestroyed(position: position).emit()
+      }
+  }
+```
+
+#### LDIntGridZonesView
+
+Build Area2D collision zones from IntGrid values with identifiers.
+
+```swift
+LDIntGridZonesView(layer: hazardLayer, project: project)
+  .collisionLayer(.hazard)
+  .collisionMask(.player)
+  .onZoneEnter { zone, body in
+    if zone.identifier == "damage" {
+      GameEvent.playerHit(damage: 1).emit()
+    }
+  }
+  .onZoneExit { zone, body in
+    // Handle exit
+  }
+```
+
+#### LDBreakableTerrainView
+
+Tile layer where tiles can be destroyed by collision.
+
+```swift
+LDBreakableTerrainView(layer: breakableLayer, project: project)
+  .terrainCollisionLayer(.terrain)
+  .detectionLayer(.none)
+  .detectionMask(.combat)
+  .onTileDestroyed { position in
+    GameEvent.terrainDestroyed(position: position).emit()
+  }
+```
+
 ### SVGSprite
 
 Runtime SVG rendering with vertex manipulation effects.
@@ -1134,7 +1181,46 @@ struct GameView: GView {
 }
 ```
 
-## Transitions
+## Scenes & Transitions
+
+### SceneRouter
+
+Vue Router-inspired navigation with built-in transitions.
+
+```swift
+enum GameScene { case splash, menu, playing, gameOver }
+
+@ObservableState var router = SceneRouter(initial: GameScene.splash)
+
+// Navigate with transitions
+router.navigate(to: .menu, transition: .fade())
+router.navigate(to: .playing, transition: .wipe(duration: 0.5))
+router.navigate(to: .gameOver, transition: .iris(center: playerPos))
+
+// With midpoint callback for setup
+router.navigate(to: .playing, transition: .fade()) {
+  state.reset()
+  state.currentLevel = selectedLevel
+}
+
+// Use with Switch for reactive UI
+Switch($router.scene) {
+  Case(.splash) { SplashOverlay() }
+  Case(.menu) { MainMenu() }
+  Case(.playing) { GameLevel() }
+  Case(.gameOver) { GameOverScreen() }
+}
+.mode(.destroy)
+
+// Pass router's transition state to TransitionManager
+TransitionManager(state: $router.transitionState, screenSize: [428, 240])
+
+// Nested routes (child routers)
+let levelRouter = router.child(for: .playing, initial: 1)
+levelRouter.navigate(to: 3, transition: .fade())
+```
+
+### Transitions
 
 - **fade** - Screen fades to black and back
 - **wipe** - Horizontal wipe across screen
@@ -1196,6 +1282,86 @@ transitionState.irisOutTransition(
   case .completed(let type): print("Completed \(type)")
   }
 }
+```
+
+## Object Pools
+
+### ObjectPool
+
+Generic pool for reusable Godot objects.
+
+```swift
+final class Bullet: Node2D, PooledObject {
+  func onAcquire() { visible = true }
+  func onRelease() { visible = false; position = .zero }
+}
+
+let pool = ObjectPool<Bullet>(factory: { Bullet() })
+pool.preload(64)
+
+if let bullet = pool.acquire() {
+  bullet.position = spawnPos
+  parent.addChild(node: bullet)
+  // later:
+  pool.release(bullet)
+}
+
+// Or use PoolLease for scoped usage
+PoolLease(pool).using { bullet in
+  // automatically released after closure
+}
+```
+
+### AreaPool
+
+Pool for Area2D projectiles with velocity-based movement.
+
+```swift
+let bulletPool = AreaPool(
+  preload: 30,
+  speed: 300,
+  lifetime: 3.0,
+  bounds: (-50, 850, -50, 290)
+) {
+  Area2D$ {
+    Sprite2D$().res(\.texture, "bullet.png")
+    CollisionShape2D$().shape(CircleShape2D(radius: 4))
+  }
+  .collisionLayer(.beta)
+  .collisionMask(.alpha)
+}
+
+// Call once when parent is in scene tree
+bulletPool.start()
+
+// Fire projectiles
+bulletPool.fire(at: playerPos, direction: aimDir, parent: self)
+
+// Update in _process
+bulletPool.update(delta: delta)
+```
+
+### TypedParticlePool
+
+Multi-variant particle pool keyed by type.
+
+```swift
+enum ParticleType { case dust, spark, blood }
+
+let particles = TypedParticlePool<ParticleType, CPUParticles2D>(
+  keys: [.dust, .spark, .blood],
+  config: .init(prewarmPerType: 5)
+) { type in
+  switch type {
+  case .dust: return makeDustParticles()
+  case .spark: return makeSparkParticles()
+  case .blood: return makeBloodParticles()
+  }
+}
+
+particles.setup(parent: self)
+particles.spawn(type: .dust, at: position)
+particles.spawn(type: .spark, at: hitPoint, scale: [2, 2])
 ```
 
 ## Tweens
@@ -1287,4 +1453,121 @@ HealthBar$()
   .tweenOnChange($health) { bar, newHealth in
     bar.tween(.scaleX(Float(newHealth) / 100.0), duration: 0.2).ease(.out)
   }
+```
+
+## Built-in Components
+
+Pre-built components for common patterns:
+
+```swift
+// Spacers for layout
+Spacer(16)      // Fixed height spacer
+SpacerV()       // Vertical expand-fill
+SpacerH()       // Horizontal expand-fill
+
+// Styled buttons with focus support
+StyledButton("Play", width: 80, color: .cyan) { startGame() }
+AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
+BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
+
+// Labels
+HeaderLabel("Game Over", size: 24, color: .red)
+InfoLabel("Press any key", color: .gray)
+LiveInfoLabel(state.scoreDisplay, color: .gold)    // Reactive text
+
+// Palette - shared color/style definitions
+let palette = Palette.shared
+palette.cyan, palette.red, palette.gold  // Common colors
+palette.buttonStyles(palette.cyan, withFocus: true)  // StyleBox builders
+palette.panelStyle, palette.victoryPanelStyle  // Panel presets
+
+// UserSettings - persistable audio/display settings
+let settings = UserSettings()  // Auto-loads from disk
+settings.masterVolume, settings.sfxVolume, settings.musicVolume
+settings.masterVolumeDisplay  // "70%"
+
+// AudioManager - syncs volume settings with AudioServer
+AudioManager(settings: $settings) {
+  // Your SFX player nodes here
+  BfxrSound$().bfxrPath("sounds/Jump.bfxr")
+}
+
+// CreditsOverlay - scrolling BBCode credits with star particles
+CreditsOverlay(
+  isVisible: $showCredits,
+  creditsText: "[center][color=#00FFFF]My Game[/color]..."
+) {
+  showCredits = false  // onDismiss
+}
+
+// SplashOverlay - animated title with "press any button" prompt
+SplashOverlay(
+  isVisible: $showSplash,
+  title: "My Game",
+  prompt: "PRESS START"  // optional, defaults to "PRESS ANY BUTTON"
+) {
+  showSplash = false  // onDismiss
+}
+
+// DialogBox - typewriter text with choice buttons (uses DialogRunner)
+DialogBox(
+  isVisible: $showDialog,
+  dialogRunner: { myDialogRunner },
+  speakerColors: ["Hero": .cyan, "Villain": .red]
+) {
+  showDialog = false  // onEnd
+}
+
+// FloatingTextSpawner - damage numbers, popups
+FloatingTextSpawner(GameEvent.self) { event in
+  if case let .damageDealt(amount, position) = event {
+    return (text: "\(amount)", position: position, color: .red)
+  }
+  return nil
+}
+
+// NodeSpawner - spawn nodes in response to events
+NodeSpawner(GameEvent.self) { event in
+  if case let .collectibleSpawned(definition, position) = event {
+    return CollectibleView(position: position, definition).toNode()
+  }
+  return nil
+} resetWhen: { event in
+  if case .gameReset = event { return true }
+  return false
+}
+```
+
+## Property Wrappers
+
+For imperative `@Godot` classes - add `bindProps()` in `_ready()` to activate property wrappers.
+
+```swift
+@Godot
+final class Player: CharacterBody2D {
+  @Child("Sprite") var sprite: Sprite2D?
+  @Child("Health", deep: true) var healthBar: ProgressBar?
+  @Children var buttons: [Button]
+  @Ancestor var level: Level?
+  @Sibling("AudioPlayer") var audio: AudioStreamPlayer?
+  @Autoload("GameManager") var gameManager: GameManager?
+  @Group("enemies") var enemies: [Enemy]
+  @Service var events: EventBus<GameEvent>?
+  @Prefs("musicVolume", default: 0.5) var volume: Double
+
+  @OnSignal("StartButton", \Button.pressed)
+  func onStartPressed(_ sender: Button) {
+    print("Started!")
+  }
+
+  override func _ready() {
+    bindProps()
+
+    sprite?.visible = true
+    enemies.forEach { print($0) }
+
+    // Refresh group query
+    let currentEnemies = $enemies()
+  }
+}
 ```
