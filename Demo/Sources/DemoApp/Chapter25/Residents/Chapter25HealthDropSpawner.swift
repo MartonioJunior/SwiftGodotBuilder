@@ -16,7 +16,7 @@ extension Chapter25 {
           case .gameReset:
             // Remove all dynamically spawned drops
             for child in node.getChildren() {
-              child.queueFree()
+              child?.queueFree()
             }
           default:
             break

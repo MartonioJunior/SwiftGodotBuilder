@@ -1,4 +1,8 @@
 {
+  "EnemyType": [
+    "Patrol",
+    "Flyer"
+  ],
   "HazardEffect": [
     "Damage",
     "InstantKill",
@@ -15,10 +19,5 @@
     "Merchant",
     "Guard",
     "Advisors"
-  ],
-  "TriggerType": [
-    "Checkpoint",
-    "Door",
-    "Exit"
   ]
 }
