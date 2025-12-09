@@ -60,6 +60,7 @@ public final class AreaPool {
 
     let normalizedDir = direction.normalized()
     node.position = position
+    node.scale.x = direction.x < 0 ? -1 : 1
     node.visible = true
     node.monitorable = true
     node.monitoring = true
