@@ -183,6 +183,89 @@ LabeledCell("Stats") {
 }
 ```
 
+### Built-in Components
+
+Pre-built components for common patterns:
+
+```swift
+// Spacers for layout
+Spacer(16)      // Fixed height spacer
+SpacerV()       // Vertical expand-fill
+SpacerH()       // Horizontal expand-fill
+
+// Styled buttons with focus support
+StyledButton("Play", width: 80, color: .cyan) { startGame() }
+AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
+BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
+
+// Labels
+HeaderLabel("Game Over", size: 24, color: .red)
+InfoLabel("Press any key", color: .gray)
+LiveInfoLabel(state.scoreDisplay, color: .gold)    // Reactive text
+
+// Palette - shared color/style definitions
+let palette = Palette.shared
+palette.cyan, palette.red, palette.gold  // Common colors
+palette.buttonStyles(palette.cyan, withFocus: true)  // StyleBox builders
+palette.panelStyle, palette.victoryPanelStyle  // Panel presets
+
+// UserSettings - persistable audio/display settings
+let settings = UserSettings()  // Auto-loads from disk
+settings.masterVolume, settings.sfxVolume, settings.musicVolume
+settings.masterVolumeDisplay  // "70%"
+
+// AudioManager - syncs volume settings with AudioServer
+AudioManager(settings: $settings) {
+  // Your SFX player nodes here
+  BfxrSound$().bfxrPath("sounds/Jump.bfxr")
+}
+
+// CreditsOverlay - scrolling BBCode credits with star particles
+CreditsOverlay(
+  isVisible: $showCredits,
+  creditsText: "[center][color=#00FFFF]My Game[/color]..."
+) {
+  showCredits = false  // onDismiss
+}
+
+// SplashOverlay - animated title with "press any button" prompt
+SplashOverlay(
+  isVisible: $showSplash,
+  title: "My Game",
+  prompt: "PRESS START"  // optional, defaults to "PRESS ANY BUTTON"
+) {
+  showSplash = false  // onDismiss
+}
+
+// DialogBox - typewriter text with choice buttons (uses DialogRunner)
+DialogBox(
+  isVisible: $showDialog,
+  dialogRunner: { myDialogRunner },
+  speakerColors: ["Hero": .cyan, "Villain": .red]
+) {
+  showDialog = false  // onEnd
+}
+
+// FloatingTextSpawner - damage numbers, popups
+FloatingTextSpawner(GameEvent.self) { event in
+  if case let .damageDealt(amount, position) = event {
+    return (text: "\(amount)", position: position, color: .red)
+  }
+  return nil
+}
+
+// NodeSpawner - spawn nodes in response to events
+NodeSpawner(GameEvent.self) { event in
+  if case let .collectibleSpawned(definition, position) = event {
+    return CollectibleView(position: position, definition).toNode()
+  }
+  return nil
+} resetWhen: { event in
+  if case .gameReset = event { return true }
+  return false
+}
+```
+
 ## Reactive Data
 
 ### State Management
