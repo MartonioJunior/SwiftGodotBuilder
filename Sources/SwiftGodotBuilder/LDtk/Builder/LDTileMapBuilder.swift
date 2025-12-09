@@ -265,16 +265,16 @@ public class LDTileMapBuilder {
     return tileSet
   }
 
-  /// Build collision from IntGrid using group identifiers
-  /// Creates MULTIPLE TileMapLayers, one per collision group, each on its own Godot collision layer
+  /// Build collision from IntGrid using value identifiers
+  /// Creates MULTIPLE TileMapLayers, one per unique identifier, each on its own Godot collision layer
+  /// Special identifiers: "OneWay" gets one-way collision
   /// - Parameters:
   ///   - layer: The IntGrid layer
-  ///   - groupToPhysicsLayer: Dictionary mapping group identifiers to physics layer indices
-  ///     Example: ["walls": 1, nil: 0] maps "walls" group to layer 1, ungrouped to layer 0
-  /// - Returns: Container Node2D with multiple TileMapLayers (one per group)
+  ///   - groupToPhysicsLayer: Dictionary mapping identifiers to physics layer indices
+  /// - Returns: Container Node2D with multiple TileMapLayers (one per identifier)
   public func buildCollisionLayerByGroups(
     from layer: LDLayer,
-    groupToPhysicsLayer: [String?: Int]
+    groupToPhysicsLayer _: [String?: Int]
   ) -> Node2D? {
     guard layer.type == .intGrid else {
       return nil
@@ -284,59 +284,62 @@ public class LDTileMapBuilder {
       return nil
     }
 
-    // Build mapping from IntGrid value -> (group name, physics layer)
-    var valueToGroup: [Int: String?] = [:]
-    var valueToPhysicsLayer: [Int: Int] = [:]
-
+    // Build mapping from IntGrid value -> identifier name
+    var valueToIdentifier: [Int: String] = [:]
     for intGridValue in layerDef.intGridValues {
-      // Find the group for this value
-      let group = layerDef.intGridValuesGroups.first { $0.uid == intGridValue.groupUid }
-      let groupIdentifier = group?.identifier
-
-      // Map to physics layer
-      if let physicsLayer = groupToPhysicsLayer[groupIdentifier] {
-        valueToGroup[intGridValue.value] = groupIdentifier
-        valueToPhysicsLayer[intGridValue.value] = physicsLayer
+      if let identifier = intGridValue.identifier {
+        valueToIdentifier[intGridValue.value] = identifier
       }
     }
 
-    // Group IntGrid values by their physics layer
-    var layerGroups: [Int: (groupName: String?, values: [Int])] = [:]
-    for (value, physicsLayer) in valueToPhysicsLayer {
-      if layerGroups[physicsLayer] == nil {
-        // valueToGroup[value] is String?? (doubly optional), flatten to String?
-        let groupName: String? = valueToGroup[value] ?? nil
-        let emptyValues: [Int] = []
-        layerGroups[physicsLayer] = (groupName: groupName, values: emptyValues)
-      }
-      layerGroups[physicsLayer]!.values.append(value)
+    // Group values by their identifier
+    var identifierGroups: [String: [Int]] = [:]
+    for (value, identifier) in valueToIdentifier {
+      identifierGroups[identifier, default: []].append(value)
     }
 
-    // If only one group, return a single TileMapLayer
-    if layerGroups.count == 1, let (physicsLayer, groupData) = layerGroups.first {
+    // Assign physics layers to each identifier
+    // All collision types (solid, oneway) go on layer 0 (terrain)
+    // The one-way flag is set separately per tile
+    var identifierToPhysicsLayer: [String: Int] = [:]
+    for identifier in identifierGroups.keys {
+      let lower = identifier.lowercased()
+      if lower == "hazard" { continue }
+      // All collision goes on layer 0
+      identifierToPhysicsLayer[identifier] = 0
+    }
+
+    // If only one identifier, return a single TileMapLayer
+    let collisionIdentifiers = identifierGroups.keys.filter { $0.lowercased() != "hazard" }
+    if collisionIdentifiers.count == 1, let identifier = collisionIdentifiers.first {
+      let values = identifierGroups[identifier] ?? []
+      let physicsLayer = identifierToPhysicsLayer[identifier] ?? 0
       let tileMapLayer = buildSingleCollisionLayer(
         from: layer,
         layerDef: layerDef,
-        forValues: groupData.values,
-        physicsLayer: physicsLayer
+        forValues: values,
+        physicsLayer: physicsLayer,
+        identifier: identifier
       )
       return tileMapLayer
     }
 
-    // Multiple groups: create container with one TileMapLayer per group
+    // Multiple identifiers: create container with one TileMapLayer per identifier
     let container = Node2D()
     container.name = StringName("\(layer.identifier)_Collision")
     container.position = layer.totalOffset
 
-    for (physicsLayer, groupData) in layerGroups.sorted(by: { $0.key < $1.key }) {
+    for identifier in collisionIdentifiers.sorted() {
+      let values = identifierGroups[identifier] ?? []
+      let physicsLayer = identifierToPhysicsLayer[identifier] ?? 0
       if let tileMapLayer = buildSingleCollisionLayer(
         from: layer,
         layerDef: layerDef,
-        forValues: groupData.values,
-        physicsLayer: physicsLayer
+        forValues: values,
+        physicsLayer: physicsLayer,
+        identifier: identifier
       ) {
-        let groupName = groupData.groupName ?? "ungrouped"
-        tileMapLayer.name = StringName("\(layer.identifier)_\(groupName)")
+        tileMapLayer.name = StringName("\(layer.identifier)_\(identifier)")
         tileMapLayer.position = Vector2.zero // Offset already on container
         container.addChild(node: tileMapLayer)
       }
@@ -350,10 +353,14 @@ public class LDTileMapBuilder {
     from layer: LDLayer,
     layerDef _: LDLayerDef,
     forValues values: [Int],
-    physicsLayer: Int
+    physicsLayer: Int,
+    identifier: String
   ) -> TileMapLayer? {
+    // Check if this is a one-way collision value
+    let isOneWay = identifier.lowercased() == "oneway"
+
     // Create TileSet with collision configured for the specified Godot physics layer
-    let tileSet = createSimpleCollisionTileSet(gridSize: layer.gridSize, godotCollisionLayer: physicsLayer)
+    let tileSet = createSimpleCollisionTileSet(gridSize: layer.gridSize, godotCollisionLayer: physicsLayer, oneWay: isOneWay)
 
     let tileMapLayer = TileMapLayer()
     tileMapLayer.tileSet = tileSet
@@ -382,7 +389,8 @@ public class LDTileMapBuilder {
   /// - Parameters:
   ///   - gridSize: Size of the grid cells
   ///   - godotCollisionLayer: The Godot physics layer index (will be converted to bit flag)
-  private func createSimpleCollisionTileSet(gridSize: Int, godotCollisionLayer: Int) -> TileSet {
+  ///   - oneWay: Whether this tile should have one-way collision (passable from below)
+  private func createSimpleCollisionTileSet(gridSize: Int, godotCollisionLayer: Int, oneWay: Bool = false) -> TileSet {
     let tileSet = TileSet()
     tileSet.tileSize = Vector2i(x: Int32(gridSize), y: Int32(gridSize))
 
@@ -417,6 +425,12 @@ public class LDTileMapBuilder {
 
       tileData.setCollisionPolygonsCount(layerId: 0, polygonsCount: 1)
       tileData.setCollisionPolygonPoints(layerId: 0, polygonIndex: 0, polygon: polygon)
+
+      // Set one-way collision if requested (passable from below)
+      if oneWay {
+        tileData.setCollisionPolygonOneWay(layerId: 0, polygonIndex: 0, oneWay: true)
+        tileData.setCollisionPolygonOneWayMargin(layerId: 0, polygonIndex: 0, oneWayMargin: 4.0)
+      }
     }
 
     return tileSet

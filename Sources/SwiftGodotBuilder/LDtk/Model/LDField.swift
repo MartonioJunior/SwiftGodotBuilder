@@ -15,6 +15,7 @@ public enum LDFieldValue: Codable {
   case point(LDPoint)
   case entityRef(LDEntityRef)
   case filePath(String)
+  case tile(LDTilesetRect)
   case array([LDFieldValue])
 
   public init(from decoder: Decoder) throws {
@@ -69,6 +70,11 @@ public enum LDFieldValue: Codable {
       return
     }
 
+    if let value = try? container.decode(LDTilesetRect.self) {
+      self = .tile(value)
+      return
+    }
+
     // Fallback to null if we can't decode
     self = .null
   }
@@ -90,6 +96,8 @@ public enum LDFieldValue: Codable {
     case let .point(value):
       try container.encode(value)
     case let .entityRef(value):
+      try container.encode(value)
+    case let .tile(value):
       try container.encode(value)
     case let .array(value):
       try container.encode(value)
@@ -160,6 +168,12 @@ public extension LDFieldValue {
   /// Get as entity reference, returns nil if not an entity ref
   func asEntityRef() -> LDEntityRef? {
     if case let .entityRef(value) = self { return value }
+    return nil
+  }
+
+  /// Get as tile rect, returns nil if not a tile
+  func asTile() -> LDTilesetRect? {
+    if case let .tile(value) = self { return value }
     return nil
   }
 
