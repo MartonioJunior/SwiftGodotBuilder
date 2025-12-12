@@ -16,16 +16,15 @@ public struct FadeOverlay: GView {
       .color(Color.black)
       .anchorsAndOffsets(.fullRect)
       .visible(false)
-      .watch(transitionState, \.progress) { [transitionState] node, progress in
-        let type = transitionState.wrappedValue.transitionType
-
-        guard type == .fade else {
+      .onProcess { [transitionState] node, _ in
+        let state = transitionState.wrappedValue
+        guard state.transitionType == .fade else {
           node.visible = false
           return
         }
 
-        node.visible = progress > 0
-        node.modulate = Color(r: 1, g: 1, b: 1, a: progress)
+        node.visible = state.progress > 0
+        node.modulate = Color(r: 1, g: 1, b: 1, a: state.progress)
       }
   }
 }
@@ -48,14 +47,14 @@ public struct WipeOverlay: GView {
     ColorRect$()
       .color(Color.black)
       .visible(false)
-      .watch(transitionState, \.rawProgress) { [transitionState, screenWidth, screenHeight] node, rawProgress in
-        let type = transitionState.wrappedValue.transitionType
-
-        guard type == .wipe else {
+      .onProcess { [transitionState, screenWidth, screenHeight] node, _ in
+        let state = transitionState.wrappedValue
+        guard state.transitionType == .wipe else {
           node.visible = false
           return
         }
 
+        let rawProgress = state.rawProgress
         node.visible = rawProgress > 0 && rawProgress < 1
 
         if rawProgress <= 0.5 {
@@ -94,15 +93,16 @@ public struct IrisOverlay: GView {
   public var body: some GView {
     Control$()
       .visible(false)
-      .watch(transitionState, \.rawProgress) { [transitionState] node, rawProgress in
-        let type = transitionState.wrappedValue.transitionType
-        let isIris = type == .irisOut
+      .anchorsAndOffsets(.fullRect)
+      .onProcess { [transitionState] node, _ in
+        let state = transitionState.wrappedValue
+        let isIris = state.transitionType == .irisOut
+        let rawProgress = state.rawProgress
         node.visible = isIris && rawProgress > 0 && rawProgress < 1
-        if isIris {
+        if isIris && state.isTransitioning {
           node.queueRedraw()
         }
       }
-      .anchorsAndOffsets(.fullRect)
       .onSignal(\.draw) { [transitionState, screenWidth, screenHeight] node in
         drawIris(control: node, transitionState: transitionState, screenWidth: screenWidth, screenHeight: screenHeight)
       }
