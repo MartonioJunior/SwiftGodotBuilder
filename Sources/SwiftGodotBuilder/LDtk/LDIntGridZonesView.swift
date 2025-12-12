@@ -155,6 +155,25 @@ public struct LDIntGridZone {
   }
 }
 
+// MARK: - Zone Metadata
+
+private let zoneIdentifierMeta = "zone_identifier"
+private let zoneValueMeta = "zone_value"
+
+extension Area2D {
+  /// Get the zone identifier if this Area2D is an IntGrid zone.
+  public var zoneIdentifier: String? {
+    guard let v = getMeta(name: StringName(zoneIdentifierMeta), default: nil) else { return nil }
+    return String(v)
+  }
+
+  /// Get the zone value if this Area2D is an IntGrid zone.
+  public var zoneValue: Int? {
+    guard let v = getMeta(name: StringName(zoneValueMeta), default: nil) else { return nil }
+    return v.gtype == .int ? Int(v) : nil
+  }
+}
+
 // MARK: - Internal Zone Node
 
 private struct ZoneAreaNode: GView {
@@ -173,6 +192,10 @@ private struct ZoneAreaNode: GView {
     .position(zone.position)
     .collisionLayer(collisionLayer)
     .collisionMask(collisionMask)
+    .onReady { node in
+      node.setMeta(name: StringName(zoneIdentifierMeta), value: Variant(zone.identifier))
+      node.setMeta(name: StringName(zoneValueMeta), value: Variant(zone.value))
+    }
     .onSignal(\.bodyEntered) { _, body in
       guard let body else { return }
       onEnter?(zone, body)
