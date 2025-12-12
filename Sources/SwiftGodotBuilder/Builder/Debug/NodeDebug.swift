@@ -36,6 +36,10 @@ public enum NodeDebug {
   /// Cooldown between repeated warnings (seconds).
   public nonisolated(unsafe) static var reportCooldown: Double = 10.0
 
+  /// Number of consecutive high-churn windows required before warning.
+  /// This filters out initial spikes from level loads.
+  public nonisolated(unsafe) static var sustainedChurnWindows: Int = 3
+
   // Internal tracking
   private nonisolated(unsafe) static var creationCounts: [String: Int] = [:]
   private nonisolated(unsafe) static var destructionCount: Int = 0
@@ -43,7 +47,8 @@ public enum NodeDebug {
   private nonisolated(unsafe) static var lastReportTime: Double = 0
   private nonisolated(unsafe) static var lastGrowthCheckTime: Double = 0
   private nonisolated(unsafe) static var lastNodeCount: Int = 0
-  private nonisolated(unsafe) static let lock = NSLock()
+  private nonisolated(unsafe) static var consecutiveHighChurnWindows: Int = 0
+  private static let lock = NSLock()
 
   /// Record a node creation. Call from GNode.toNode() or GView instantiation.
   ///
@@ -69,16 +74,24 @@ public enum NodeDebug {
     if elapsed >= 1.0 {
       let totalCreations = creationCounts.values.reduce(0, +)
 
-      // Warn about high churn
-      if totalCreations > churnWarningThreshold && (now - lastReportTime) > reportCooldown {
-        let topTypes = creationCounts
-          .sorted { $0.value > $1.value }
-          .prefix(3)
-          .map { "\($0.key): \($0.value)" }
-          .joined(separator: ", ")
+      // Track consecutive high-churn windows
+      if totalCreations > churnWarningThreshold {
+        consecutiveHighChurnWindows += 1
 
-        GD.printErr("⚠️ [NodeDebug] High churn: \(totalCreations) nodes/sec (\(topTypes))")
-        lastReportTime = now
+        // Only warn if sustained over multiple windows (filters out level load spikes)
+        if consecutiveHighChurnWindows >= sustainedChurnWindows, (now - lastReportTime) > reportCooldown {
+          let topTypes = creationCounts
+            .sorted { $0.value > $1.value }
+            .prefix(3)
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: ", ")
+
+          GD.printErr("⚠️ [NodeDebug] Sustained high churn: \(totalCreations) nodes/sec for \(consecutiveHighChurnWindows)s (\(topTypes))")
+          lastReportTime = now
+        }
+      } else {
+        // Reset counter when churn drops below threshold
+        consecutiveHighChurnWindows = 0
       }
 
       // Reset window
@@ -113,7 +126,7 @@ public enum NodeDebug {
       let growth = currentCount - lastNodeCount
       let growthRate = Double(growth) / growthCheckInterval
 
-      if growthRate > growthWarningThreshold && (now - lastReportTime) > reportCooldown {
+      if growthRate > growthWarningThreshold, (now - lastReportTime) > reportCooldown {
         GD.printErr("⚠️ [NodeDebug] Node count growing: \(lastNodeCount) → \(currentCount) in \(Int(growthCheckInterval))sec (+\(String(format: "%.1f", growthRate))/sec)")
         lastReportTime = now
       }
@@ -126,7 +139,7 @@ public enum NodeDebug {
   /// Count all nodes in tree recursively.
   private static func countNodes(_ node: Node) -> Int {
     var count = 1
-    for i in 0..<node.getChildCount() {
+    for i in 0 ..< node.getChildCount() {
       if let child = node.getChild(idx: i) {
         count += countNodes(child)
       }
@@ -141,7 +154,8 @@ public enum NodeDebug {
 
     var nodeCount = 0
     if let tree = Engine.getMainLoop() as? SceneTree,
-       let root = tree.root {
+       let root = tree.root
+    {
       nodeCount = countNodes(root)
     }
 
@@ -151,7 +165,8 @@ public enum NodeDebug {
   /// Print current node tree summary.
   public static func printSummary() {
     guard let tree = Engine.getMainLoop() as? SceneTree,
-          let root = tree.root else {
+          let root = tree.root
+    else {
       GD.print("[NodeDebug] No scene tree available")
       return
     }
@@ -173,7 +188,7 @@ public enum NodeDebug {
     let typeName = String(describing: type(of: node))
     counts[typeName, default: 0] += 1
 
-    for i in 0..<node.getChildCount() {
+    for i in 0 ..< node.getChildCount() {
       if let child = node.getChild(idx: i) {
         countNodesByType(child, counts: &counts)
       }
@@ -190,6 +205,7 @@ public enum NodeDebug {
     lastReportTime = 0
     lastGrowthCheckTime = 0
     lastNodeCount = 0
+    consecutiveHighChurnWindows = 0
   }
 
   private static func currentTime() -> Double {

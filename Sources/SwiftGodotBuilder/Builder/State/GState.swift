@@ -64,6 +64,16 @@ public final class GState<Value: Equatable> {
   private var value: Value
   private var listeners: [(Value) -> Void] = []
 
+  /// Debug label for identifying this state in ReactiveDebug output
+  public var debugLabel: String?
+
+  /// Source location where this state was created (for debugging)
+  private let sourceFile: String
+  private let sourceLine: Int
+
+  /// Whether this state was created via .computed() (for update tracking)
+  private var isComputed = false
+
   /// The underlying value being wrapped by this state container.
   ///
   /// Reading this property returns the current value. Setting this property
@@ -91,8 +101,10 @@ public final class GState<Value: Equatable> {
   /// Creates a new state container with an initial value.
   ///
   /// - Parameter wrappedValue: The initial value to store in this state container.
-  public init(wrappedValue: Value) {
+  public init(wrappedValue: Value, file: String = #file, line: Int = #line) {
     value = wrappedValue
+    sourceFile = file
+    sourceLine = line
   }
 
   /// Registers a closure to be called whenever the state value changes.
@@ -108,9 +120,24 @@ public final class GState<Value: Equatable> {
 
   /// Notifies all registered listeners of the current value.
   private func notifyListeners() {
+    if isComputed {
+      ReactiveDebug.recordComputedUpdate(file: sourceFile, line: sourceLine)
+    } else {
+      ReactiveDebug.recordStateChange(
+        label: debugLabel,
+        file: sourceFile,
+        line: sourceLine
+      )
+    }
     for listener in listeners {
       listener(value)
     }
+  }
+
+  /// Mark this state as computed (for update tracking).
+  /// Called internally by .computed() methods.
+  func markAsComputed() {
+    isComputed = true
   }
 }
 
@@ -145,8 +172,15 @@ public extension GState {
   ///
   /// - Parameter transform: A closure that transforms the source value into the computed value
   /// - Returns: A new `GState` that reactively updates based on the source state
-  func computed<U: Equatable>(_ transform: @escaping (Value) -> U) -> GState<U> {
-    let derived = GState<U>(wrappedValue: transform(self.value))
+  func computed<U: Equatable>(
+    file: String = #file,
+    line: Int = #line,
+    _ transform: @escaping (Value) -> U
+  ) -> GState<U> {
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
+
+    let derived = GState<U>(wrappedValue: transform(self.value), file: file, line: line)
+    derived.isComputed = true
 
     // Capture derived strongly so it stays alive and continues to update.
     // This is safe because:
@@ -181,9 +215,13 @@ public extension GState {
   /// - Returns: A new `GState` that updates when either source changes
   func computed<T: Equatable, U: Equatable>(
     with other: GState<T>,
+    file: String = #file,
+    line: Int = #line,
     _ transform: @escaping (Value, T) -> U
   ) -> GState<U> {
-    let derived = GState<U>(wrappedValue: transform(self.value, other.value))
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
+    let derived = GState<U>(wrappedValue: transform(self.value, other.value), file: file, line: line)
+    derived.isComputed = true
 
     onChange { [derived] newValue in
       derived.wrappedValue = transform(newValue, other.value)
@@ -210,9 +248,13 @@ public extension GState {
   func computed<T: Equatable, U: Equatable, V: Equatable>(
     with second: GState<T>,
     _ third: GState<U>,
+    file: String = #file,
+    line: Int = #line,
     _ transform: @escaping (Value, T, U) -> V
   ) -> GState<V> {
-    let derived = GState<V>(wrappedValue: transform(self.value, second.value, third.value))
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
+    let derived = GState<V>(wrappedValue: transform(self.value, second.value, third.value), file: file, line: line)
+    derived.isComputed = true
 
     onChange { [derived] newValue in
       derived.wrappedValue = transform(newValue, second.value, third.value)
@@ -245,9 +287,13 @@ public extension GState {
     with second: GState<T>,
     _ third: GState<U>,
     _ fourth: GState<V>,
+    file: String = #file,
+    line: Int = #line,
     _ transform: @escaping (Value, T, U, V) -> W
   ) -> GState<W> {
-    let derived = GState<W>(wrappedValue: transform(self.value, second.value, third.value, fourth.value))
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
+    let derived = GState<W>(wrappedValue: transform(self.value, second.value, third.value, fourth.value), file: file, line: line)
+    derived.isComputed = true
 
     onChange { [derived] newValue in
       derived.wrappedValue = transform(newValue, second.value, third.value, fourth.value)
@@ -274,11 +320,15 @@ public extension GState {
     _ third: GState<T3>,
     _ fourth: GState<T4>,
     _ fifth: GState<T5>,
+    file: String = #file,
+    line: Int = #line,
     _ transform: @escaping (Value, T2, T3, T4, T5) -> R
   ) -> GState<R> {
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
     let derived = GState<R>(wrappedValue: transform(
       self.value, second.value, third.value, fourth.value, fifth.value
-    ))
+    ), file: file, line: line)
+    derived.isComputed = true
 
     onChange { [derived] newValue in
       derived.wrappedValue = transform(newValue, second.value, third.value, fourth.value, fifth.value)
@@ -310,11 +360,15 @@ public extension GState {
     _ fourth: GState<T4>,
     _ fifth: GState<T5>,
     _ sixth: GState<T6>,
+    file: String = #file,
+    line: Int = #line,
     _ transform: @escaping (Value, T2, T3, T4, T5, T6) -> R
   ) -> GState<R> {
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
     let derived = GState<R>(wrappedValue: transform(
       self.value, second.value, third.value, fourth.value, fifth.value, sixth.value
-    ))
+    ), file: file, line: line)
+    derived.isComputed = true
 
     onChange { [derived] newValue in
       derived.wrappedValue = transform(newValue, second.value, third.value, fourth.value, fifth.value, sixth.value)

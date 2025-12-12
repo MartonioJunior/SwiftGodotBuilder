@@ -36,7 +36,7 @@ public enum ProcessDebug {
 
   // Internal tracking
   private nonisolated(unsafe) static var processStats: [String: ProcessStats] = [:]
-  private nonisolated(unsafe) static let lock = NSLock()
+  private static let lock = NSLock()
 
   private struct ProcessStats {
     var samples: [Double] = []

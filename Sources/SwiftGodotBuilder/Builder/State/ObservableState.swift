@@ -125,6 +125,12 @@ public final class ObservableState<T: AnyObject & Observable>: @unchecked Sendab
       Task { @MainActor in
         guard let self else { return }
 
+        // Track for debugging
+        ReactiveDebug.recordObservableChange(
+          objectType: String(describing: T.self),
+          keyPath: String(describing: unsafeKeyPath)
+        )
+
         // Call handler with new value
         unsafeHandler(self.object[keyPath: unsafeKeyPath])
 
@@ -167,6 +173,12 @@ public final class ObservableState<T: AnyObject & Observable>: @unchecked Sendab
       // Warning about T.Type capture is benign since all observation runs on main thread
       Task { @MainActor in
         guard let self else { return }
+
+        // Track for debugging - watchAny is often a performance smell
+        ReactiveDebug.recordObservableChange(
+          objectType: String(describing: T.self),
+          keyPath: "*any*"
+        )
 
         // Call handler with object
         unsafeHandler(self.object)
@@ -370,6 +382,17 @@ public extension GNode {
     }
   }
 
+  /// Dynamic member lookup for ObservableProperty binding with transform.
+  ///
+  /// Usage: `.rotation(player.playerRotation) { Double($0) }`
+  subscript<O: AnyObject & Observable, V, U>(
+    dynamicMember kp: ReferenceWritableKeyPath<T, U>
+  ) -> (ObservableProperty<O, V>, @escaping (V) -> U) -> Self {
+    { observableProperty, transform in
+      self.bind(kp, to: observableProperty.observableState, observableProperty.keyPath, transform: transform)
+    }
+  }
+
   /// Dynamic member lookup for ObservableProperty with StringName conversion.
   subscript<O: AnyObject & Observable>(
     dynamicMember kp: ReferenceWritableKeyPath<T, StringName>
@@ -419,8 +442,14 @@ public extension ObservableState {
   ///
   /// - Parameter transform: A closure that transforms the observable object into the computed value
   /// - Returns: A new `GState` that reactively updates based on the observable object
-  func computed<U: Equatable>(_ transform: @escaping (T) -> U) -> GState<U> {
-    let derived = GState<U>(wrappedValue: transform(self.object))
+  func computed<U: Equatable>(
+    file: String = #file,
+    line: Int = #line,
+    _ transform: @escaping (T) -> U
+  ) -> GState<U> {
+    ReactiveDebug.recordComputedCreation(file: file, line: line)
+    let derived = GState<U>(wrappedValue: transform(self.object), file: file, line: line)
+    derived.markAsComputed()
 
     // Observe changes to the entire object
     observeAny { [derived] object in
