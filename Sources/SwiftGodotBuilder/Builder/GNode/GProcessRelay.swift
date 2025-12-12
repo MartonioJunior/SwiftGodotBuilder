@@ -19,11 +19,17 @@ public final class GProcessRelay: Node {
 
   override public func _process(delta: Double) {
     guard let host = ownerNode.value else { return }
+    let source = String(describing: type(of: host))
+    let start = ProcessDebug.beginProcess(source: source)
     onProcessCall?(host, delta)
+    ProcessDebug.endProcess(startTime: start, source: source)
   }
 
   override public func _physicsProcess(delta: Double) {
     guard let host = ownerNode.value else { return }
+    let source = "\(String(describing: type(of: host))).physics"
+    let start = ProcessDebug.beginProcess(source: source)
     onPhysicsCall?(host, delta)
+    ProcessDebug.endProcess(startTime: start, source: source)
   }
 }

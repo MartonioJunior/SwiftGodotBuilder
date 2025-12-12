@@ -76,6 +76,13 @@ public struct NeverGView: GView {
   }
 }
 
+/// An empty view that renders nothing.
+/// Used as the default type for optional content in generic GViews.
+public struct EmptyGView: GView {
+  public init() {}
+  public func toNode() -> Node { Node() }
+}
+
 /// A result builder for composing GView content in custom components.
 ///
 /// Works with both single and multiple children:

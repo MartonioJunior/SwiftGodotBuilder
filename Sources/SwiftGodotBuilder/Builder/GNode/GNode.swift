@@ -76,6 +76,8 @@ public extension GNode {
   ///
   /// - Returns: The fully configured node as `Node`.
   func toNode() -> Node {
+    NodeDebug.recordCreation(viewType: String(describing: T.self))
+
     let n = make()
     if let name { n.name = StringName(name) }
     ops.forEach { $0(n) }
@@ -218,4 +220,5 @@ public extension GNode {
   func metadata(_ key: String, _ value: Color) -> Self {
     metadata(key, Variant(value))
   }
+
 }
