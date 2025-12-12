@@ -48,8 +48,28 @@ public final class AreaPool {
     }
   }
 
-  /// Call this once the pool's parent node is in the scene tree
+  private weak var parentNode: Node?
+
+  /// Call this once the pool's parent node is in the scene tree.
+  /// Preloads nodes and adds them to the parent so they stay in tree.
+  public func start(parent: Node) {
+    parentNode = parent
+    Engine.onNextFrame { [weak self, weak parent] in
+      guard let self, let parent else { return }
+      // Preload and immediately add all nodes to scene tree
+      for _ in 0 ..< preloadCount {
+        if let node = pool.acquire() {
+          parent.addChild(node: node)
+          pool.release(node)
+        }
+      }
+    }
+  }
+
+  /// Legacy start method - just preloads without keeping in tree.
+  /// Prefer `start(parent:)` to avoid node churn.
   public func start() {
+    pool.keepInTree = false
     Engine.onNextFrame { [weak self] in
       self?.pool.preload(self?.preloadCount ?? 0)
     }
@@ -64,7 +84,11 @@ public final class AreaPool {
     node.visible = true
     node.monitorable = true
     node.monitoring = true
-    parent.addChild(node: node)
+
+    // Only add to tree if not already parented
+    if node.getParent() == nil {
+      parent.addChild(node: node)
+    }
 
     active.append(ActiveArea(
       node: node,
@@ -117,8 +141,12 @@ public final class AreaPool {
     let projectile = active[index]
     active.remove(at: index)
 
-    // Defer physics property changes to avoid "Function blocked during in/out signal" errors
+    // Immediately hide and move off-screen to prevent visual glitches
     let node = projectile.node
+    node.visible = false
+    node.position = [-9999, -9999]
+
+    // Defer physics property changes to avoid "Function blocked during in/out signal" errors
     Engine.onNextFrame { [weak self, weak node] in
       guard let self, let node else { return }
       node.monitorable = false

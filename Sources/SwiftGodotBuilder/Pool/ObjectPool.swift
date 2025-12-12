@@ -107,13 +107,17 @@ public final class ObjectPool<T: Object> {
     return o
   }
 
+  /// Whether to keep nodes in the scene tree when released (just hide them).
+  /// When true, nodes stay parented and are reused in place. Default is true.
+  public var keepInTree = true
+
   /// Returns an instance to the pool for reuse.
   ///
   /// Calls `onRelease()` on `PooledObject` conformers, then appends to the free list.
   /// If the pool is at capacity, the object is freed instead.
   public func release(_ o: T) {
     (o as? PooledObject)?.onRelease()
-    if let node = o as? Node, let p = node.getParent() { p.removeChild(node: node) }
+    if !keepInTree, let node = o as? Node, let p = node.getParent() { p.removeChild(node: node) }
     if free.count < max { free.append(o) } else { (o as? Node)?.queueFree() }
   }
 
