@@ -9,6 +9,9 @@ public struct FloatingTextSpawner<E: EmittableEvent>: GView {
   let floatDuration: Double
   let randomOffsetX: ClosedRange<Float>
   let randomOffsetY: ClosedRange<Float>
+  let poolSize: Int
+
+  private let pool = FloatingTextPool()
 
   public init(
     _ eventType: E.Type,
@@ -16,6 +19,7 @@ public struct FloatingTextSpawner<E: EmittableEvent>: GView {
     floatDuration: Double = 0.6,
     randomOffsetX: ClosedRange<Float> = -4 ... 4,
     randomOffsetY: ClosedRange<Float> = -2 ... 2,
+    poolSize: Int = 20,
     extract: @escaping (E) -> (text: String, position: Vector2, color: Color)?
   ) {
     self.eventType = eventType
@@ -23,53 +27,102 @@ public struct FloatingTextSpawner<E: EmittableEvent>: GView {
     self.floatDuration = floatDuration
     self.randomOffsetX = randomOffsetX
     self.randomOffsetY = randomOffsetY
+    self.poolSize = poolSize
     self.extract = extract
   }
 
   public var body: some GView {
     Node2D$()
-      .onEvent(eventType) { node, event in
+      .onReady { node in
+        pool.setup(parent: node, count: poolSize)
+      }
+      .onEvent(eventType) { [pool, floatDistance, floatDuration, randomOffsetX, randomOffsetY] _, event in
         if let data = extract(event) {
-          Engine.onNextFrame {
-            spawnPopup(parent: node, text: data.text, at: data.position, color: data.color)
-          }
+          let randomOffset = Vector2(
+            x: Float.random(in: randomOffsetX),
+            y: Float.random(in: randomOffsetY)
+          )
+          pool.spawn(
+            text: data.text,
+            at: data.position + randomOffset,
+            color: data.color,
+            floatDistance: floatDistance,
+            duration: floatDuration
+          )
         }
       }
   }
+}
 
-  func spawnPopup(parent: Node, text: String, at position: Vector2, color: Color) {
-    let randomOffset = Vector2(
-      x: Float.random(in: randomOffsetX),
-      y: Float.random(in: randomOffsetY)
-    )
+/// Internal pool for floating text nodes
+private final class FloatingTextPool {
+  private var available: [Node2D] = []
+  private weak var parentNode: Node?
 
-    let textTheme = Theme([
-      "Label": [
-        "colors": ["fontColor": color],
-      ],
-    ])
-
-    let popupNode = Node2D$ {
-      Label$()
-        .text(text)
-        .horizontalAlignment(.center)
-        .verticalAlignment(.center)
-        .theme(textTheme)
+  func setup(parent: Node, count: Int) {
+    parentNode = parent
+    Engine.onNextFrame { [weak self, weak parent] in
+      guard let self, let parent else { return }
+      for _ in 0 ..< count {
+        let node = self.createPopupNode()
+        parent.addChild(node: node)
+        self.available.append(node)
+      }
     }
-    .position(position + randomOffset)
-    .toNode()
+  }
 
-    guard let popup = popupNode as? Node2D else { return }
-    parent.addChild(node: popup)
+  private func createPopupNode() -> Node2D {
+    let label = Label()
+    label.horizontalAlignment = .center
+    label.verticalAlignment = .center
 
-    // Float upward and fade out using tween API
-    let endY = popup.position.y - floatDistance
-    popup.tween(.positionY(endY), duration: floatDuration)
+    let node = Node2D()
+    node.addChild(node: label)
+    node.visible = false
+    node.position = [-9999, -9999]
+
+    return node
+  }
+
+  func spawn(text: String, at position: Vector2, color: Color, floatDistance: Float, duration: Double) {
+    guard let parent = parentNode else { return }
+
+    let node: Node2D
+
+    if let pooled = available.popLast() {
+      node = pooled
+    } else {
+      // Pool exhausted - create new (will be pooled when done)
+      let newNode = createPopupNode()
+      parent.addChild(node: newNode)
+      node = newNode
+    }
+
+    guard let label = node.getChild(idx: 0) as? Label else { return }
+
+    // Configure
+    label.text = text
+    label.addThemeColorOverride(name: "font_color", color: color)
+    node.position = position
+    node.visible = true
+    node.modulate = Color(r: 1, g: 1, b: 1, a: 1)
+
+    // Animate
+    let endY = position.y - floatDistance
+    node.tween(.positionY(endY), duration: duration)
       .ease(.out).trans(.quad)
 
-    // Fade out near the end
-    popup.tween(.alpha(0), duration: 0.3)
-      .delay(floatDuration - 0.3)
-      .onFinished { popup.queueFree() }
+    node.tween(.alpha(0), duration: 0.3)
+      .delay(duration - 0.3)
+      .onFinished { [weak self, weak node] in
+        guard let node else { return }
+        self?.returnToPool(node)
+      }
+  }
+
+  private func returnToPool(_ node: Node2D) {
+    node.visible = false
+    node.position = [-9999, -9999]
+    available.append(node)
   }
 }
