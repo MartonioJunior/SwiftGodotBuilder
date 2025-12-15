@@ -49,9 +49,6 @@ final class LDtkEnumBridgeTests: XCTestCase {
     XCTAssertEqual(items, [.knife, .boots])
   }
 
-  // External enum generation is now handled by the GenLDEnums build plugin
-  // which generates LDExported.json at build time
-
   func testEnumCaseSensitivity() throws {
     // LDtk enums are case-sensitive
     let value = LDFieldValue.string("knife") // lowercase
