@@ -190,3 +190,34 @@ public enum NodeBuilder {
   /// - Returns: The same list.
   public static func buildExpression(_ v: [any GView]) -> [any GView] { v }
 }
+
+// MARK: - GView Ref Extension
+
+public extension GView {
+  /// Captures a reference to the root node produced by this GView.
+  ///
+  /// ### Usage:
+  /// ```swift
+  /// @State var cameraNode: Camera2D?
+  ///
+  /// CameraView()
+  ///   .ref($cameraNode)
+  /// ```
+  ///
+  /// The reference is set when the node is created via `toNode()`.
+  func ref<N: Node>(_ binding: GState<N?>) -> some GView {
+    GViewWithRef(content: self, binding: binding)
+  }
+}
+
+/// A wrapper view that captures a reference to its content's root node.
+public struct GViewWithRef<Content: GView, N: Node>: GView {
+  let content: Content
+  let binding: GState<N?>
+
+  public func toNode() -> Node {
+    let node = content.toNode()
+    binding.wrappedValue = node as? N
+    return node
+  }
+}
