@@ -189,7 +189,10 @@ private struct BreakableTerrainNode: GView {
       }
     }
 
-    GD.printErr("LDBreakableTerrainView: Failed to build TileMapLayer for '\(layer.identifier)'")
+    if !layer.allTiles.isEmpty {
+      GD.printErr("LDBreakableTerrainView: Failed to build TileMapLayer for '\(layer.identifier)'")
+    }
+
     return nil
   }
 

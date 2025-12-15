@@ -140,7 +140,7 @@ public class LDLevelBuilder {
       case .tiles, .autoLayer:
         if let tileMapLayer = tileMapBuilder.buildTileMapLayer(from: layerInstance) {
           levelNode.addChild(node: tileMapLayer)
-        } else {
+        } else if !layerInstance.allTiles.isEmpty {
           GD.printErr("LDLevelBuilder: Failed to build TileMapLayer for '\(layerInstance.identifier)'")
         }
 
