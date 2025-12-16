@@ -32,7 +32,7 @@ extension Chapter27 {
             let scale: Vector2 = [facing.sign, 1]
             pool.spawn(type: .meleeSwoosh, at: position, scale: scale)
 
-          case let .meleeHit(_, _, position, _):
+          case let .meleeHit(_, _, position, _, _, _):
             pool.spawn(type: .meleeImpact, at: position)
 
           case let .projectileFired(_, position, direction, _):
@@ -43,7 +43,7 @@ extension Chapter27 {
           case let .projectileHitWall(_, position):
             pool.spawn(type: .projectileTrail, at: position)
 
-          case let .projectileHitTarget(_, _, position, _):
+          case let .projectileHitTarget(_, _, position, _, _):
             pool.spawn(type: .projectileTrail, at: position)
 
           default:

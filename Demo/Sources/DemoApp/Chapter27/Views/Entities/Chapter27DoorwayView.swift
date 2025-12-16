@@ -22,7 +22,7 @@ extension Chapter27 {
     init(entity: LDEntity, level: LDLevel, project: LDProject) {
       position = entity.positionTopLeft
       size = entity.size
-      gridSize = level.entityLayers.first?.gridSize ?? 8
+      gridSize = level.gridSize(for: entity) ?? 8
       self.project = project
       let ref = entity.field("targetDoor")?.asEntityRef()
       targetLevelIid = ref?.levelIid ?? ""

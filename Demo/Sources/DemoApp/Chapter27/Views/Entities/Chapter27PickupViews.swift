@@ -22,8 +22,8 @@ extension Chapter27 {
       }
       .position(position)
       .collisionLayer(.collectible)
-      .collisionMask(.interaction)
-      .onSignal(\.areaEntered) { node, _ in
+      .collisionMask(.player) // restrict collection to the player body
+      .onSignal(\.bodyEntered) { node, _ in
         onCollected(item)
         node.queueFree()
       }
@@ -111,6 +111,10 @@ extension Chapter27 {
 
     private var ammoSprite: String { weapon.ammoSprite ?? weapon.pickupSprite ?? "Items" }
     private var ammoAnimation: String { weapon.ammoAnimation ?? "orbSilver" }
+    private var ammoColliderSize: Vector2 {
+      let spriteSize = AseSprite.frameSize(path: ammoSprite, tag: ammoAnimation)
+      return spriteSize == .zero ? [8, 8] : spriteSize
+    }
 
     var body: some GView {
       Area2D$ {
@@ -119,13 +123,13 @@ extension Chapter27 {
           .centered(false)
 
         CollisionShape2D$()
-          .shape(RectangleShape2D(size: [8, 8]))
-          .position([4, 4])
+          .shape(RectangleShape2D(size: ammoColliderSize))
+          .position(ammoColliderSize / 2)
       }
       .position(position)
       .collisionLayer(.collectible)
-      .collisionMask(.interaction)
-      .onSignal(\.areaEntered) { node, _ in
+      .collisionMask(.player) // restrict collection to the player body
+      .onSignal(\.bodyEntered) { node, _ in
         GameEvent.ammoCollected(weapon: weapon, amount: amount, position: position).emit()
         node.queueFree()
       }

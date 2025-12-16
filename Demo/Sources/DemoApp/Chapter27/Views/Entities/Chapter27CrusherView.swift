@@ -31,7 +31,7 @@ extension Chapter27 {
     private let vm = CrusherState()
 
     init(entity: LDEntity, level: LDLevel, project: LDProject) {
-      gridSize = level.entityLayers.first?.gridSize ?? 8
+      gridSize = level.gridSize(for: entity) ?? 8
 
       startPosition = entity.positionTopLeft
       width = entity.size.x

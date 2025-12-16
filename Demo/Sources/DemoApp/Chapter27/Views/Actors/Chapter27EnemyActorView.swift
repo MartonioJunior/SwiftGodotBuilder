@@ -42,16 +42,18 @@ extension Chapter27 {
       definition = enemyType.definition
 
       let pos = entity.positionTopLeft
+      let centerX = pos.x + entity.size.x / 2
+      let centerY = pos.y + entity.size.y / 2
       let patrolBounds = entity.field("patrol_bounds")?.asFloatArray() ?? []
-      patrolLeft = patrolBounds.count > 0 ? patrolBounds[0] : pos.x - 32
-      patrolRight = patrolBounds.count > 1 ? patrolBounds[1] : pos.x + 32
+      patrolLeft = patrolBounds.count > 0 ? patrolBounds[0] : centerX - 32
+      patrolRight = patrolBounds.count > 1 ? patrolBounds[1] : centerX + 32
 
       // Build behaviors based on enemy definition
       var behaviorList: [ActorBehavior] = [
         .pathPatrol(.fromBounds(patrolLeft, patrolRight, speed: definition.speed)),
       ]
       if definition.flies {
-        behaviorList.append(.sineWave(ActorSineWave(amplitude: 30, frequency: 2.0, baseY: pos.y)))
+        behaviorList.append(.sineWave(ActorSineWave(amplitude: 30, frequency: 2.0, baseY: centerY)))
       }
       if let interval = definition.shootInterval {
         behaviorList.append(.shoot(ActorShoot(interval: interval)))
@@ -78,7 +80,7 @@ extension Chapter27 {
         .pathPatrol(.fromBounds(patrolLeft, patrolRight, speed: definition.speed)),
       ]
       if definition.flies {
-        behaviorList.append(.sineWave(ActorSineWave(amplitude: 30, frequency: 2.0, baseY: entity.positionTopLeft.y)))
+        behaviorList.append(.sineWave(ActorSineWave(amplitude: 30, frequency: 2.0, baseY: entity.positionTopLeft.y + entity.size.y / 2)))
       }
       if let interval = definition.shootInterval {
         behaviorList.append(.shoot(ActorShoot(interval: interval)))
@@ -105,7 +107,8 @@ extension Chapter27 {
         .pathPatrol(.fromBounds(patrolLeft, patrolRight, speed: definition.speed)),
       ]
       if definition.flies {
-        behaviorList.append(.sineWave(ActorSineWave(amplitude: 30, frequency: 2.0, baseY: spawnPoint.y)))
+        let centerY = spawnPoint.y + definition.size / 2
+        behaviorList.append(.sineWave(ActorSineWave(amplitude: 30, frequency: 2.0, baseY: centerY)))
       }
       if let interval = definition.shootInterval {
         behaviorList.append(.shoot(ActorShoot(interval: interval)))
@@ -117,7 +120,8 @@ extension Chapter27 {
       ActorPhysics(
         speed: definition.speed,
         gravity: definition.flies ? 0 : nil, // Flying = no gravity, grounded = world gravity
-        knockbackStrength: definition.knockbackForce
+        knockbackStrength: definition.knockbackForce,
+        knockbackRecoveryTime: definition.knockbackDuration
       )
     }
 
@@ -208,7 +212,7 @@ extension Chapter27 {
       }
       .onEvent(ActorEvent.self) { _, event in
         switch event {
-        case let .meleeHit(attackerId, _, hitPos, damage) where attackerId == vm.actorId:
+        case let .meleeHit(attackerId, _, hitPos, damage, _, _) where attackerId == vm.actorId:
           GameEvent.playerTookDamage(damage: damage, position: hitPos).emit()
         case let .died(id, position) where id == vm.actorId:
           vm.isDying = true
@@ -216,8 +220,10 @@ extension Chapter27 {
           GameEvent.enemyKilled(position: position).emit()
           // Random health drop via DropSpawner
           if Float.random(in: 0 ... 1) < definition.healthDropChance {
-            let dropPos = position + [definition.size / 2, definition.size / 2]
-            GameEvent.itemDropped(.consumable(.health), position: dropPos).emit()
+            let dropItem = ConsumableDefinition.health
+            let dropSize = AseSprite.frameSize(path: dropItem.sprite, tag: dropItem.animation)
+            let dropPos = position - Vector2(x: dropSize.x / 2, y: dropSize.y)
+            GameEvent.itemDropped(.consumable(dropItem), position: dropPos).emit()
           }
         case let .tookDamage(id, damage, position) where id == vm.actorId:
           // Show hit animation briefly (0.15s like old EnemyState)

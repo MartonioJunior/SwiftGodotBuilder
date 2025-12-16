@@ -49,14 +49,18 @@ extension Chapter27 {
         CenterContainer$ {
           ProgressBar$()
             .minValue(0)
-            .maxValue(100)
-            .value(100)
+            .maxValue(Double(max(bs.bossMaxHealth, 1)))
+            .value(Double(bs.bossHealth))
             .showPercentage(false)
             .minSize([barWidth, barHeight])
             .theme("background", bossHealthBackground)
             .theme("fill", bossHealthFill)
             .watch(boss, \.bossHealth) { bar, health in
               bar.value = Double(health)
+            }
+            .watch(boss, \.bossMaxHealth) { bar, maxHealth in
+              let clampedMax = max(maxHealth, 1)
+              bar.maxValue = Double(clampedMax)
             }
         }
 

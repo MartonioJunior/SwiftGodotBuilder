@@ -51,9 +51,9 @@ extension Chapter27 {
         speed: 200,
         damage: 1,
         lifetime: 2.0,
-        size: [8, 2],
-        spriteAsset: "Interactables",
-        spriteAnimation: "Arrow",
+        size: [2, 2],
+        // spriteAsset: "Interactables",
+        // spriteAnimation: "Arrow",
         isPlayerOwned: true
       ),
       maxAmmo: 10,
@@ -120,7 +120,7 @@ extension Chapter27 {
         speed: 120,
         damage: 1,
         lifetime: 3.0,
-        size: [8, 8],
+        size: [2, 2],
         color: Color(code: "#FF6600"),
         isPlayerOwned: false
       ),

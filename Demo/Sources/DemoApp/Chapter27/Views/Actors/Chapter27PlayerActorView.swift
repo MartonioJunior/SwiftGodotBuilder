@@ -107,7 +107,7 @@ extension Chapter27 {
       }
       .onEvent(ActorEvent.self) { _, event in
         switch event {
-        case let .meleeHit(attackerId, targetId, hitPos, _) where attackerId == vm.actorId:
+        case let .meleeHit(attackerId, targetId, hitPos, _, _, _) where attackerId == vm.actorId:
           applyHitstop()
           GameEvent.enemyHitByMelee(targetId: targetId, position: hitPos).emit()
         case let .died(id, _) where id == vm.actorId:
@@ -122,11 +122,12 @@ extension Chapter27 {
           GameEvent.playerLanded(position: position, impact: impact).emit()
         case let .projectileFired(id, position, direction, _) where id == vm.actorId:
           GameEvent.projectileFired(position: position, direction: direction).emit()
-        case let .tookDamage(id, _, _) where id == vm.actorId:
+        case let .tookDamage(id, damage, position) where id == vm.actorId:
           if let actor = vm.actor {
             actor.rotation = Float.pi / 8
             bs.shakeIntensity = 0.5
             pgs.syncHealth(actor.health)
+            GameEvent.playerTookDamage(damage: damage, position: position).emit()
           }
         default:
           break
