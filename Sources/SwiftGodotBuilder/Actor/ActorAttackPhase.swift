@@ -5,26 +5,7 @@
 /// - **startup**: Anticipation/windup, no hitbox active
 /// - **active**: Hitbox is live, can deal damage
 /// - **recovery**: Commitment window after attack, no hitbox
-///
-/// ### Example:
-/// ```swift
-/// var attackPhase: AttackPhase = .idle
-/// var attackTimer = 0.0
-///
-/// func startAttack() {
-///   attackPhase = .startup
-///   attackTimer = weapon.startupTime
-/// }
-///
-/// func updateAttack(delta: Double) {
-///   attackTimer -= delta
-///   if attackTimer <= 0 {
-///     attackPhase = attackPhase.next(weapon: weapon)
-///     attackTimer = attackPhase.duration(weapon: weapon)
-///   }
-/// }
-/// ```
-public enum AttackPhase: Sendable {
+public enum ActorAttackPhase: Sendable {
   /// Not attacking
   case idle
 
@@ -49,7 +30,7 @@ public enum AttackPhase: Sendable {
   public var hitboxActive: Bool { self == .active }
 
   /// Get the next phase in the attack sequence
-  public func next() -> AttackPhase {
+  public func next() -> ActorAttackPhase {
     switch self {
     case .idle: .idle
     case .startup: .active
@@ -57,14 +38,6 @@ public enum AttackPhase: Sendable {
     case .recovery: .idle
     }
   }
-
-  /// Get the duration for this phase from a weapon config
-  public func duration(weapon: WeaponConfig) -> Double {
-    switch self {
-    case .idle: 0
-    case .startup: weapon.startupTime
-    case .active: weapon.activeTime
-    case .recovery: weapon.recoveryTime
-    }
-  }
 }
+
+typealias AttackPhase = ActorAttackPhase
