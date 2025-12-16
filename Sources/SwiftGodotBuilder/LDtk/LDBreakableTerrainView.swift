@@ -214,20 +214,12 @@ private struct BreakableTerrainNode: GView {
         )
       }
 
-      // Disable the detection area
-      if let area = node as? Area2D {
-        area.processMode = .disabled
-        area.visible = false
-      }
+      // Remove the detection area
+      node.queueFree()
 
-      // Disable the terrain collision body
-      if let collisionBody = collisionBodies[key] {
-        collisionBody.processMode = .disabled
-        for i in 0 ..< collisionBody.getChildCount() {
-          if let shape = collisionBody.getChild(idx: i) as? CollisionShape2D {
-            shape.disabled = true
-          }
-        }
+      // Remove the terrain collision body
+      if let collisionBody = collisionBodies.removeValue(forKey: key) {
+        collisionBody.queueFree()
       }
     }
 

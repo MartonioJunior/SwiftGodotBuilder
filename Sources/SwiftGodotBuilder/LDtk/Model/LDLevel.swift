@@ -284,4 +284,11 @@ public struct LDWorld: Codable {
   public func level(iid: String) -> LDLevel? {
     levels.first(where: { $0.iid == iid })
   }
+
+  /// Returns the grid size for the entity's source layer, if available.
+  func gridSize(for entity: LDEntity) -> Int? {
+    entityLayers.first(where: { layer in
+      layer.entityInstances.contains(where: { $0.iid == entity.iid })
+    })?.gridSize
+  }
 }
