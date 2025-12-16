@@ -3,10 +3,10 @@ import Observation
 import SwiftGodot
 import SwiftGodotBuilder
 
-extension Chapter26 {
+extension Chapter27 {
   @Observable
   class GameProgress: Persistable {
-    static let PersistenceKey = "chapter20_progress"
+    static let PersistenceKey = "chapter27_progress"
 
     var levels: [LevelProgress] = []
     var currentLevelIndex: Int = 0

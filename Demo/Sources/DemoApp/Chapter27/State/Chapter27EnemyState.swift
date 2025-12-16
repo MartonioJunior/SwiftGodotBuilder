@@ -2,7 +2,7 @@ import Foundation
 import SwiftGodot
 import SwiftGodotBuilder
 
-extension Chapter26 {
+extension Chapter27 {
   @Observable
   class EnemyState {
     // Config from EnemyDefinition
@@ -103,7 +103,7 @@ extension Chapter26 {
           if shootTimer <= 0 {
             shootTimer = interval
             let projectileDir: Vector2 = [direction > 0 ? 1 : -1, 0]
-            GameEvent.enemyProjectileFired(
+            GameEvent.enemyFiredProjectile(
               position: position + [size / 2, size / 2],
               direction: projectileDir
             ).emit()
@@ -130,7 +130,7 @@ extension Chapter26 {
 
       // Emit damage dealt event for floating numbers
       let damagePos = position + [size / 2, 0]
-      GameEvent.damageDealt(amount: damage, position: damagePos).emit()
+      GameEvent.enemyTookDamage(amount: damage, position: damagePos).emit()
 
       // Show hit animation
       hitTimer = 0.15
@@ -152,12 +152,12 @@ extension Chapter26 {
         let deathPos = position + [size / 2, size / 2]
         GameEvent.enemyKilled(position: deathPos).emit()
 
-        // Random health drop
+        // Random health drop - spawned via DropSpawner
         if Float.random(in: 0 ... 1) < healthDropChance {
-          let dropItem = Item.health
+          let dropItem = ConsumableDefinition.health
           let dropSize = AseSprite.frameSize(path: "Items", tag: dropItem.animation)
           let dropPos = position + [size / 2, size / 2] - dropSize / 2
-          GameEvent.collectibleSpawned(dropItem, position: dropPos).emit()
+          GameEvent.itemDropped(.consumable(dropItem), position: dropPos).emit()
         }
       }
     }

@@ -8,12 +8,12 @@ extension Chapter26 {
     let isActive: State<Bool>
 
     init(entity: LDEntity, isActive: State<Bool>) {
-      self._state = ObservableState(wrappedValue: EnemyState(entity: entity))
+      _state = ObservableState(wrappedValue: EnemyState(entity: entity))
       self.isActive = isActive
     }
 
     init(definition: EnemyDefinition, spawnPoint: Vector2, patrolLeft: Float, patrolRight: Float, isActive: State<Bool>) {
-      self._state = ObservableState(wrappedValue: EnemyState(definition: definition, spawnPoint: spawnPoint, patrolLeft: patrolLeft, patrolRight: patrolRight))
+      _state = ObservableState(wrappedValue: EnemyState(definition: definition, spawnPoint: spawnPoint, patrolLeft: patrolLeft, patrolRight: patrolRight))
       self.isActive = isActive
     }
 

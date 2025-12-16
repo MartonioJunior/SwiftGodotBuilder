@@ -5,6 +5,10 @@ import SwiftGodotBuilder
 @Godot
 final class Chapter26Game: Node2D {
   override func _ready() {
+    ReactiveDebug.isEnabled = true
+    NodeDebug.isEnabled = true
+    ProcessDebug.isEnabled = true
+
     let project: LDProject
 
     do {

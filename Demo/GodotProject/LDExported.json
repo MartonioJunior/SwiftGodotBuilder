@@ -1,23 +1,33 @@
 {
-  "EnemyType": [
+  "Consumable" : [
+    "Coin",
+    "Health",
+    "Key"
+  ],
+  "EnemyType" : [
     "Patrol",
     "Flyer"
   ],
-  "HazardEffect": [
+  "HazardEffect" : [
     "Damage",
     "InstantKill",
     "Water"
   ],
-  "Item": [
+  "Item" : [
     "Coin",
     "Key",
     "Ammo",
     "Health"
   ],
-  "NPCType": [
+  "NPCType" : [
     "OldMan",
     "Merchant",
     "Guard",
     "Advisors"
+  ],
+  "TriggerType" : [
+    "Checkpoint",
+    "Door",
+    "Exit"
   ]
 }
