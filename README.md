@@ -597,15 +597,6 @@ Control$()
   .styleBox("focus", StyleBoxFlat$().borderColor(.white))
 ```
 
-**Available StyleBox Builders:**
-- `StyleBoxFlat$()` - Solid colors, borders, rounded corners, shadows
-- `StyleBoxTexture$(texture:)` - Texture-based styling
-- `StyleBoxLine$()` - Simple line/border styling
-- `StyleBoxEmpty$()` - Invisible (no background)
-
-**Convenience Methods (StyleBoxFlat$):**
-`.borderWidth(_:)`, `.cornerRadius(_:)`, `.contentMargin(_:)`, `.expandMargin(_:)`
-
 ### Buttons
 
 ```swift
@@ -642,25 +633,90 @@ SplashOverlay(
   showSplash = false
 }
 
-// Typewriter text with choice buttons
-DialogBox(
-  isVisible: $showDialog,
-  dialogRunner: { myDialogRunner },
-  speakerColors: ["Hero": .cyan, "Villain": .red]
-) {
-  showDialog = false
+```
+
+### Containers
+
+Wrapper components that add behavior to child content.
+
+#### Interaction
+
+```swift
+// Make any content clickable
+Clickable(onPressed: { score += 1 }) {
+  ColorBox$([64, 64]).color(.cyan)
+}
+
+// Track hover state
+@State var isHovered = false
+Hoverable($isHovered) {
+  Label$().text("Hover me").modulate(isHovered ? .yellow : .white)
+}
+
+// Press feedback with scale animation
+Pressable(pressScale: 0.95, onPressed: { play() }) {
+  Label$().text("Press Me")
 }
 ```
 
-### Palette
-
-Shared color/style definitions.
+#### Animation
 
 ```swift
-let palette = Palette.shared
-palette.cyan, palette.red, palette.gold
-palette.buttonStyles(palette.cyan, withFocus: true)
-palette.panelStyle, palette.victoryPanelStyle
+// Continuous pulse
+Pulse(minScale: 0.95, maxScale: 1.05, duration: 1.0) {
+  Sprite2D$().res(\.texture, "icon.png")
+}
+
+// Shake on trigger
+@State var shake = false
+Shake($shake, intensity: 4, duration: 0.4) {
+  Label$().text("Ouch!")
+}
+
+// Fade in on appear
+FadeIn(duration: 0.3, delay: 0.5) {
+  Label$().text("Hello!")
+}
+
+// Fade out and remove
+@State var dismiss = false
+FadeOut($dismiss, duration: 0.3, removeOnComplete: true) {
+  PanelContainer$()
+}
+
+// Slide in from direction
+SlideIn(from: .left, distance: 50, duration: 0.3) {
+  MenuPanel()
+}
+```
+
+#### Layout
+
+```swift
+// Inset from edges
+SafeArea(top: 20, right: 10, bottom: 20, left: 10) {
+  GameUI()
+}
+
+// Show content after delay
+Delayed(seconds: 2.0, fadeIn: true) {
+  Label$().text("Ready!")
+}
+
+// Maintain aspect ratio
+AspectRatio(16/9, stretchMode: .fit) {
+  VideoPlayer()
+}
+
+// Center in parent
+Centered {
+  Label$().text("Centered")
+}
+
+// Scrollable content
+Scrollable(horizontal: false, vertical: true) {
+  VBoxContainer$ { /* long content */ }
+}
 ```
 
 ## Node Modifiers
@@ -798,7 +854,7 @@ HealthBar$()
 
 ### SceneRouter
 
-Vue Router-inspired navigation with built-in transitions.
+Scene navigation with built-in transitions.
 
 ```swift
 enum GameScene { case splash, menu, playing, gameOver }
@@ -834,10 +890,6 @@ levelRouter.navigate(to: 3, transition: .fade())
 ```
 
 ### Transitions
-
-- **fade** - Screen fades to black and back
-- **wipe** - Horizontal wipe across screen
-- **irisOut** - Circle shrinks to point, then expands
 
 ```swift
 struct GameUI: GView {
@@ -976,42 +1028,6 @@ runner.selectChoice(0)     // Pick choice
   if case .emitted(let name, let data) = event, name == "payGold" {
     player.gold -= data?["amount"] as? Int ?? 0
   }
-}
-```
-
-### Combat Helpers
-
-Melee weapon timing with startup/active/recovery phases.
-
-```swift
-let sword = WeaponConfig(
-  name: "Sword",
-  hitboxSize: [8, 8],
-  hitboxOffset: 7,
-  startupTime: 0.05,
-  activeTime: 0.1,
-  recoveryTime: 0.1,
-  damage: 1,
-  knockback: 80,
-  canHitMultiple: false,
-  sweepArc: nil
-)
-
-var phase: AttackPhase = .idle
-var timer = 0.0
-
-func startAttack() {
-  phase = .startup
-  timer = sword.startupTime
-}
-
-func update(delta: Double) {
-  timer -= delta
-  if timer <= 0 {
-    phase = phase.next()
-    timer = phase.duration(weapon: sword)
-  }
-  if phase.hitboxActive { /* deal damage */ }
 }
 ```
 
@@ -1211,7 +1227,7 @@ ActorProjectileSpawner(collisionLayers: layers)
 // Combat events
 ActorEvent.tookDamage(actorId: id, damage: 1, position: pos)
 ActorEvent.died(actorId: id, position: pos)
-ActorEvent.meleeHit(actorId: id, targetId: targetId, position: pos, damage: 1)
+ActorEvent.meleeHit(actorId: id, targetId: targetId, position: pos, damage: 1, knockback: 80, direction: [1, 0])
 ActorEvent.projectileFired(actorId: id, position: pos, direction: dir, config: rangedConfig)
 
 // Movement events
@@ -1556,119 +1572,6 @@ Sprite2D$().texture(ItemSprite.heart.texture)
 
 // Animated sprite (uses Godot's AnimatedSprite2D)
 AnimatedSpriteSheet(ItemSprite.coinSpin)
-```
-
-## Containers
-
-Wrapper components that add behavior to child content.
-
-### Interaction
-
-```swift
-// Make any content clickable
-Clickable(onPressed: { score += 1 }) {
-  ColorBox$([64, 64]).color(.cyan)
-}
-
-// Track hover state
-@State var isHovered = false
-Hoverable($isHovered) {
-  Label$().text("Hover me").modulate(isHovered ? .yellow : .white)
-}
-
-// Press feedback with scale animation
-Pressable(pressScale: 0.95, onPressed: { play() }) {
-  Label$().text("Press Me")
-}
-```
-
-### Animation
-
-```swift
-// Continuous pulse
-Pulse(minScale: 0.95, maxScale: 1.05, duration: 1.0) {
-  Sprite2D$().res(\.texture, "icon.png")
-}
-
-// Shake on trigger
-@State var shake = false
-Shake($shake, intensity: 4, duration: 0.4) {
-  Label$().text("Ouch!")
-}
-
-// Fade in on appear
-FadeIn(duration: 0.3, delay: 0.5) {
-  Label$().text("Hello!")
-}
-
-// Fade out and remove
-@State var dismiss = false
-FadeOut($dismiss, duration: 0.3, removeOnComplete: true) {
-  PanelContainer$()
-}
-
-// Slide in from direction
-SlideIn(from: .left, distance: 50, duration: 0.3) {
-  MenuPanel()
-}
-```
-
-### Layout
-
-```swift
-// Inset from edges
-SafeArea(top: 20, right: 10, bottom: 20, left: 10) {
-  GameUI()
-}
-
-// Show content after delay
-Delayed(seconds: 2.0, fadeIn: true) {
-  Label$().text("Ready!")
-}
-
-// Maintain aspect ratio
-AspectRatio(16/9, stretchMode: .fit) {
-  VideoPlayer()
-}
-
-// Center in parent
-Centered {
-  Label$().text("Centered")
-}
-
-// Scrollable content
-Scrollable(horizontal: false, vertical: true) {
-  VBoxContainer$ { /* long content */ }
-}
-```
-
-### Game
-
-```swift
-// Area2D for detecting collisions
-TouchArea(layer: .alpha, mask: .beta,
-  onBodyEntered: { body in print("Hit: \(body)") }
-) {
-  CollisionShape2D$().shape(CircleShape2D(radius: 16))
-}
-
-// Combat hitbox (monitors hurtboxes)
-HitBox(mask: .hurtbox, onHit: { area in dealDamage(to: area) }) {
-  CollisionShape2D$().shape(RectangleShape2D(w: 20, h: 20))
-}
-
-// Combat hurtbox (receives hits)
-HurtBox(layer: .hurtbox, onHurt: { area in takeDamage() }) {
-  CollisionShape2D$().shape(CircleShape2D(radius: 12))
-}
-
-// Collectible pickup
-Pickup(layer: .pickup, mask: .player, autoRemove: true,
-  onCollected: { score += 10 }
-) {
-  Sprite2D$().res(\.texture, "coin.png")
-  CollisionShape2D$().shape(CircleShape2D(radius: 8))
-}
 ```
 
 ## Built-in Views
