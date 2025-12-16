@@ -213,6 +213,7 @@ public struct ActorPhysics: Sendable {
   public var speed: Float
   public var gravity: Float? // nil = use world gravity, 0 = no gravity (flying/NPC)
   public var knockbackStrength: Float
+  public var knockbackRecoveryTime: Double
 
   // Jump
   public var jumpSpeed: Float
@@ -243,6 +244,7 @@ public struct ActorPhysics: Sendable {
     speed: Float = 60,
     gravity: Float? = nil,
     knockbackStrength: Float = 80,
+    knockbackRecoveryTime: Double = 0.15,
     jumpSpeed: Float = 130,
     minJumpSpeed: Float = 60,
     coyoteTime: Double = 0.1,
@@ -262,6 +264,7 @@ public struct ActorPhysics: Sendable {
     self.speed = speed
     self.gravity = gravity
     self.knockbackStrength = knockbackStrength
+    self.knockbackRecoveryTime = knockbackRecoveryTime
     self.jumpSpeed = jumpSpeed
     self.minJumpSpeed = minJumpSpeed
     self.coyoteTime = coyoteTime

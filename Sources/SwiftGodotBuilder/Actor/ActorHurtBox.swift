@@ -38,12 +38,12 @@ public struct ActorHurtBox: GView {
     .onEvent(ActorEvent.self) { node, event in
       let myInstanceId = Int(node.getInstanceId())
       switch event {
-      case let .meleeHit(_, targetId, position, damage) where targetId == myInstanceId:
-        actor.takeDamage(damage, from: position)
-      case let .projectileHitTarget(_, targetId, position, damage) where targetId == myInstanceId:
-        actor.takeDamage(damage, from: position)
-      case let .dealtDamage(_, targetId, damage) where targetId == myInstanceId:
-        actor.takeDamage(damage, from: actor.position)
+      case let .meleeHit(_, targetId, position, damage, knockback, direction) where targetId == myInstanceId:
+        actor.takeDamage(damage, from: position, knockback: knockback, direction: direction)
+      case let .projectileHitTarget(_, targetId, position, damage, direction) where targetId == myInstanceId:
+        actor.takeDamage(damage, from: position, direction: direction)
+      case let .dealtDamage(_, targetId, damage, position, direction) where targetId == myInstanceId:
+        actor.takeDamage(damage, from: position, direction: direction)
       default:
         break
       }

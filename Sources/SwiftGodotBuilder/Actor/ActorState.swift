@@ -12,15 +12,15 @@ public enum ActorEvent: EmittableEvent {
 
   // Combat
   case tookDamage(actorId: Int, damage: Int, position: Vector2)
-  case dealtDamage(actorId: Int, targetId: Int, damage: Int)
+  case dealtDamage(actorId: Int, targetId: Int, damage: Int, position: Vector2, direction: Vector2)
   case meleeAttacked(actorId: Int, position: Vector2, facing: Facing)
-  case meleeHit(actorId: Int, targetId: Int, position: Vector2, damage: Int)
+  case meleeHit(actorId: Int, targetId: Int, position: Vector2, damage: Int, knockback: Float, direction: Vector2)
   case phaseChanged(actorId: Int, phase: Int)
 
   // Projectiles
   case projectileFired(actorId: Int, position: Vector2, direction: Vector2, config: ActorRangedConfig)
   case projectileHitWall(actorId: Int, position: Vector2)
-  case projectileHitTarget(actorId: Int, targetId: Int, position: Vector2, damage: Int)
+  case projectileHitTarget(actorId: Int, targetId: Int, position: Vector2, damage: Int, direction: Vector2)
 
   // Movement
   case jumped(actorId: Int, position: Vector2)
@@ -57,6 +57,8 @@ public class ActorState {
   public var isOnFloor = false
   public var isOnWall = false
   public var wasOnFloor = false
+  public var knockbackVelocity: Vector2 = .zero
+  public var knockbackTimer: Double = 0
 
   // Physics - jump
   public var coyoteTimer: Double = 0
@@ -242,7 +244,12 @@ public class ActorState {
 
   // MARK: - Combat
 
-  public func takeDamage(_ amount: Int, from sourcePosition: Vector2) {
+  public func takeDamage(
+    _ amount: Int,
+    from sourcePosition: Vector2,
+    knockback: Float? = nil,
+    direction attackDirection: Vector2? = nil
+  ) {
     guard !isDying, !isInvincible, combat.canReceiveDamage else { return }
 
     health -= amount
@@ -257,9 +264,18 @@ public class ActorState {
       checkPhaseChange()
     }
 
-    // Apply knockback
-    let knockbackDir: Float = sourcePosition.x < position.x ? 1 : -1
-    velocity.x = knockbackDir * physics.knockbackStrength
+    // Apply knockback (use provided value or fall back to actor's physics config)
+    let knockbackStrength = knockback ?? physics.knockbackStrength
+    let horizontalDir: Float
+    if let attackDirection, abs(attackDirection.x) > 0.01 {
+      horizontalDir = attackDirection.x
+    } else {
+      horizontalDir = position.x - sourcePosition.x
+    }
+    let knockbackDir: Float = horizontalDir >= 0 ? 1 : -1
+    knockbackVelocity = [knockbackDir * knockbackStrength, 0]
+    knockbackTimer = physics.knockbackRecoveryTime
+    velocity.x = knockbackVelocity.x
   }
 
   /// Check if health crossed a phase threshold
@@ -305,6 +321,16 @@ public class ActorState {
       hitTimer -= delta
       if hitTimer <= 0 {
         isHit = false
+      }
+    }
+
+    // Knockback decay
+    if knockbackTimer > 0 {
+      knockbackTimer -= delta
+      knockbackVelocity = knockbackVelocity.lerp(to: .zero, weight: Float(10.0 * delta))
+      if knockbackTimer <= 0 {
+        knockbackVelocity = .zero
+        knockbackTimer = 0
       }
     }
 
@@ -386,6 +412,8 @@ public class ActorState {
     invincibilityTimer = 0
     isHit = false
     hitTimer = 0
+    knockbackVelocity = .zero
+    knockbackTimer = 0
     isStunned = false
     stunTimer = 0
     phase = 1

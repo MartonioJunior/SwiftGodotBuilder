@@ -1,13 +1,6 @@
 import Foundation
 import SwiftGodot
 
-// MARK: - Projectile State
-
-/// Mutable state for a projectile
-final class ProjectileState {
-  var lifetime: Double = 0
-}
-
 // MARK: - Projectile View
 
 /// A single projectile fired by an actor
@@ -20,7 +13,11 @@ public struct ActorProjectileView: GView {
   public let targetLayer: Physics2DLayer
   public let terrainLayer: Physics2DLayer
 
-  private let state = ProjectileState()
+  private final class ViewModel {
+    var lifetime: Double = 0
+  }
+
+  private let vm = ViewModel()
 
   public init(
     config: ActorRangedConfig,
@@ -46,7 +43,7 @@ public struct ActorProjectileView: GView {
 
   public var body: some GView {
     Area2D$ {
-      // Sprite or colored box - both centered at origin
+      // Sprite or colored box
       if let asset = config.spriteAsset, let animation = config.spriteAnimation {
         AseSprite$(path: asset)
           .autoplay(animation)
@@ -54,23 +51,30 @@ public struct ActorProjectileView: GView {
         ColorBox$()
           .size(config.size)
           .color(config.color ?? defaultColor)
+          .position(-config.size / 2)
       }
 
       CollisionShape2D$()
         .shape(RectangleShape2D(size: config.size))
-        .position(config.size / 2)
+        .position(.zero)
     }
     .position(startPosition)
     .rotation(Double(atan2(direction.y, direction.x)))
     .collisionLayer(projectileLayer)
     .collisionMask(Physics2DLayer([targetLayer, terrainLayer]))
-    .monitorable(false)
+    .monitorable(true)
     .monitoring(true)
     .onSignal(\.areaEntered) { node, area in
       guard let area else { return }
       let targetId = Int(area.getInstanceId())
       let hitPos = node.globalPosition
-      ActorEvent.projectileHitTarget(actorId: sourceActorId, targetId: targetId, position: hitPos, damage: config.damage).emit()
+      ActorEvent.projectileHitTarget(
+        actorId: sourceActorId,
+        targetId: targetId,
+        position: hitPos,
+        damage: config.damage,
+        direction: direction
+      ).emit()
       node.queueFree()
     }
     .onSignal(\.bodyEntered) { node, _ in
@@ -79,8 +83,8 @@ public struct ActorProjectileView: GView {
       node.queueFree()
     }
     .onProcess { node, delta in
-      state.lifetime += delta
-      if state.lifetime >= config.lifetime {
+      vm.lifetime += delta
+      if vm.lifetime >= config.lifetime {
         node.queueFree()
         return
       }

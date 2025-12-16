@@ -368,6 +368,11 @@ extension ActorView {
     actor.movementInput = 0
     actor.wantsJump = false
 
+    // Skip behavior-driven movement during knockback
+    if actor.knockbackTimer > 0 {
+      return
+    }
+
     // Don't process behaviors when stunned or dying
     guard !actor.isStunned, !actor.isDying else { return }
 
@@ -696,7 +701,9 @@ extension ActorView {
       vel.y += effectiveGravity * Float(delta)
     }
 
-    if actor.capabilities.contains(.canMove) {
+    if actor.knockbackTimer > 0 {
+      vel.x = actor.knockbackVelocity.x
+    } else if actor.capabilities.contains(.canMove) {
       let speed = actor.isCrouching
         ? actor.physics.speed * actor.physics.crouchSpeedMultiplier
         : actor.physics.speed

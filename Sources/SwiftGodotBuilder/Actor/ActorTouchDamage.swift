@@ -37,10 +37,20 @@ public struct ActorTouchDamage: GView {
     .collisionMask(collisionMask)
     .monitorable(false)
     .monitoring(true)
-    .onSignal(\.areaEntered) { _, area in
+    .onSignal(\.areaEntered) { node, area in
       guard !actor.isDying, let area else { return }
       let targetId = Int(area.getInstanceId())
-      ActorEvent.dealtDamage(actorId: actor.id, targetId: targetId, damage: actor.combat.touchDamage).emit()
+      var direction = (area.globalPosition - node.globalPosition).normalized()
+      if direction == .zero {
+        direction = [actor.facing.sign, 0]
+      }
+      ActorEvent.dealtDamage(
+        actorId: actor.id,
+        targetId: targetId,
+        damage: actor.combat.touchDamage,
+        position: node.globalPosition,
+        direction: direction
+      ).emit()
     }
   }
 }

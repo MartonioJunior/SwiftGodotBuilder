@@ -48,14 +48,21 @@ public struct ActorWeaponHitbox: GView {
     .position(calculatePosition(for: actor.facing))
     .collisionLayer(attackLayer)
     .collisionMask(targetMask)
-    .monitorable(false)
+    .monitorable(weapons.phase.hitboxActive)
     .monitoring(weapons.phase.hitboxActive)
     .visible(weapons.phase.hitboxActive)
     .onSignal(\.areaEntered) { node, area in
       guard let area, let config = meleeConfig else { return }
       let targetId = Int(area.getInstanceId())
       let hitPos = (node.globalPosition + area.globalPosition) / 2
-      ActorEvent.meleeHit(actorId: actor.id, targetId: targetId, position: hitPos, damage: config.damage).emit()
+      ActorEvent.meleeHit(
+        actorId: actor.id,
+        targetId: targetId,
+        position: hitPos,
+        damage: config.damage,
+        knockback: config.knockback,
+        direction: [actor.facing.sign, 0]
+      ).emit()
     }
     .watch(actorState, \.facing) { node, newFacing in
       node.position = calculatePosition(for: newFacing)
@@ -71,6 +78,7 @@ public struct ActorWeaponHitbox: GView {
     .watch(weaponState, \.phase) { (node: Area2D, phase) in
       Engine.onNextFrame {
         node.monitoring = phase.hitboxActive
+        node.monitorable = phase.hitboxActive
       }
       node.visible = phase.hitboxActive
       // Recalculate position when attack starts to ensure correct placement after reset
