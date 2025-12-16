@@ -87,10 +87,12 @@ Sprite2D$()
   .modulate(.red)
   .zIndex(10)
 
-// Configure closure for complex setup
-Sprite2D$().configure { sprite in
-  sprite.texture = myTexture
-  sprite.centered = true
+// Configure closure for imperative setup
+RichTextLabel$().configure { label in
+  label.pushColor(.cyan)
+  label.appendText("Colored ")
+  label.pop()
+  label.appendText("text")
 }
 ```
 
@@ -148,6 +150,24 @@ Node2D$()
   }
 ```
 
+### Node References
+
+Capture references to nodes for later use.
+
+```swift
+// On GNode - captures the node when ready
+@State var playerNode: CharacterBody2D?
+
+CharacterBody2D$()
+  .ref($playerNode)
+
+// On GView - captures the root node produced by the component
+@State var cameraNode: Camera2D?
+
+CameraView()
+  .ref($cameraNode)
+```
+
 ### Custom Components
 
 Create reusable components with slots.
@@ -191,7 +211,6 @@ LabeledCell("Stats") {
 struct PlayerView: GView {
   @State var health: Int = 100
   @State var position: Vector2 = .zero
-  @State var playerNode: CharacterBody2D?
 
   var body: some GView {
     CharacterBody2D$ {
@@ -200,7 +219,6 @@ struct PlayerView: GView {
         .value($health)  // One-way binding
     }
     .position($position)  // Bind to property
-    .ref($playerNode)     // Capture node reference
     .onProcess { node, delta in
       health -= 1  // Modify state
     }
@@ -215,7 +233,7 @@ struct PlayerView: GView {
 ProgressBar$().value($health)
 
 // Bind with formatter
-Label$().bind(\.text, to: $score) { "Score: \($0)" }
+Label$().text($score) { "Score: \($0)" }
 
 // Bind to sub-property
 Sprite2D$().bind(\.x, to: $position, \.x)
@@ -228,6 +246,12 @@ LineEdit$().text($username)
 Slider$().value($volume)
 CheckBox$().pressed($isEnabled)
 OptionButton$().selected($selectedIndex)
+
+// ObservableState bindings (shorthand)
+@ObservableState var state = GameViewModel()
+Label$().text(state.playerName)              // reactive binding
+Label$().text(state.score) { "Score: \($0)" } // with transform
+Node2D$().position($state.position)          // $ prefix also works
 ```
 
 ### Dynamic Views
@@ -359,6 +383,26 @@ Node2D$().watch($health) { node, health in
 }
 ```
 
+### ReactiveDebug
+
+Debug utility to detect watchers firing too frequently. Useful for catching:
+- `watchAny()` on objects with per-frame position updates
+- Computed properties that depend on timers/positions when they shouldn't
+
+```swift
+// Enable at startup
+ReactiveDebug.isEnabled = true
+ReactiveDebug.warningThreshold = 30 // warn if >30 updates/sec
+
+// Logs warnings like:
+// ⚠️ [ReactiveDebug] Hot observable: 60.0/sec - EnemyState.*any*
+// (This means watchAny is firing every frame - probably watching position
+//  when you only care about isDying. Use a specific watch instead.)
+
+// Print summary of all tracked state
+ReactiveDebug.printSummary()
+```
+
 ### Store
 
 ```swift
@@ -486,7 +530,376 @@ enum GameEvent: EmittableEvent {
 GameEvent.playerDied.emit()
 ```
 
-## Dialog Trees
+## UI
+
+### Control Layout
+
+```swift
+// Anchor/offset presets (non-container parents)
+Control$()
+  .anchors(.center)
+  .offsets(.topRight)
+  .anchorsAndOffsets(.fullRect, margin: 10)
+  .anchor(top: 0, right: 1, bottom: 1, left: 0)
+  .offset(top: 12, right: -12, bottom: -12, left: 12)
+
+// Container size flags (for VBox/HBox parents)
+Button$()
+  .sizeH(.expandFill)
+  .sizeV(.shrinkCenter)
+  .size(.expandFill, .shrinkCenter)
+  .size(.expandFill)  // Both axes
+```
+
+### Theme Building
+
+```swift
+Label$()
+  .theme(Theme([
+  "Label": [
+    "colors": ["fontColor": Color.white],
+    "fontSizes": ["fontSize": 16]
+  ]
+]))
+
+// Or create and reuse a Theme
+let theme = Theme([
+  "Label": [
+    "colors": ["fontColor": Color.white],
+    "fontSizes": ["fontSize": 16]
+  ]
+])
+
+Control$().theme(theme)
+```
+
+### StyleBox Styling
+
+Declarative StyleBox builders for UI styling.
+
+```swift
+PanelContainer$ {
+  Label$().text("Styled Panel")
+}
+.panelStyle(
+  StyleBoxFlat$()
+    .bgColor(.black.withAlpha(0.9))
+    .borderColor(.cyan)
+    .borderWidth(2)
+    .cornerRadius(8)
+    .shadowColor(.black.withAlpha(0.5))
+    .shadowSize(12)
+)
+
+// Generic styleBox modifier
+Control$()
+  .styleBox("panel", StyleBoxFlat$().bgColor(.red))
+  .styleBox("focus", StyleBoxFlat$().borderColor(.white))
+```
+
+**Available StyleBox Builders:**
+- `StyleBoxFlat$()` - Solid colors, borders, rounded corners, shadows
+- `StyleBoxTexture$(texture:)` - Texture-based styling
+- `StyleBoxLine$()` - Simple line/border styling
+- `StyleBoxEmpty$()` - Invisible (no background)
+
+**Convenience Methods (StyleBoxFlat$):**
+`.borderWidth(_:)`, `.cornerRadius(_:)`, `.contentMargin(_:)`, `.expandMargin(_:)`
+
+### Buttons
+
+```swift
+StyledButton("Play", width: 80, color: .cyan) { startGame() }
+AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
+BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
+```
+
+### Labels
+
+```swift
+HeaderLabel("Game Over", size: 24, color: .red)
+InfoLabel("Press any key", color: .gray)
+LiveInfoLabel(state.scoreDisplay, color: .gold)  // Reactive text
+```
+
+### Overlays
+
+```swift
+// Scrolling BBCode credits with star particles
+CreditsOverlay(
+  isVisible: $showCredits,
+  creditsText: "[center][color=#00FFFF]My Game[/color]..."
+) {
+  showCredits = false
+}
+
+// Animated title with "press any button" prompt
+SplashOverlay(
+  isVisible: $showSplash,
+  title: "My Game",
+  prompt: "PRESS START"
+) {
+  showSplash = false
+}
+
+// Typewriter text with choice buttons
+DialogBox(
+  isVisible: $showDialog,
+  dialogRunner: { myDialogRunner },
+  speakerColors: ["Hero": .cyan, "Villain": .red]
+) {
+  showDialog = false
+}
+```
+
+### Palette
+
+Shared color/style definitions.
+
+```swift
+let palette = Palette.shared
+palette.cyan, palette.red, palette.gold
+palette.buttonStyles(palette.cyan, withFocus: true)
+palette.panelStyle, palette.victoryPanelStyle
+```
+
+## Node Modifiers
+
+### Collision (2D)
+
+Named layer helpers.
+
+```swift
+CharacterBody2D$()
+  .collisionLayer(.alpha)
+  .collisionMask([.beta, .gamma])
+
+// Available layers: .alpha, .beta, .gamma, .delta, .epsilon, .zeta, .eta, .theta,
+// .iota, .kappa, .lambda, .mu, .nu, .xi, .omicron, .pi, .rho, .sigma, .tau,
+// .upsilon, .phi, .chi, .psi, .omega
+
+// Custom layers
+CharacterBody2D$()
+  .collisionMask(wallLayer | enemyLayer)
+```
+
+### Groups
+
+```swift
+Node2D$()
+  .group("enemies")
+  .group("damageable", persistent: true)
+  .groups(["enemies", "damageable"])
+```
+
+### Scene Instancing
+
+```swift
+Node2D$()
+  .fromScene("enemy.tscn") { child in
+    // Configure instanced scene
+  }
+```
+
+## Animation
+
+### Tweens
+
+```swift
+// One-shot tween
+btn.tween(.scale([1.1, 1.1]), duration: 0.1)
+   .ease(.out).trans(.quad)
+
+// Fade out and remove
+enemy.tween(.alpha(0.0), duration: 0.3)
+   .onFinished { enemy.queueFree() }
+
+// Managed tween (kills previous)
+@State var currentTween: TweenHandle?
+
+currentTween = btn.tween(.scale([1.1, 1.1]), duration: 0.1, killing: currentTween)
+   .trans(.quad).ease(.out)
+```
+
+### Sequences
+
+```swift
+// Bounce effect
+btn.tween { seq in
+  seq.to(.scale([1.0, 0.8]), duration: 0.05)
+     .trans(.quad).ease(.out)
+     .to(.scale([1.0, 1.15]), duration: 0.08)
+     .trans(.quad).ease(.out)
+     .to(.scale([1.0, 1.0]), duration: 0.12)
+     .trans(.bounce).ease(.out)
+}
+
+// Looping pulse
+icon.tween { seq in
+  seq.to(.scale([1.05, 1.05]), duration: 0.5)
+     .trans(.sine).ease(.inOut)
+     .to(.scale([1.0, 1.0]), duration: 0.5)
+     .trans(.sine).ease(.inOut)
+}
+.loop()
+
+// Loop specific number of times
+node.tween { seq in
+  seq.to(.rotation(Float.pi * 2), duration: 1.0)
+}
+.loop(3)
+```
+
+### Anim Properties
+
+- **Scale**: `.scale(Vector2)`, `.scaleX(Float)`, `.scaleY(Float)`
+- **Position**: `.position(Vector2)`, `.positionX(Float)`, `.positionY(Float)`, `.globalPosition(Vector2)`
+- **Rotation**: `.rotation(Float)`, `.rotationDegrees(Float)`
+- **Color**: `.modulate(Color)`, `.alpha(Float)`, `.selfModulate(Color)`, `.selfAlpha(Float)`
+- **Size**: `.size(Vector2)`, `.minSize(Vector2)`, `.pivotOffset(Vector2)`
+- **Other**: `.skew(Float)`, `.volumeDb(Float)`, `.pitchScale(Float)`
+- **Custom**: `.custom(property: String, value: Variant)`
+
+### Reactive Tweens
+
+Animate properties in response to state changes.
+
+```swift
+// Toggle animation - animate between two values based on bool state
+@State var isHovered = false
+
+Button$()
+  .tweenToggle($isHovered, Anim.Scale.self,
+               whenTrue: [1.1, 1.1], whenFalse: [1.0, 1.0],
+               duration: 0.1)
+  .onSignal(\.mouseEntered) { _ in isHovered = true }
+  .onSignal(\.mouseExited) { _ in isHovered = false }
+
+// Conditional animation - run different animations based on state value
+@State var selectedTab = 0
+
+TabButton$()
+  .tweenWhen($selectedTab, equals: 0) { btn in
+    btn.tween(.scale([1.1, 1.1]), duration: 0.1).ease(.out)
+  } otherwise: { btn in
+    btn.tween(.scale([1.0, 1.0]), duration: 0.1).ease(.out)
+  }
+
+// On change - custom handler for any state change
+@State var health = 100
+
+HealthBar$()
+  .tweenOnChange($health) { bar, newHealth in
+    bar.tween(.scaleX(Float(newHealth) / 100.0), duration: 0.2).ease(.out)
+  }
+```
+
+## Scenes & Navigation
+
+### SceneRouter
+
+Vue Router-inspired navigation with built-in transitions.
+
+```swift
+enum GameScene { case splash, menu, playing, gameOver }
+
+@ObservableState var router = SceneRouter(initial: GameScene.splash)
+
+// Navigate with transitions
+router.navigate(to: .menu, transition: .fade())
+router.navigate(to: .playing, transition: .wipe(duration: 0.5))
+router.navigate(to: .gameOver, transition: .iris(center: playerPos))
+
+// With midpoint callback for setup
+router.navigate(to: .playing, transition: .fade()) {
+  state.reset()
+  state.currentLevel = selectedLevel
+}
+
+// Use with Switch for reactive UI
+Switch($router.scene) {
+  Case(.splash) { SplashOverlay() }
+  Case(.menu) { MainMenu() }
+  Case(.playing) { GameLevel() }
+  Case(.gameOver) { GameOverScreen() }
+}
+.mode(.destroy)
+
+// Pass router's transition state to TransitionManager
+TransitionManager(state: $router.transitionState, screenSize: [428, 240])
+
+// Nested routes (child routers)
+let levelRouter = router.child(for: .playing, initial: 1)
+levelRouter.navigate(to: 3, transition: .fade())
+```
+
+### Transitions
+
+- **fade** - Screen fades to black and back
+- **wipe** - Horizontal wipe across screen
+- **irisOut** - Circle shrinks to point, then expands
+
+```swift
+struct GameUI: GView {
+  @ObservableState var transitionState = TransitionState()
+
+  var body: some GView {
+    CanvasLayer$ {
+      // Game UI here
+    }
+
+    TransitionManager(state: $transitionState, screenSize: [428, 240])
+  }
+}
+
+// Simple fade
+transitionState.fadeTransition(onMidpoint: {
+  loadNextLevel()
+})
+
+// Wipe with custom duration
+transitionState.wipeTransition(duration: 0.8)
+
+// Iris centered on player
+let playerCenter: Vector2 = [0.3, 0.6] // normalized 0-1
+transitionState.irisOutTransition(center: playerCenter)
+
+// Hold at midpoint for minimum duration
+transitionState.fadeTransition(holdDuration: 0.5, onMidpoint: {
+  loadLevel()
+})
+
+// Wait for async work to complete
+transitionState.fadeTransition(waitForResume: true, onMidpoint: {
+  loadLevelAsync {
+    transitionState.resume() // Continue transition when ready
+  }
+})
+
+// Both: minimum hold time + wait for async
+transitionState.irisOutTransition(
+  holdDuration: 0.3,
+  waitForResume: true,
+  onMidpoint: { startLoading() },
+  onComplete: { print("Done!") }
+)
+```
+
+#### Transition Events
+
+```swift
+.onEvent(TransitionEvent.self) { _, event in
+  switch event {
+  case .started(let type): print("Started \(type)")
+  case .midpoint: print("Midpoint reached")
+  case .completed(let type): print("Completed \(type)")
+  }
+}
+```
+
+## Game Systems
+
+### Dialog Trees
 
 Screenplay-style dialog trees.
 
@@ -566,252 +979,248 @@ runner.selectChoice(0)     // Pick choice
 }
 ```
 
-## Node Modifiers
+### Combat Helpers
 
-### Control Layout
-
-```swift
-// Anchor/offset presets (non-container parents)
-Control$()
-  .anchors(.center)
-  .offsets(.topRight)
-  .anchorsAndOffsets(.fullRect, margin: 10)
-  .anchor(top: 0, right: 1, bottom: 1, left: 0)
-  .offset(top: 12, right: -12, bottom: -12, left: 12)
-
-// Container size flags (for VBox/HBox parents)
-Button$()
-  .sizeH(.expandFill)
-  .sizeV(.shrinkCenter)
-  .size(.expandFill, .shrinkCenter)
-  .size(.expandFill)  // Both axes
-```
-
-
-### Theme Building
+Melee weapon timing with startup/active/recovery phases.
 
 ```swift
-// Flat dictionary - auto-categorized by property name
-Label$()
-  .theme(Theme([
-  "Label": [
-    "colors": ["fontColor": Color.white],
-    "fontSizes": ["fontSize": 16]
-  ]
-]))
-
-// Or create and reuse a Theme
-let theme = Theme([
-  "Label": [
-    "colors": ["fontColor": Color.white],
-    "fontSizes": ["fontSize": 16]
-  ]
-])
-
-Control$().theme(theme)
-```
-
-### StyleBox Styling
-
-Declarative StyleBox builders for UI styling.
-
-```swift
-// StyleBoxFlat$ - for solid colors, borders, shadows
-PanelContainer$ {
-  Label$().text("Styled Panel")
-}
-.panelStyle(
-  StyleBoxFlat$()
-    .bgColor(.black.withAlpha(0.9))
-    .borderColor(.cyan)
-    .borderWidth(2)
-    .cornerRadius(8)
-    .shadowColor(.black.withAlpha(0.5))
-    .shadowSize(12)
+let sword = WeaponConfig(
+  name: "Sword",
+  hitboxSize: [8, 8],
+  hitboxOffset: 7,
+  startupTime: 0.05,
+  activeTime: 0.1,
+  recoveryTime: 0.1,
+  damage: 1,
+  knockback: 80,
+  canHitMultiple: false,
+  sweepArc: nil
 )
 
-// Generic styleBox modifier
-Control$()
-  .styleBox("panel", StyleBoxFlat$().bgColor(.red))
-  .styleBox("focus", StyleBoxFlat$().borderColor(.white))
+var phase: AttackPhase = .idle
+var timer = 0.0
 
-#### Available StyleBox Builders
+func startAttack() {
+  phase = .startup
+  timer = sword.startupTime
+}
 
-- `StyleBoxFlat$()` - Solid colors, borders, rounded corners, shadows
-- `StyleBoxTexture$(texture:)` - Texture-based styling
-- `StyleBoxLine$()` - Simple line/border styling
-- `StyleBoxEmpty$()` - Invisible (no background)
-
-#### Convenience Methods (StyleBoxFlat$ only)
-
-- `.borderWidth(_:)` - Sets all 4 border widths
-- `.cornerRadius(_:)` - Sets all 4 corner radii
-- `.contentMargin(_:)` - Sets all 4 content margins
-- `.expandMargin(_:)` - Sets all 4 expand margins
-
-### Collision (2D)
-
-Named layer helpers.
-
-```swift
-CharacterBody2D$()
-  .collisionLayer(.alpha)
-  .collisionMask([.beta, .gamma])
-
-// Available layers: .alpha, .beta, .gamma, .delta, .epsilon, .zeta, .eta, .theta,
-// .iota, .kappa, .lambda, .mu, .nu, .xi, .omicron, .pi, .rho, .sigma, .tau,
-// .upsilon, .phi, .chi, .psi, .omega
-
-// Custom layers
-CharacterBody2D$()
-  .collisionMask(wallLayer | enemyLayer)
-```
-
-
-### Groups
-
-```swift
-Node2D$()
-  .group("enemies")
-  .group("damageable", persistent: true)
-  .groups(["enemies", "damageable"])
-```
-
-### Scene Instancing
-```swift
-Node2D$()
-  .fromScene("enemy.tscn") { child in
-    // Configure instanced scene
+func update(delta: Double) {
+  timer -= delta
+  if timer <= 0 {
+    phase = phase.next()
+    timer = phase.duration(weapon: sword)
   }
-```
-
-## Extensions
-
-### Vector2 Extensions
-
-```swift
-let pos = Vector2(100, 200)
-let pos: Vector2 = [100, 200]  // Array literal
-let doubled = pos * 2
-let scaled = pos * 1.5
-```
-
-### Color Extensions
-
-```swift
-// Create colors with alpha
-let semiTransparent = Color.black.withAlpha(0.9)
-let glowColor = Color.cyan.withAlpha(0.5)
-
-### Shape Extensions
-
-```swift
-let rect = RectangleShape2D(w: 50, h: 100)
-let circle = CircleShape2D(radius: 25)
-let capsule = CapsuleShape2D(radius: 10, height: 50)
-let segment = SegmentShape2D(a: [0, 0], b: [100, 100])
-let ray = SeparationRayShape2D(length: 100)
-let boundary = WorldBoundaryShape2D(normal: [0, -1], distance: 0)
-```
-
-### Node Extensions
-
-```swift
-// Typed queries
-let sprites: [Sprite2D] = node.getChildren()
-let firstSprite: Sprite2D? = node.getChild()
-let enemySprite: Sprite2D? = node.getNode("Enemy")
-
-// Group queries
-let enemies: [Enemy] = node.getNodes(inGroup: "enemies")
-
-// Parent chain
-let parents: [Node2D] = node.getParents()
-
-// Metadata queries (recursive)
-let spawns: [Node2D] = root.queryMeta(key: "type", value: "spawn")
-let valuable: [Node2D] = root.queryMeta(key: "value", value: 100)
-let markers: [Node2D] = root.queryMetaKey("marker")
-
-// Get typed metadata
-let coinValue: Int? = node.getMetaValue("coin_value")
-```
-
-### Engine Extensions
-
-```swift
-if let tree = Engine.getSceneTree() {
-  // ...
-}
-
-Engine.onNextFrame {
-  print("Next frame!")
-}
-
-Engine.onNextPhysicsFrame {
-  print("Next physics frame!")
+  if phase.hitboxActive { /* deal damage */ }
 }
 ```
 
-## Helpers
+### Object Pools
 
-### SpriteSheet
+#### ObjectPool
 
-Reference individual sprites from a spritesheet by name.
+Generic pool for reusable Godot objects.
 
 ```swift
-enum ItemSprite: Int, SpriteSheet {
-  case heart = 0
-  case key = 1
-  // tile 2 blank
-  case coin = 3, coinSide = 13, coinBack = 23
-  case sword = 4
-
-  static let sheetPath = "res://items.png"
-  static let tileSize: Vector2 = [16, 16]
-  static let columns = 10
-
-  // Define animations
-  static let coinSpin = SpriteAnimation(frames: [.coin, .coinSide, .coinBack, .coinSide], fps: 4)
+final class Bullet: Node2D, PooledObject {
+  func onAcquire() { visible = true }
+  func onRelease() { visible = false; position = .zero }
 }
 
-// Static sprite
-Sprite2D$().texture(ItemSprite.heart.texture)
+let pool = ObjectPool<Bullet>(factory: { Bullet() })
+pool.preload(64)
 
-// Animated sprite (uses Godot's AnimatedSprite2D)
-AnimatedSpriteSheet(ItemSprite.coinSpin)
+if let bullet = pool.acquire() {
+  bullet.position = spawnPos
+  parent.addChild(node: bullet)
+  // later:
+  pool.release(bullet)
+}
+
+// Or use PoolLease for scoped usage
+PoolLease(pool).using { bullet in
+  // automatically released after closure
+}
+```
+
+#### AreaPool
+
+Pool for Area2D projectiles with velocity-based movement.
+
+```swift
+let bulletPool = AreaPool(
+  preload: 30,
+  speed: 300,
+  lifetime: 3.0,
+  bounds: (-50, 850, -50, 290)
+) {
+  Area2D$ {
+    Sprite2D$().res(\.texture, "bullet.png")
+    CollisionShape2D$().shape(CircleShape2D(radius: 4))
+  }
+  .collisionLayer(.beta)
+  .collisionMask(.alpha)
+}
+
+// Call once when parent is in scene tree
+bulletPool.start()
+
+// Fire projectiles
+bulletPool.fire(at: playerPos, direction: aimDir, parent: self)
+
+// Update in _process
+bulletPool.update(delta: delta)
+```
+
+#### TypedParticlePool
+
+Multi-variant particle pool keyed by type.
+
+```swift
+enum ParticleType { case dust, spark, blood }
+
+let particles = TypedParticlePool<ParticleType, CPUParticles2D>(
+  keys: [.dust, .spark, .blood],
+  config: .init(prewarmPerType: 5)
+) { type in
+  switch type {
+  case .dust: return makeDustParticles()
+  case .spark: return makeSparkParticles()
+  case .blood: return makeBloodParticles()
+  }
+}
+
+particles.setup(parent: self)
+particles.spawn(type: .dust, at: position)
+particles.spawn(type: .spark, at: hitPoint, scale: [2, 2])
 ```
 
 ### Particle Effects
 
 ```swift
-// Define presets as extensions
-extension ParticleConfig {
-  static let explosion = ParticleConfig(
+// Built-in presets: .explosion, .sparkle, .dust, .splatter, .smoke
+CPUParticles2D$()
+  .config(.explosion)
+  .oneShot(true)
+  .emitting(true)
+
+// Modify presets
+CPUParticles2D$()
+  .config(.explosion.withColor(.red).withAmount(30))
+
+// Custom config
+CPUParticles2D$()
+  .config(ParticleConfig(
     amount: 20,
     lifetime: 0.8,
     explosiveness: 1.0,
-    direction: Vector2(x: 0, y: -1),
+    direction: [0, -1],
     spread: 180,
     initialVelocityMin: 100,
     initialVelocityMax: 200,
-    gravity: Vector2(x: 0, y: 400),
-    color: Color(r: 1.0, g: 0.5, b: 0.0)
-  )
+    gravity: [0, 400],
+    color: .orange
+  ))
+
+// Direct initialization
+let particles = CPUParticles2D(.dust)
+particles.emitting = true
+```
+
+### Spawners
+
+```swift
+// Damage numbers, popups
+FloatingTextSpawner(GameEvent.self) { event in
+  if case let .damageDealt(amount, position) = event {
+    return (text: "\(amount)", position: position, color: .red)
+  }
+  return nil
 }
 
-// Apply to particles
-let config = ParticleConfig.explosion
-CPUParticles2D$()
-  .amount(config.amount)
-  .lifetime(config.lifetime)
-  .explosiveness(config.explosiveness)
-  .direction(config.direction)
-  .spread(config.spread)
-  .initialVelocityMin(config.initialVelocityMin)
-  .initialVelocityMax(config.initialVelocityMax)
-  .gravity(config.gravity)
-  .color(config.color)
+// Spawn nodes in response to events
+NodeSpawner(GameEvent.self) { event in
+  if case let .collectibleSpawned(def, pos) = event {
+    return CollectibleView(position: pos, def).toNode()
+  }
+  return nil
+} resetWhen: { event in
+  if case .gameReset = event { return true }
+  return false
+}
+```
+
+### Actors
+
+Unified system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
+
+```swift
+// ActorView auto-includes: ActorSprite, ActorHurtBox, ActorWeaponHitbox, ActorCollector, etc.
+
+// Define collision layers
+let layers = ActorCollisionLayers(
+  player: .beta,
+  enemyHurtbox: .iota,
+  playerHurtbox: .theta,
+  enemyAttack: .kappa,
+  playerAttack: .delta,
+  terrain: .alpha,
+  collectible: .gamma,
+  interaction: .eta
+)
+
+// Player with full capabilities
+ActorView(
+  spawnPosition: [100, 200],
+  size: [16, 24],
+  spriteAsset: "Hero",
+  animations: .withWeaponPrefix(defaultLayer: "Unarmed"),
+  collisionLayers: layers,
+  controller: PlayerActorController(),
+  physics: ActorPhysics(speed: 80, jumpSpeed: 150),
+  combat: ActorCombat(maxHealth: 5),
+  capabilities: .player,
+  startingWeapons: [WeaponRegistry.sword]
+) {
+  // Children closure is for custom additions like camera
+  ActorCamera(target: .actor(state), levelWidth: 400, levelHeight: 240)
+}
+
+// Enemy with AI behaviors
+ActorView(
+  spawnPosition: [200, 200],
+  size: [16, 16],
+  spriteAsset: "Skeleton",
+  animations: .perAction(idle: "Idle", walk: "Walk", attack: "Attack"),
+  collisionLayers: layers,
+  healthBar: HealthBarConfig(showWhenFull: false, barWidth: 24, barHeight: 3),
+  behaviors: [.pathPatrol(.fromBounds(100, 300)), .shoot(.init(interval: 2.0))],
+  physics: .grounded(speed: 40),
+  combat: ActorCombat(maxHealth: 3, touchDamage: 1),
+  capabilities: .enemy,
+  startingWeapons: [WeaponRegistry.fireball]
+)
+
+// Projectile spawner - uses same collision layers config
+ActorProjectileSpawner(collisionLayers: layers)
+```
+
+#### Actor Events
+
+```swift
+// Combat events
+ActorEvent.tookDamage(actorId: id, damage: 1, position: pos)
+ActorEvent.died(actorId: id, position: pos)
+ActorEvent.meleeHit(actorId: id, targetId: targetId, position: pos, damage: 1)
+ActorEvent.projectileFired(actorId: id, position: pos, direction: dir, config: rangedConfig)
+
+// Movement events
+ActorEvent.jumped(actorId: id, position: pos)
+ActorEvent.landed(actorId: id, position: pos, impact: velocity.y)
+
+// Interaction events
+ActorEvent.collected(actorId: id, itemId: "key", position: pos)
+ActorEvent.interacted(actorId: id, interactorId: playerId)
 ```
 
 ### Input Actions
@@ -868,62 +1277,7 @@ let movement = RuntimeAction.vector(
 )
 ```
 
-### Combat Helpers
-
-Melee weapon timing with startup/active/recovery phases.
-
-```swift
-let sword = WeaponConfig(
-  name: "Sword",
-  hitboxSize: [8, 8],
-  hitboxOffset: 7,
-  startupTime: 0.05,
-  activeTime: 0.1,
-  recoveryTime: 0.1,
-  damage: 1,
-  knockback: 80,
-  canHitMultiple: false,
-  sweepArc: nil
-)
-
-var phase: AttackPhase = .idle
-var timer = 0.0
-
-func startAttack() {
-  phase = .startup
-  timer = sword.startupTime
-}
-
-func update(delta: Double) {
-  timer -= delta
-  if timer <= 0 {
-    phase = phase.next()
-    timer = phase.duration(weapon: sword)
-  }
-  if phase.hitboxActive { /* deal damage */ }
-}
-```
-
-### MsgLog
-
-Thread-safe logging singleton.
-
-```swift
-MsgLog.shared.debug("Debug message")
-MsgLog.shared.info("Info message")
-MsgLog.shared.warn("Warning")
-MsgLog.shared.error("Error")
-
-// Set minimum level
-MsgLog.shared.minLevel = .warn
-
-// Custom sink
-MsgLog.shared.sink = { level, message in
-  print("[\(level)] \(message)")
-}
-```
-
-## Integrations
+## Asset Integrations
 
 ### LDtk
 
@@ -1080,50 +1434,19 @@ LDBreakableTerrainView(layer: breakableLayer, project: project)
   }
 ```
 
-### SVGSprite
+#### LDTileFieldView
 
-Runtime SVG rendering with vertex manipulation effects.
+Renders sprites from LDtk tile fields with automatic tiling.
 
 ```swift
-// Basic usage
-SVGSprite$()
-  .path("icon.svg")
-  .size(16) // Default is 32
-  .colors([.red, .darkRed, .crimson]) // Per-element colors
-  .stroke(.white, width: 2)
+// From tile counts
+if let tile = entity.field("sprite")?.asTile() {
+  LDTileFieldView(tile: tile, project: project, gridSize: 8, tileCountX: 4, tileCountY: 2)
+}
 
-// Mixing effect types - chaining works fine
-SVGSprite$()
-  .colorCycle([.red, .orange, .yellow]) // color effect
-  .inflate(amount: 3.0)                 // vertex effect
-
-// Multiple vertex effects - use svgEffects builder
-SVGSprite$()
-  .path("icon.svg")
-  .svgEffects {
-    SVGInflate(amount: 3.0)                    // applied first
-    SVGNoise(amount: 1.5)                      // applied to inflated result
-  }
-
-// With reactive bindings
-@State var meltProgress: Double = 0
-
-SVGSprite$()
-  .path("enemy.svg")
-  .melt(progress: $meltProgress)  // Animate on death
+// From pixel dimensions
+LDTileFieldView(tile: tile, project: project, gridSize: 8, width: 32, height: 16)
 ```
-
-#### Color Effects
-
-Can be freely chained with each other and with vertex effects.
-
-`.pulse(speed, amplitude, baseSize)`, `.colorCycle(colors, speed)`, `.strokeCycle(colors, speed)`, `.dualColorCycle(fill:, stroke:)`
-
-#### Vertex Effects
-
-Modify vertex positions. Use `svgEffects { }` to combine multiple.
-
-`.wobble(amount, speed)`, `.inflate(amount, speed)`, `.skew(amount, speed, animated)`, `.noise(amount, speed)`, `.ripple(amplitude, frequency, speed)`, `.twist(amount, speed)`, `.wave(amplitude, frequency, speed)`, `.explode(progress, scale)`, `.scatter(progress, scale, rotate)`, `.melt(progress, scale, waviness)`
 
 ### AseSprite
 
@@ -1145,6 +1468,43 @@ AseSprite$(path: "player", layer: "Main")
     sprite.play(anim: "Walk")
   }
 ```
+
+### SVGSprite
+
+Runtime SVG rendering with vertex manipulation effects.
+
+```swift
+// Basic usage
+SVGSprite$()
+  .path("icon.svg")
+  .size(16) // Default is 32
+  .colors([.red, .darkRed, .crimson]) // Per-element colors
+  .stroke(.white, width: 2)
+
+// Mixing effect types - chaining works fine
+SVGSprite$()
+  .colorCycle([.red, .orange, .yellow]) // color effect
+  .inflate(amount: 3.0)                 // vertex effect
+
+// Multiple vertex effects - use svgEffects builder
+SVGSprite$()
+  .path("icon.svg")
+  .svgEffects {
+    SVGInflate(amount: 3.0) // applied first
+    SVGNoise(amount: 1.5)   // applied to inflated result
+  }
+
+// With reactive bindings
+@State var meltProgress: Double = 0
+
+SVGSprite$()
+  .path("enemy.svg")
+  .melt(progress: $meltProgress)  // Animate on death
+```
+
+**Color Effects:** `.pulse(speed, amplitude, baseSize)`, `.colorCycle(colors, speed)`, `.strokeCycle(colors, speed)`, `.dualColorCycle(fill:, stroke:)`
+
+**Vertex Effects:** `.wobble(amount, speed)`, `.inflate(amount, speed)`, `.skew(amount, speed, animated)`, `.noise(amount, speed)`, `.ripple(amplitude, frequency, speed)`, `.twist(amount, speed)`, `.wave(amplitude, frequency, speed)`, `.explode(progress, scale)`, `.scatter(progress, scale, rotate)`, `.melt(progress, scale, waviness)`
 
 ### Bfxr
 
@@ -1171,278 +1531,144 @@ struct GameView: GView {
 }
 ```
 
-## Scenes & Transitions
+### SpriteSheet
 
-### SceneRouter
-
-Vue Router-inspired navigation with built-in transitions.
+Reference individual sprites from a spritesheet by name.
 
 ```swift
-enum GameScene { case splash, menu, playing, gameOver }
+enum ItemSprite: Int, SpriteSheet {
+  case heart = 0
+  case key = 1
+  // tile 2 blank
+  case coin = 3, coinSide = 13, coinBack = 23
+  case sword = 4
 
-@ObservableState var router = SceneRouter(initial: GameScene.splash)
+  static let sheetPath = "res://items.png"
+  static let tileSize: Vector2 = [16, 16]
+  static let columns = 10
 
-// Navigate with transitions
-router.navigate(to: .menu, transition: .fade())
-router.navigate(to: .playing, transition: .wipe(duration: 0.5))
-router.navigate(to: .gameOver, transition: .iris(center: playerPos))
-
-// With midpoint callback for setup
-router.navigate(to: .playing, transition: .fade()) {
-  state.reset()
-  state.currentLevel = selectedLevel
+  // Define animations
+  static let coinSpin = SpriteAnimation(frames: [.coin, .coinSide, .coinBack, .coinSide], fps: 4)
 }
 
-// Use with Switch for reactive UI
-Switch($router.scene) {
-  Case(.splash) { SplashOverlay() }
-  Case(.menu) { MainMenu() }
-  Case(.playing) { GameLevel() }
-  Case(.gameOver) { GameOverScreen() }
-}
-.mode(.destroy)
+// Static sprite
+Sprite2D$().texture(ItemSprite.heart.texture)
 
-// Pass router's transition state to TransitionManager
-TransitionManager(state: $router.transitionState, screenSize: [428, 240])
-
-// Nested routes (child routers)
-let levelRouter = router.child(for: .playing, initial: 1)
-levelRouter.navigate(to: 3, transition: .fade())
+// Animated sprite (uses Godot's AnimatedSprite2D)
+AnimatedSpriteSheet(ItemSprite.coinSpin)
 ```
 
-### Transitions
+## Containers
 
-- **fade** - Screen fades to black and back
-- **wipe** - Horizontal wipe across screen
-- **irisOut** - Circle shrinks to point, then expands
+Wrapper components that add behavior to child content.
+
+### Interaction
 
 ```swift
-struct GameUI: GView {
-  @ObservableState var transitionState = TransitionState()
-
-  var body: some GView {
-    CanvasLayer$ {
-      // Game UI here
-    }
-
-    TransitionManager(state: $transitionState, screenSize: [428, 240])
-  }
+// Make any content clickable
+Clickable(onPressed: { score += 1 }) {
+  ColorBox$([64, 64]).color(.cyan)
 }
 
-// Simple fade
-transitionState.fadeTransition(onMidpoint: {
-  loadNextLevel()
-})
+// Track hover state
+@State var isHovered = false
+Hoverable($isHovered) {
+  Label$().text("Hover me").modulate(isHovered ? .yellow : .white)
+}
 
-// Wipe with custom duration
-transitionState.wipeTransition(duration: 0.8)
-
-// Iris centered on player
-let playerCenter: Vector2 = [0.3, 0.6] // normalized 0-1
-transitionState.irisOutTransition(center: playerCenter)
-
-// Hold at midpoint for minimum duration
-transitionState.fadeTransition(holdDuration: 0.5, onMidpoint: {
-  loadLevel()
-})
-
-// Wait for async work to complete
-transitionState.fadeTransition(waitForResume: true, onMidpoint: {
-  loadLevelAsync {
-    transitionState.resume() // Continue transition when ready
-  }
-})
-
-// Both: minimum hold time + wait for async
-transitionState.irisOutTransition(
-  holdDuration: 0.3,
-  waitForResume: true,
-  onMidpoint: { startLoading() },
-  onComplete: { print("Done!") }
-)
-```
-
-#### Transition Events
-
-```swift
-.onEvent(TransitionEvent.self) { _, event in
-  switch event {
-  case .started(let type): print("Started \(type)")
-  case .midpoint: print("Midpoint reached")
-  case .completed(let type): print("Completed \(type)")
-  }
+// Press feedback with scale animation
+Pressable(pressScale: 0.95, onPressed: { play() }) {
+  Label$().text("Press Me")
 }
 ```
 
-## Object Pools
-
-### ObjectPool
-
-Generic pool for reusable Godot objects.
+### Animation
 
 ```swift
-final class Bullet: Node2D, PooledObject {
-  func onAcquire() { visible = true }
-  func onRelease() { visible = false; position = .zero }
+// Continuous pulse
+Pulse(minScale: 0.95, maxScale: 1.05, duration: 1.0) {
+  Sprite2D$().res(\.texture, "icon.png")
 }
 
-let pool = ObjectPool<Bullet>(factory: { Bullet() })
-pool.preload(64)
-
-if let bullet = pool.acquire() {
-  bullet.position = spawnPos
-  parent.addChild(node: bullet)
-  // later:
-  pool.release(bullet)
+// Shake on trigger
+@State var shake = false
+Shake($shake, intensity: 4, duration: 0.4) {
+  Label$().text("Ouch!")
 }
 
-// Or use PoolLease for scoped usage
-PoolLease(pool).using { bullet in
-  // automatically released after closure
+// Fade in on appear
+FadeIn(duration: 0.3, delay: 0.5) {
+  Label$().text("Hello!")
 }
-```
-
-### AreaPool
-
-Pool for Area2D projectiles with velocity-based movement.
-
-```swift
-let bulletPool = AreaPool(
-  preload: 30,
-  speed: 300,
-  lifetime: 3.0,
-  bounds: (-50, 850, -50, 290)
-) {
-  Area2D$ {
-    Sprite2D$().res(\.texture, "bullet.png")
-    CollisionShape2D$().shape(CircleShape2D(radius: 4))
-  }
-  .collisionLayer(.beta)
-  .collisionMask(.alpha)
-}
-
-// Call once when parent is in scene tree
-bulletPool.start()
-
-// Fire projectiles
-bulletPool.fire(at: playerPos, direction: aimDir, parent: self)
-
-// Update in _process
-bulletPool.update(delta: delta)
-```
-
-### TypedParticlePool
-
-Multi-variant particle pool keyed by type.
-
-```swift
-enum ParticleType { case dust, spark, blood }
-
-let particles = TypedParticlePool<ParticleType, CPUParticles2D>(
-  keys: [.dust, .spark, .blood],
-  config: .init(prewarmPerType: 5)
-) { type in
-  switch type {
-  case .dust: return makeDustParticles()
-  case .spark: return makeSparkParticles()
-  case .blood: return makeBloodParticles()
-  }
-}
-
-particles.setup(parent: self)
-particles.spawn(type: .dust, at: position)
-particles.spawn(type: .spark, at: hitPoint, scale: [2, 2])
-```
-
-## Tweens
-
-```swift
-// One-shot tween
-btn.tween(.scale([1.1, 1.1]), duration: 0.1)
-   .ease(.out).trans(.quad)
 
 // Fade out and remove
-enemy.tween(.alpha(0.0), duration: 0.3)
-   .onFinished { enemy.queueFree() }
+@State var dismiss = false
+FadeOut($dismiss, duration: 0.3, removeOnComplete: true) {
+  PanelContainer$()
+}
 
-// Managed tween (kills previous)
-@State var currentTween: TweenHandle?
-
-currentTween = btn.tween(.scale([1.1, 1.1]), duration: 0.1, killing: currentTween)
-   .trans(.quad).ease(.out)
+// Slide in from direction
+SlideIn(from: .left, distance: 50, duration: 0.3) {
+  MenuPanel()
+}
 ```
 
-#### Sequences
+### Layout
 
 ```swift
-// Bounce effect
-btn.tween { seq in
-  seq.to(.scale([1.0, 0.8]), duration: 0.05)
-     .trans(.quad).ease(.out)
-     .to(.scale([1.0, 1.15]), duration: 0.08)
-     .trans(.quad).ease(.out)
-     .to(.scale([1.0, 1.0]), duration: 0.12)
-     .trans(.bounce).ease(.out)
+// Inset from edges
+SafeArea(top: 20, right: 10, bottom: 20, left: 10) {
+  GameUI()
 }
 
-// Looping pulse
-icon.tween { seq in
-  seq.to(.scale([1.05, 1.05]), duration: 0.5)
-     .trans(.sine).ease(.inOut)
-     .to(.scale([1.0, 1.0]), duration: 0.5)
-     .trans(.sine).ease(.inOut)
+// Show content after delay
+Delayed(seconds: 2.0, fadeIn: true) {
+  Label$().text("Ready!")
 }
-.loop()
 
-// Loop specific number of times
-node.tween { seq in
-  seq.to(.rotation(Float.pi * 2), duration: 1.0)
+// Maintain aspect ratio
+AspectRatio(16/9, stretchMode: .fit) {
+  VideoPlayer()
 }
-.loop(3)
+
+// Center in parent
+Centered {
+  Label$().text("Centered")
+}
+
+// Scrollable content
+Scrollable(horizontal: false, vertical: true) {
+  VBoxContainer$ { /* long content */ }
+}
 ```
 
-#### Available Anim Properties
-
-- **Scale**: `.scale(Vector2)`, `.scaleX(Float)`, `.scaleY(Float)`
-- **Position**: `.position(Vector2)`, `.positionX(Float)`, `.positionY(Float)`, `.globalPosition(Vector2)`
-- **Rotation**: `.rotation(Float)`, `.rotationDegrees(Float)`
-- **Color**: `.modulate(Color)`, `.alpha(Float)`, `.selfModulate(Color)`, `.selfAlpha(Float)`
-- **Size**: `.size(Vector2)`, `.minSize(Vector2)`, `.pivotOffset(Vector2)`
-- **Other**: `.skew(Float)`, `.volumeDb(Float)`, `.pitchScale(Float)`
-- **Custom**: `.custom(property: String, value: Variant)`
-
-#### Reactive Tween Modifiers
-
-Animate properties in response to state changes.
+### Game
 
 ```swift
-// Toggle animation - animate between two values based on bool state
-@State var isHovered = false
+// Area2D for detecting collisions
+TouchArea(layer: .alpha, mask: .beta,
+  onBodyEntered: { body in print("Hit: \(body)") }
+) {
+  CollisionShape2D$().shape(CircleShape2D(radius: 16))
+}
 
-Button$()
-  .tweenToggle($isHovered, Anim.Scale.self,
-               whenTrue: [1.1, 1.1], whenFalse: [1.0, 1.0],
-               duration: 0.1)
-  .onSignal(\.mouseEntered) { _ in isHovered = true }
-  .onSignal(\.mouseExited) { _ in isHovered = false }
+// Combat hitbox (monitors hurtboxes)
+HitBox(mask: .hurtbox, onHit: { area in dealDamage(to: area) }) {
+  CollisionShape2D$().shape(RectangleShape2D(w: 20, h: 20))
+}
 
-// Conditional animation - run different animations based on state value
-@State var selectedTab = 0
+// Combat hurtbox (receives hits)
+HurtBox(layer: .hurtbox, onHurt: { area in takeDamage() }) {
+  CollisionShape2D$().shape(CircleShape2D(radius: 12))
+}
 
-TabButton$()
-  .tweenWhen($selectedTab, equals: 0) { btn in
-    btn.tween(.scale([1.1, 1.1]), duration: 0.1).ease(.out)
-  } otherwise: { btn in
-    btn.tween(.scale([1.0, 1.0]), duration: 0.1).ease(.out)
-  }
-
-// On change - custom handler for any state change
-@State var health = 100
-
-HealthBar$()
-  .tweenOnChange($health) { bar, newHealth in
-    bar.tween(.scaleX(Float(newHealth) / 100.0), duration: 0.2).ease(.out)
-  }
+// Collectible pickup
+Pickup(layer: .pickup, mask: .player, autoRemove: true,
+  onCollected: { score += 10 }
+) {
+  Sprite2D$().res(\.texture, "coin.png")
+  CollisionShape2D$().shape(CircleShape2D(radius: 8))
+}
 ```
 
 ## Built-in Views
@@ -1455,22 +1681,6 @@ SpacerV()       // Vertical expand-fill
 SpacerH()       // Horizontal expand-fill
 ```
 
-### Buttons
-
-```swift
-StyledButton("Play", width: 80, color: .cyan) { startGame() }
-AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
-BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
-```
-
-### Labels
-
-```swift
-HeaderLabel("Game Over", size: 24, color: .red)
-InfoLabel("Press any key", color: .gray)
-LiveInfoLabel(state.scoreDisplay, color: .gold)  // Reactive text
-```
-
 ### ColorBox
 
 Polygon2D-based colored rectangle (like ColorRect for outside the UI).
@@ -1481,80 +1691,91 @@ ColorBox$([100, 50])
   .position([200, 300])
 ```
 
-### AudioManager
+## Extensions & Utilities
 
-Syncs volume settings with AudioServer.
+### Vector2 Extensions
 
 ```swift
-AudioManager(settings: $settings) {
-  BfxrSound$().bfxrPath("sounds/Jump.bfxr")
+let pos = Vector2(100, 200)
+let pos: Vector2 = [100, 200]  // Array literal
+let doubled = pos * 2
+let scaled = pos * 1.5
+```
+
+### Color Extensions
+
+```swift
+// Create colors with alpha
+let semiTransparent = Color.black.withAlpha(0.9)
+let glowColor = Color.cyan.withAlpha(0.5)
+
+### Shape Extensions
+
+```swift
+let rect = RectangleShape2D(w: 50, h: 100)
+let circle = CircleShape2D(radius: 25)
+let capsule = CapsuleShape2D(radius: 10, height: 50)
+let segment = SegmentShape2D(a: [0, 0], b: [100, 100])
+let ray = SeparationRayShape2D(length: 100)
+let boundary = WorldBoundaryShape2D(normal: [0, -1], distance: 0)
+```
+
+### Node Extensions
+
+```swift
+// Typed queries
+let sprites: [Sprite2D] = node.getChildren()
+let firstSprite: Sprite2D? = node.getChild()
+let enemySprite: Sprite2D? = node.getNode("Enemy")
+
+// Group queries
+let enemies: [Enemy] = node.getNodes(inGroup: "enemies")
+
+// Parent chain
+let parents: [Node2D] = node.getParents()
+
+// Metadata queries (recursive)
+let spawns: [Node2D] = root.queryMeta(key: "type", value: "spawn")
+let valuable: [Node2D] = root.queryMeta(key: "value", value: 100)
+let markers: [Node2D] = root.queryMetaKey("marker")
+
+// Get typed metadata
+let coinValue: Int? = node.getMetaValue("coin_value")
+```
+
+### Engine Extensions
+
+```swift
+if let tree = Engine.getSceneTree() {
+  // ...
+}
+
+Engine.onNextFrame {
+  print("Next frame!")
+}
+
+Engine.onNextPhysicsFrame {
+  print("Next physics frame!")
 }
 ```
 
-### Overlays
+### MsgLog
+
+Thread-safe logging singleton.
 
 ```swift
-// Scrolling BBCode credits with star particles
-CreditsOverlay(
-  isVisible: $showCredits,
-  creditsText: "[center][color=#00FFFF]My Game[/color]..."
-) {
-  showCredits = false
+MsgLog.shared.debug("Debug message")
+MsgLog.shared.info("Info message")
+MsgLog.shared.warn("Warning")
+MsgLog.shared.error("Error")
+
+// Set minimum level
+MsgLog.shared.minLevel = .warn
+
+// Custom sink
+MsgLog.shared.sink = { level, message in
+  print("[\(level)] \(message)")
 }
-
-// Animated title with "press any button" prompt
-SplashOverlay(
-  isVisible: $showSplash,
-  title: "My Game",
-  prompt: "PRESS START"
-) {
-  showSplash = false
-}
-
-// Typewriter text with choice buttons
-DialogBox(
-  isVisible: $showDialog,
-  dialogRunner: { myDialogRunner },
-  speakerColors: ["Hero": .cyan, "Villain": .red]
-) {
-  showDialog = false
-}
-```
-
-### Spawners
-
-```swift
-// Damage numbers, popups
-FloatingTextSpawner(GameEvent.self) { event in
-  if case let .damageDealt(amount, position) = event {
-    return (text: "\(amount)", position: position, color: .red)
-  }
-  return nil
-}
-
-// Spawn nodes in response to events
-NodeSpawner(GameEvent.self) { event in
-  if case let .collectibleSpawned(def, pos) = event {
-    return CollectibleView(position: pos, def).toNode()
-  }
-  return nil
-} resetWhen: { event in
-  if case .gameReset = event { return true }
-  return false
-}
-```
-
-## Utilities
-
-### Palette
-
-Shared color/style definitions.
-
-```swift
-let palette = Palette.shared
-palette.cyan, palette.red, palette.gold
-palette.buttonStyles(palette.cyan, withFocus: true)
-palette.panelStyle, palette.victoryPanelStyle
 ```
 
 ### UserSettings
@@ -1565,6 +1786,16 @@ Persistable audio/display settings.
 let settings = UserSettings()  // Auto-loads from disk
 settings.masterVolume, settings.sfxVolume, settings.musicVolume
 settings.masterVolumeDisplay  // "70%"
+```
+
+### AudioManager
+
+Syncs volume settings with AudioServer.
+
+```swift
+AudioManager(settings: $settings) {
+  BfxrSound$().bfxrPath("sounds/Jump.bfxr")
+}
 ```
 
 ## Property Wrappers
