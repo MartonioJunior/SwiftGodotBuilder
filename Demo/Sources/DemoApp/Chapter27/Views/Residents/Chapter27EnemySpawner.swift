@@ -63,10 +63,10 @@ extension Chapter27 {
         ColorBox$()
           .size([8, 8])
           .color(spawnerColor)
-          .onReady { [ss] node in ss.colorBox = node }
+          .onReady { node in ss.colorBox = node }
       }
       .position(position)
-      .onEvent(GameEvent.self) { [ss, position, respawnDelay] _, event in
+      .onEvent(GameEvent.self) { _, event in
         if case let .enemyKilled(pos) = event {
           // Check if this is our enemy (approximate position match)
           if abs(pos.x - position.x) < 50 && abs(pos.y - position.y) < 50 {
@@ -79,7 +79,7 @@ extension Chapter27 {
       .onReady { node in
         spawnEnemy(parent: node)
       }
-      .onProcess { [ss, spawnerColor] node, delta in
+      .onProcess { node, delta in
         // Update pulse animation and visibility
         ss.colorBox?.visible = !ss.enemyAlive
         ss.pulseTimer += delta
@@ -97,7 +97,7 @@ extension Chapter27 {
     }
 
     private func spawnEnemy(parent: Node) {
-      Engine.onNextFrame { [weak parent, ss, definition, position, patrolLeft, patrolRight, worldGravity] in
+      Engine.onNextFrame { [weak parent] in
         guard let parent, parent.isInsideTree() else { return }
         let enemy = EnemyActorView(
           definition: definition,

@@ -37,11 +37,11 @@ extension Chapter27 {
           npcTypeId: npcType.rawValue,
           displayName: definition.name
         )
-        .onActorReady { [vm] actor in
+        .onActorReady { actor in
           vm.actorId = actor.id
         }
       }
-      .onEvent(ActorEvent.self) { [vm, npcType] _, event in
+      .onEvent(ActorEvent.self) { _, event in
         if case let .interacted(id, _) = event, id == vm.actorId {
           GD.print("[NPCActorView] Interacted with \(npcType)")
           DialogEvent.npcInteracted(npcType: npcType).emit()

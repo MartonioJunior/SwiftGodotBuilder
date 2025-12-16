@@ -3,8 +3,6 @@ import SwiftGodot
 import SwiftGodotBuilder
 
 extension Chapter27 {
-  /// Player using the ActorView system
-  /// This is a thin wrapper that handles player-specific game state connections
   struct PlayerActorView: GView {
     let entity: LDEntity
     let level: LDLevel
@@ -55,7 +53,6 @@ extension Chapter27 {
     var body: some GView {
       // Wrap in Node2D for event handling
       Node2D$ {
-        // ActorView with camera as child (so camera follows actor)
         ActorView(
           entity: entity,
           spriteAsset: "Hero",
@@ -75,18 +72,17 @@ extension Chapter27 {
             level.entity(iid: entityIid)?.positionTopLeft
           }
         ) {
-          // Camera as child of actor - follows player automatically
           PlayerActorCamera(
             boss: boss,
             levelWidth: levelWidth,
             levelHeight: levelHeight
           )
         }
-        .onActorReady { [vm] actor in
+        .onActorReady { actor in
           vm.actorId = actor.id
           vm.actor = actor
         }
-        .onWeaponStateReady { [vm] weaponState in
+        .onWeaponStateReady { weaponState in
           vm.weapons = weaponState
           // Sync initial weapon to HUD
           if let weapon = weaponState.currentWeapon {
@@ -106,10 +102,10 @@ extension Chapter27 {
           break
         }
       }
-      .onEvent(GameEvent.self) { [vm] _, event in
+      .onEvent(GameEvent.self) { _, event in
         handleEvent(event, vm: vm)
       }
-      .onEvent(ActorEvent.self) { [vm] _, event in
+      .onEvent(ActorEvent.self) { _, event in
         switch event {
         case let .meleeHit(attackerId, targetId, hitPos, _) where attackerId == vm.actorId:
           applyHitstop()
@@ -136,7 +132,7 @@ extension Chapter27 {
           break
         }
       }
-      .onEvent(ActorWeaponEvent.self) { [vm] _, event in
+      .onEvent(ActorWeaponEvent.self) { _, event in
         switch event {
         case let .weaponSwitched(id, weapon) where id == vm.actorId:
           pgs.syncWeapon(type: weapon.type == .melee ? .melee : .ranged, ammo: 0)
@@ -144,7 +140,7 @@ extension Chapter27 {
           break
         }
       }
-      .onEvent(ActorDoorEvent.self) { [vm] _, event in
+      .onEvent(ActorDoorEvent.self) { _, event in
         switch event {
         case let .actorEnteredDoor(id, targetLevelIid, targetEntityIid, isCrossLevel) where id == vm.actorId && isCrossLevel:
           handleCrossLevelDoor(targetLevelIid: targetLevelIid, targetEntityIid: targetEntityIid)
@@ -323,9 +319,9 @@ extension Chapter27 {
         .enabled(true)
         .dragHorizontalEnabled(true)
         .dragVerticalEnabled(true)
-        .dragLeftMargin(0.3)
-        .dragRightMargin(0.3)
-        .dragTopMargin(0.3)
+        .dragLeftMargin(0.2)
+        .dragRightMargin(0.2)
+        .dragTopMargin(0.1)
         .dragBottomMargin(0.3)
         .limitLeft(0)
         .limitTop(0)

@@ -173,12 +173,12 @@ extension Chapter27 {
     var body: some GView {
       Node2D$ {
         actorView
-          .onActorReady { [vm] actor in
+          .onActorReady { actor in
             vm.actorId = actor.id
             vm.actor = actor
           }
       }
-      .onProcess { [vm, definition] node, delta in
+      .onProcess { node, delta in
         // Death fade
         if vm.isDying {
           vm.deathTimer -= delta
@@ -196,7 +196,7 @@ extension Chapter27 {
           vm.hitTimer -= delta
         }
       }
-      .onEvent(GameEvent.self) { [vm] node, event in
+      .onEvent(GameEvent.self) { node, event in
         switch event {
         case .gameReset:
           vm.isDying = false
@@ -206,7 +206,7 @@ extension Chapter27 {
           break
         }
       }
-      .onEvent(ActorEvent.self) { [vm, definition] _, event in
+      .onEvent(ActorEvent.self) { _, event in
         switch event {
         case let .meleeHit(attackerId, _, hitPos, damage) where attackerId == vm.actorId:
           GameEvent.playerTookDamage(damage: damage, position: hitPos).emit()

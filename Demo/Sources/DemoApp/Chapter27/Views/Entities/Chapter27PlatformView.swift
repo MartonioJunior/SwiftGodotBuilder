@@ -90,7 +90,7 @@ extension Chapter27 {
               .position([size.x / 2, -2])
           }
           .collisionMask(.player)
-          .onSignal(\.bodyEntered) { [vm, shakeDelay, fallDelay] _, body in
+          .onSignal(\.bodyEntered) { _, body in
             if body is CharacterBody2D, !vm.triggered, !vm.isFalling {
               vm.triggered = true
               vm.shakeTimer = shakeDelay
@@ -101,7 +101,7 @@ extension Chapter27 {
       }
       .collisionLayer(.terrain)
       .syncToPhysics(moves)
-      .onReady { [vm, startPosition] body in
+      .onReady { body in
         vm.position = startPosition
         body.position = startPosition
       }

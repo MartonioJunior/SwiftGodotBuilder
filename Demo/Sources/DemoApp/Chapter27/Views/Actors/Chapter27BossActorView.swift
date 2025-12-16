@@ -123,21 +123,21 @@ extension Chapter27 {
           capabilities: .enemy,
           worldGravity: worldGravity
         )
-        .onActorReady { [vm] actor in
+        .onActorReady { actor in
           vm.actorId = actor.id
           vm.actor = actor
         }
       }
-      .onReady { [vm, combat] node in
+      .onReady { node in
         vm.rootNode = node
         node.modulate = vm.phaseColor
         bs.startBossFight(maxHealth: combat.maxHealth)
       }
-      .onProcess { [vm] _, _ in
+      .onProcess { _, _ in
         guard router.scene.isActive, vm.isDefeated else { return }
         GameEvent.goalReached.emit()
       }
-      .onEvent(ActorEvent.self) { [vm] _, event in
+      .onEvent(ActorEvent.self) { _, event in
         switch event {
         case let .phaseChanged(id, phase) where id == vm.actorId:
           handlePhaseChange(phase, vm: vm)
@@ -154,12 +154,12 @@ extension Chapter27 {
           break
         }
       }
-      .onEvent(GameEvent.self) { [vm] _, event in
+      .onEvent(GameEvent.self) { _, event in
         if case .gameReset = event {
           reset(vm: vm)
         }
       }
-      .onEvent(ActorBehaviorEvent.self) { [vm] _, event in
+      .onEvent(ActorBehaviorEvent.self) { _, event in
         switch event {
         case let .shoot(id, position, direction) where id == vm.actorId:
           GameEvent.enemyFiredProjectile(position: position, direction: direction).emit()

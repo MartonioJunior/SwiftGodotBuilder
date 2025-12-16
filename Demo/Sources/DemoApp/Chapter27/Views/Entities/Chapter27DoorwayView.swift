@@ -46,13 +46,13 @@ extension Chapter27 {
       .collisionMask(.interaction)
       .monitorable(true)
       .monitoring(true)
-      .onSignal(\.areaEntered) { [vm] _, _ in
+      .onSignal(\.areaEntered) { _, _ in
         vm.playerInRange = true
       }
-      .onSignal(\.areaExited) { [vm] _, _ in
+      .onSignal(\.areaExited) { _, _ in
         vm.playerInRange = false
       }
-      .onProcess { [vm, targetLevelIid, targetEntityIid] _, _ in
+      .onProcess { _, _ in
         guard vm.playerInRange else { return }
         if Action("interact").isJustPressed {
           DoorwayEvent.entered(levelIid: targetLevelIid, entityIid: targetEntityIid).emit()
