@@ -96,7 +96,7 @@ public struct Delayed<Content: GView>: GView {
         }
       }
     }
-    .onReady { [_isVisible] node in
+    .onReady { node in
       let timer = node.getTree()?.createTimer(timeSec: seconds)
       timer?.timeout.connect {
         _isVisible.wrappedValue = true

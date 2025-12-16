@@ -32,7 +32,7 @@ public struct ActorHurtBox: GView {
     .collisionMask(.none)
     .monitorable(true)
     .monitoring(false)
-    .onReady { [actor] _ in
+    .onReady { _ in
       ActorEvent.spawned(actorId: actor.id).emit()
     }
     .onEvent(ActorEvent.self) { node, event in

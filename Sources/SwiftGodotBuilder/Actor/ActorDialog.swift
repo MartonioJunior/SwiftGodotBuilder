@@ -145,10 +145,10 @@ public struct ActorDialogTrigger: GView {
     .collisionMask(interactionLayer)
     .monitorable(true)
     .monitoring(true)
-    .onSignal(\.areaEntered) { [triggerState] _, area in
+    .onSignal(\.areaEntered) { _, area in
       triggerState.nearbyInteractor = area
     }
-    .onSignal(\.areaExited) { [triggerState] _, area in
+    .onSignal(\.areaExited) { _, area in
       if area == triggerState.nearbyInteractor {
         triggerState.nearbyInteractor = nil
       }

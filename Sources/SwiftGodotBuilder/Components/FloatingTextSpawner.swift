@@ -36,7 +36,7 @@ public struct FloatingTextSpawner<E: EmittableEvent>: GView {
       .onReady { node in
         pool.setup(parent: node, count: poolSize)
       }
-      .onEvent(eventType) { [pool, floatDistance, floatDuration, randomOffsetX, randomOffsetY] _, event in
+      .onEvent(eventType) { _, event in
         if let data = extract(event) {
           let randomOffset = Vector2(
             x: Float.random(in: randomOffsetX),

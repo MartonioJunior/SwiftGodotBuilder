@@ -152,7 +152,7 @@ public struct ActorCollector: GView {
     .collisionLayer(.none)
     .collisionMask(collectibleMask)
     .monitoring(true)
-    .onSignal(\.areaEntered) { [actor] _, area in
+    .onSignal(\.areaEntered) { _, area in
       guard let area else { return }
 
       // Items encode their type in node name: "Collectible_Sword"

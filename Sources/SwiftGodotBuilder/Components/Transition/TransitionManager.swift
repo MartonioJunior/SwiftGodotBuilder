@@ -61,7 +61,7 @@ public struct TransitionManager: GView {
     }
     .layer(100)
     .processMode(.always)
-    .onProcess { [transitionState] _, delta in
+    .onProcess { _, delta in
       let state = transitionState.wrappedValue
       guard state.isTransitioning else { return }
 

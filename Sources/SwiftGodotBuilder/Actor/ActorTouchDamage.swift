@@ -37,7 +37,7 @@ public struct ActorTouchDamage: GView {
     .collisionMask(collisionMask)
     .monitorable(false)
     .monitoring(true)
-    .onSignal(\.areaEntered) { [actor] _, area in
+    .onSignal(\.areaEntered) { _, area in
       guard !actor.isDying, let area else { return }
       let targetId = Int(area.getInstanceId())
       ActorEvent.dealtDamage(actorId: actor.id, targetId: targetId, damage: actor.combat.touchDamage).emit()

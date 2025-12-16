@@ -16,7 +16,7 @@ public struct FadeOverlay: GView {
       .color(Color.black)
       .anchorsAndOffsets(.fullRect)
       .visible(false)
-      .onProcess { [transitionState] node, _ in
+      .onProcess { node, _ in
         let state = transitionState.wrappedValue
         guard state.transitionType == .fade else {
           node.visible = false
@@ -47,7 +47,7 @@ public struct WipeOverlay: GView {
     ColorRect$()
       .color(Color.black)
       .visible(false)
-      .onProcess { [transitionState, screenWidth, screenHeight] node, _ in
+      .onProcess { node, _ in
         let state = transitionState.wrappedValue
         guard state.transitionType == .wipe else {
           node.visible = false
@@ -94,7 +94,7 @@ public struct IrisOverlay: GView {
     Control$()
       .visible(false)
       .anchorsAndOffsets(.fullRect)
-      .onProcess { [transitionState] node, _ in
+      .onProcess { node, _ in
         let state = transitionState.wrappedValue
         let isIris = state.transitionType == .irisOut
         let rawProgress = state.rawProgress
@@ -103,7 +103,7 @@ public struct IrisOverlay: GView {
           node.queueRedraw()
         }
       }
-      .onSignal(\.draw) { [transitionState, screenWidth, screenHeight] node in
+      .onSignal(\.draw) { node in
         drawIris(control: node, transitionState: transitionState, screenWidth: screenWidth, screenHeight: screenHeight)
       }
   }

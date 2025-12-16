@@ -66,14 +66,14 @@ public struct ActorProjectileView: GView {
     .collisionMask(Physics2DLayer([targetLayer, terrainLayer]))
     .monitorable(false)
     .monitoring(true)
-    .onSignal(\.areaEntered) { [sourceActorId, config] node, area in
+    .onSignal(\.areaEntered) { node, area in
       guard let area else { return }
       let targetId = Int(area.getInstanceId())
       let hitPos = node.globalPosition
       ActorEvent.projectileHitTarget(actorId: sourceActorId, targetId: targetId, position: hitPos, damage: config.damage).emit()
       node.queueFree()
     }
-    .onSignal(\.bodyEntered) { [sourceActorId] node, _ in
+    .onSignal(\.bodyEntered) { node, _ in
       // Hit terrain
       ActorEvent.projectileHitWall(actorId: sourceActorId, position: node.globalPosition).emit()
       node.queueFree()
@@ -103,7 +103,7 @@ public struct ActorProjectileSpawner: GView {
 
   public var body: some GView {
     Node2D$()
-      .onEvent(ActorEvent.self) { [collisionLayers] node, event in
+      .onEvent(ActorEvent.self) { node, event in
         switch event {
         case let .projectileFired(actorId, position, direction, config):
           // Player projectiles use playerAttack layer and target enemyHurtbox

@@ -56,14 +56,14 @@ public struct ActorHealthBar: GView {
           .minSize([config.barWidth, config.barHeight])
           .theme("background", backgroundStyle)
           .theme("fill", fillStyle)
-          .onProcess { [state] bar, _ in
+          .onProcess { bar, _ in
             bar.value = Double(state.wrappedValue.health)
           }
       }
       .minSize([config.barWidth, config.barHeight])
     }
     .position([-config.barWidth / 2, offsetY])
-    .onProcess { [config, state] node, _ in
+    .onProcess { node, _ in
       if config.showWhenFull {
         node.visible = true
       } else {
