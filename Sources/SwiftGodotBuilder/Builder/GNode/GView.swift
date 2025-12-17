@@ -221,3 +221,71 @@ public struct GViewWithRef<Content: GView, N: Node>: GView {
     return node
   }
 }
+
+// MARK: - GView Typed Modifier Extension
+
+public extension GView {
+  /// Casts this GView to enable root node property modifiers.
+  ///
+  /// Use this when you need to set properties on a GView's root node:
+  /// ```swift
+  /// NewActorView { ... }
+  ///   .as(CharacterBody2D.self)
+  ///   .position(entity.position)
+  ///   .visible(true)
+  /// ```
+  ///
+  /// The returned `ModifiedGView` supports `@dynamicMemberLookup`, so any
+  /// writable property on the root node type can be set as a modifier.
+  func `as`<T: Node>(_: T.Type) -> ModifiedGView<Self, T> {
+    ModifiedGView(content: self)
+  }
+}
+
+/// A wrapper that applies property modifiers to a GView's root node.
+///
+/// Created via `.as(NodeType.self)` on any GView. Supports `@dynamicMemberLookup`
+/// for fluent property assignment:
+/// ```swift
+/// MyCustomView()
+///   .as(Node2D.self)
+///   .position([100, 200])
+///   .scale([2, 2])
+///   .rotation(0.5)
+/// ```
+@dynamicMemberLookup
+public struct ModifiedGView<Content: GView, RootType: Node>: GView {
+  let content: Content
+  var ops: [(RootType) -> Void] = []
+
+  init(content: Content, ops: [(RootType) -> Void] = []) {
+    self.content = content
+    self.ops = ops
+  }
+
+  public func toNode() -> Node {
+    let node = content.toNode()
+    if let root = node as? RootType {
+      ops.forEach { $0(root) }
+    }
+    return node
+  }
+
+  /// Dynamic-member setter for any writable property on the root node type.
+  public subscript<V>(dynamicMember kp: ReferenceWritableKeyPath<RootType, V>) -> (V) -> Self {
+    { v in
+      var s = self
+      s.ops.append { $0[keyPath: kp] = v }
+      return s
+    }
+  }
+
+  /// Dynamic-member convenience for `StringName` properties.
+  public subscript(dynamicMember kp: ReferenceWritableKeyPath<RootType, StringName>) -> (String) -> Self {
+    { s in
+      var copy = self
+      copy.ops.append { $0[keyPath: kp] = StringName(s) }
+      return copy
+    }
+  }
+}
