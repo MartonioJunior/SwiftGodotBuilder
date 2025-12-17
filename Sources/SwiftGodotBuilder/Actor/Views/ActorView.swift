@@ -1,47 +1,6 @@
 import Foundation
 import SwiftGodot
 
-// MARK: - Collision Layers Config
-
-/// Configuration for all physics collision layers used by ActorView
-public struct ActorCollisionLayers: Sendable {
-  public let player: Physics2DLayer
-  public let enemyHurtbox: Physics2DLayer
-  public let playerHurtbox: Physics2DLayer
-  public let enemyAttack: Physics2DLayer
-  public let playerAttack: Physics2DLayer
-  public let terrain: Physics2DLayer
-  public let collectible: Physics2DLayer
-  public let interaction: Physics2DLayer
-
-  public init(
-    player: Physics2DLayer,
-    enemyHurtbox: Physics2DLayer,
-    playerHurtbox: Physics2DLayer,
-    enemyAttack: Physics2DLayer,
-    playerAttack: Physics2DLayer,
-    terrain: Physics2DLayer,
-    collectible: Physics2DLayer,
-    interaction: Physics2DLayer
-  ) {
-    self.player = player
-    self.enemyHurtbox = enemyHurtbox
-    self.playerHurtbox = playerHurtbox
-    self.enemyAttack = enemyAttack
-    self.playerAttack = playerAttack
-    self.terrain = terrain
-    self.collectible = collectible
-    self.interaction = interaction
-  }
-}
-
-// MARK: - View State
-
-/// Mutable state for ActorView (avoids reactive overhead)
-final class ActorViewState {
-  var deathHandled = false
-}
-
 /// Composable actor view - player uses controller, AI uses behaviors
 public struct ActorView<Content: GView>: GView {
   @ObservableState public var state: ActorState
@@ -74,8 +33,12 @@ public struct ActorView<Content: GView>: GView {
   private var collectibleLayer: Physics2DLayer { collisionLayers.collectible }
   private var interactionLayer: Physics2DLayer { collisionLayers.interaction }
 
+  private final class ViewModel {
+    var deathHandled = false
+  }
+
   // Internal state
-  private let viewState = ActorViewState()
+  private let vm = ViewModel()
 
   // World physics (passed from level/project state)
   public let worldGravity: Float
@@ -299,7 +262,7 @@ extension ActorView {
 
     // Skip processing when dying
     if actor.isDying {
-      viewState.deathHandled = true
+      vm.deathHandled = true
       return
     }
 
@@ -885,7 +848,7 @@ extension ActorView {
       actor.resetState()
       weaponState.reset()
       behaviorState.reset()
-      viewState.deathHandled = false
+      vm.deathHandled = false
     default:
       break
     }
@@ -978,7 +941,7 @@ public extension ActorView where Content == EmptyGView {
     collisionConfig: ActorCollisionConfig = ActorCollisionConfig(),
     startingItems: [String] = [],
     startingWeapons: [ActorWeapon] = [],
-    worldGravity: Float = 400
+    worldGravity: Float = 400 // TODO: get from level/project
   ) {
     self.init(
       spawnPosition: spawnPosition,
@@ -999,5 +962,39 @@ public extension ActorView where Content == EmptyGView {
     ) {
       EmptyGView()
     }
+  }
+}
+
+// MARK: - Collision Layers Config
+
+/// Configuration for all physics collision layers used by ActorView
+public struct ActorCollisionLayers: Sendable {
+  public let player: Physics2DLayer
+  public let enemyHurtbox: Physics2DLayer
+  public let playerHurtbox: Physics2DLayer
+  public let enemyAttack: Physics2DLayer
+  public let playerAttack: Physics2DLayer
+  public let terrain: Physics2DLayer
+  public let collectible: Physics2DLayer
+  public let interaction: Physics2DLayer
+
+  public init(
+    player: Physics2DLayer,
+    enemyHurtbox: Physics2DLayer,
+    playerHurtbox: Physics2DLayer,
+    enemyAttack: Physics2DLayer,
+    playerAttack: Physics2DLayer,
+    terrain: Physics2DLayer,
+    collectible: Physics2DLayer,
+    interaction: Physics2DLayer
+  ) {
+    self.player = player
+    self.enemyHurtbox = enemyHurtbox
+    self.playerHurtbox = playerHurtbox
+    self.enemyAttack = enemyAttack
+    self.playerAttack = playerAttack
+    self.terrain = terrain
+    self.collectible = collectible
+    self.interaction = interaction
   }
 }
