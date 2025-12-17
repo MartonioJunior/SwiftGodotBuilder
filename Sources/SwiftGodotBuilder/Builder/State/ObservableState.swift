@@ -98,13 +98,12 @@ public final class ObservableState<T: AnyObject & Observable>: @unchecked Sendab
     nonisolated(unsafe) let unsafeHandler = handler
     nonisolated(unsafe) let unsafeKeyPath = keyPath
 
+    // Call immediately with current value (synchronous)
+    unsafeHandler(self.object[keyPath: unsafeKeyPath])
+
+    // Set up observation for future changes (async)
     Task { @MainActor [weak self] in
       guard let self = self else { return }
-
-      // Call immediately with current value
-      unsafeHandler(self.object[keyPath: unsafeKeyPath])
-
-      // Set up observation for future changes
       await self.observeChanges(keyPath: unsafeKeyPath, handler: unsafeHandler)
     }
   }
@@ -148,13 +147,12 @@ public final class ObservableState<T: AnyObject & Observable>: @unchecked Sendab
   public nonisolated func observeAny(handler: @escaping (T) -> Void) {
     nonisolated(unsafe) let unsafeHandler = handler
 
+    // Call immediately with current object (synchronous)
+    unsafeHandler(self.object)
+
+    // Set up observation for future changes (async)
     Task { @MainActor [weak self] in
       guard let self = self else { return }
-
-      // Call immediately with current object
-      unsafeHandler(self.object)
-
-      // Set up observation for future changes
       await self.observeAnyChanges(handler: unsafeHandler)
     }
   }
