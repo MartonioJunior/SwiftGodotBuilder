@@ -170,6 +170,13 @@ public struct LDLevel: Codable {
   public func entity(iid: String) -> LDEntity? {
     allEntities.first(where: { $0.iid == iid })
   }
+
+  /// Returns the grid size for the entity's source layer, if available.
+  public func gridSize(for entity: LDEntity) -> Int? {
+    entityLayers.first(where: { layer in
+      layer.entityInstances.contains(where: { $0.iid == entity.iid })
+    })?.gridSize
+  }
 }
 
 // MARK: - Level Background Position Info
@@ -286,9 +293,14 @@ public struct LDWorld: Codable {
   }
 
   /// Returns the grid size for the entity's source layer, if available.
-  func gridSize(for entity: LDEntity) -> Int? {
-    entityLayers.first(where: { layer in
-      layer.entityInstances.contains(where: { $0.iid == entity.iid })
-    })?.gridSize
+  public func gridSize(for entity: LDEntity) -> Int? {
+    for level in levels {
+      if let gridSize = level.entityLayers.first(where: { layer in
+        layer.entityInstances.contains(where: { $0.iid == entity.iid })
+      })?.gridSize {
+        return gridSize
+      }
+    }
+    return nil
   }
 }
