@@ -4,7 +4,7 @@ import SwiftGodot
 // MARK: - Actor
 
 /// A composable actor view with role-based modifiers.
-public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GView, Targetbox: GView, Interaction: GView, Detection: GView, Collector: GView>: GView {
+public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GView, Targetbox: GView, Interaction: GView, Collector: GView>: GView {
   let contentBuilder: (ObservableState<ActorState>) -> Content
 
   // Role modifiers
@@ -13,7 +13,6 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
   let hitboxBuilder: ((ActorState, ActorWeaponState?) -> Hitbox)?
   let targetboxBuilder: ((ActorState) -> Targetbox)?
   let interactionBuilder: ((ActorState) -> Interaction)?
-  let detectionBuilder: ((ActorState) -> Detection)?
   let collectorBuilder: ((ActorState) -> Collector)?
 
   @ObservableState var state: ActorState
@@ -27,7 +26,6 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
     hitboxBuilder: ((ActorState, ActorWeaponState?) -> Hitbox)?,
     targetboxBuilder: ((ActorState) -> Targetbox)?,
     interactionBuilder: ((ActorState) -> Interaction)?,
-    detectionBuilder: ((ActorState) -> Detection)?,
     collectorBuilder: ((ActorState) -> Collector)?,
     @GViewBuilder content: @escaping (ObservableState<ActorState>) -> Content
   ) {
@@ -36,7 +34,6 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
     self.hitboxBuilder = hitboxBuilder
     self.targetboxBuilder = targetboxBuilder
     self.interactionBuilder = interactionBuilder
-    self.detectionBuilder = detectionBuilder
     self.collectorBuilder = collectorBuilder
     contentBuilder = content
     _state = ObservableState(wrappedValue: state)
@@ -172,15 +169,6 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
         }
       }
 
-      // Detection area
-      if let builder = detectionBuilder {
-        Area2D$ {
-          builder(state)
-        }
-        .collisionLayer(.zero)
-        .collisionMask(.eta)
-      }
-
       // Collector area
       if let builder = collectorBuilder {
         Area2D$ {
@@ -238,7 +226,6 @@ public extension Actor where
   Hitbox == EmptyGView,
   Targetbox == EmptyGView,
   Interaction == EmptyGView,
-  Detection == EmptyGView,
   Collector == EmptyGView
 {
   init(
@@ -252,9 +239,14 @@ public extension Actor where
       hitboxBuilder: nil,
       targetboxBuilder: nil,
       interactionBuilder: nil,
-      detectionBuilder: nil,
       collectorBuilder: nil,
       content: content
     )
+  }
+
+  init(
+    @GViewBuilder content: @escaping (ObservableState<ActorState>) -> Content
+  ) {
+    self.init(ActorState(), content: content)
   }
 }
