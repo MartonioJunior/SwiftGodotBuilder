@@ -1,215 +1,247 @@
+import Foundation
 import SwiftGodot
 
-// MARK: - Actor Behavior Events
+// MARK: - Idle Behavior
 
-/// Events emitted by actor behaviors
-public enum ActorBehaviorEvent: EmittableEvent {
-  /// Actor behavior triggered a shoot action
-  case shoot(actorId: Int, position: Vector2, direction: Vector2)
-
-  /// Actor behavior triggered a summon action
-  case summon(actorId: Int, position: Vector2)
-}
-
-// MARK: - Actor Behavior Enum
-
-/// Composable behaviors that can be added to any actor
-public enum ActorBehavior: Sendable {
-  /// Path-based patrol between two points (uses LDtk patrol bounds)
-  case pathPatrol(ActorPathPatrol)
-
-  /// Arena patrol - bounce between level bounds
-  case arenaPatrol(ActorArenaPatrol)
-
-  /// Sine wave movement for flying enemies
-  case sineWave(ActorSineWave)
-
-  /// Charge attack - fast movement in one direction until hitting wall
-  case charge(ActorCharge)
-
-  /// Attack patterns - phase-based attacks with cooldowns
-  case attackPatterns(ActorAttackPatterns)
-
-  /// Shooting on interval (simple, non-phase-based)
-  case shoot(ActorShoot)
-}
-
-// MARK: - Behavior Runtime State
-
-/// Holds runtime state for all behaviors on an actor
-public class ActorBehaviorState {
-  // Path patrol
-  public var patrolDirection: Float = 1
-
-  // Arena patrol
-  public var arenaDirection: Float = -1
-
-  // Sine wave
-  public var sineTimer: Double = 0
-
-  // Charge
-  public var isCharging = false
-  public var chargeDirection: Float = 0
-
-  // Attack patterns
-  public var attackTimers: [Double] = []
-
-  // Simple shoot
-  public var shootTimer: Double = 0
-
+/// Does nothing - useful as a state placeholder
+public struct Idle: ActorBehavior {
   public init() {}
 
-  public func reset() {
-    patrolDirection = 1
-    arenaDirection = -1
-    sineTimer = 0
-    isCharging = false
-    chargeDirection = 0
-    attackTimers = []
-    shootTimer = 0
+  public func process(actor: ActorState, delta _: Double) {
+    actor.physics?.inputDirection = 0
   }
+
+  public func enter(actor _: ActorState) {}
+  public func exit(actor _: ActorState) {}
 }
 
-// MARK: - Path Patrol Config
+// MARK: - Patrol Behavior
 
-/// Configuration for path-based patrol (between two points)
-public struct ActorPathPatrol: Sendable {
-  public let leftBound: Float
-  public let rightBound: Float
-  public let speed: Float
+/// Patrols back and forth relative to spawn position
+/// `left` and `right` are offsets from the initial position when entering this behavior
+public struct Patrol: ActorBehavior {
+  public let leftOffset: Float
+  public let rightOffset: Float
+  public let speed: Float?
 
-  public init(leftBound: Float, rightBound: Float, speed: Float = 30) {
-    self.leftBound = leftBound
-    self.rightBound = rightBound
+  private var direction: Float = 1
+  private var leftBound: Float = 0
+  private var rightBound: Float = 0
+
+  /// Create a patrol behavior
+  /// - Parameters:
+  ///   - left: Distance to patrol left from spawn
+  ///   - right: Distance to patrol right from spawn
+  ///   - speed: Override speed (defaults to actor's physics speed)
+  public init(left: Float, right: Float, speed: Float? = nil) {
+    leftOffset = left
+    rightOffset = right
     self.speed = speed
   }
 
-  public static func fromBounds(_ left: Float, _ right: Float, speed: Float = 30) -> ActorPathPatrol {
-    ActorPathPatrol(leftBound: left, rightBound: right, speed: speed)
+  public mutating func process(actor: ActorState, delta _: Double) {
+    guard let physics = actor.physics, let node = actor.node else { return }
+
+    let pos = node.position.x
+
+    // Reverse at bounds
+    if pos <= leftBound {
+      direction = 1
+    } else if pos >= rightBound {
+      direction = -1
+    }
+
+    // Use physics speed by default, or scale input if speed override provided
+    if let speed, physics.config.speed > 0 {
+      physics.inputDirection = direction * (speed / physics.config.speed)
+    } else {
+      physics.inputDirection = direction
+    }
   }
+
+  public mutating func enter(actor: ActorState) {
+    // Calculate absolute bounds from spawn position
+    let spawnX = actor.node?.position.x ?? 0
+    leftBound = spawnX - leftOffset
+    rightBound = spawnX + rightOffset
+    direction = actor.facing == .right ? 1 : -1
+  }
+
+  public func exit(actor _: ActorState) {}
 }
 
-// MARK: - Arena Patrol Config
+// MARK: - Shoot Behavior
 
-/// Configuration for arena-based patrol (bounce between walls)
-public struct ActorArenaPatrol: Sendable {
-  public let leftBound: Float
-  public let rightBound: Float
-  public let baseSpeed: Float
-  public let phaseSpeedMultiplier: [Int: Float]
+/// Fires projectiles on an interval (uses weapon's RangedWeaponConfig.spawnOffset for positioning)
+public struct Shoot: ActorBehavior {
+  public let cooldown: Double
 
+  private var timer: Double = 0
+
+  public init(cooldown: Double = 2.0) {
+    self.cooldown = cooldown
+  }
+
+  public mutating func process(actor: ActorState, delta: Double) {
+    timer -= delta
+
+    if timer <= 0 {
+      timer = cooldown
+
+      // Request attack if actor has weapon capability
+      if let weapon = actor.weapon {
+        weapon.attackRequested = true
+      }
+    }
+  }
+
+  public mutating func enter(actor _: ActorState) {
+    timer = cooldown * 0.5 // Start with half cooldown for quicker first shot
+  }
+
+  public func exit(actor _: ActorState) {}
+}
+
+// MARK: - Chase Behavior
+
+/// Chases toward the current target
+public struct Chase: ActorBehavior {
+  public let speed: Float?
+  public let stopDistance: Float
+
+  /// Create a chase behavior
+  /// - Parameters:
+  ///   - speed: Override speed (defaults to actor's physics speed)
+  ///   - stopDistance: Stop when this close to target
+  public init(speed: Float? = nil, stopDistance: Float = 16) {
+    self.speed = speed
+    self.stopDistance = stopDistance
+  }
+
+  public mutating func process(actor: ActorState, delta _: Double) {
+    guard let physics = actor.physics else { return }
+
+    guard let node = actor.node,
+          let targeting = actor.targeting,
+          let targetPos = targeting.targetPosition
+    else {
+      physics.inputDirection = 0
+      return
+    }
+
+    let distance = abs(targetPos.x - node.position.x)
+    if distance < stopDistance {
+      physics.inputDirection = 0
+      return
+    }
+
+    let direction: Float = targetPos.x > node.position.x ? 1 : -1
+
+    // Use physics speed by default, or scale input if speed override provided
+    if let speed, physics.config.speed > 0 {
+      physics.inputDirection = direction * (speed / physics.config.speed)
+    } else {
+      physics.inputDirection = direction
+    }
+  }
+
+  public func enter(actor _: ActorState) {}
+  public func exit(actor _: ActorState) {}
+}
+
+// MARK: - Face Target Behavior
+
+/// Always faces toward the current target
+public struct FaceTarget: ActorBehavior {
+  public init() {}
+
+  public func process(actor: ActorState, delta _: Double) {
+    guard let node = actor.node,
+          let targeting = actor.targeting,
+          let targetPos = targeting.targetPosition
+    else { return }
+
+    actor.facing = targetPos.x > node.position.x ? .right : .left
+  }
+
+  public func enter(actor _: ActorState) {}
+  public func exit(actor _: ActorState) {}
+}
+
+// MARK: - Sine Wave Behavior
+
+/// Moves in a sine wave pattern around spawn position (for flying enemies)
+public struct SineWave: ActorBehavior {
+  public let amplitudeX: Float
+  public let amplitudeY: Float
+  public let speed: Float?
+  public let phaseOffset: Float
+
+  private var time: Double = 0
+  private var spawnPosition: Vector2 = .zero
+  private var frequencyX: Float = 1
+  private var frequencyY: Float = 1
+
+  /// Create a sine wave movement pattern
+  /// - Parameters:
+  ///   - amplitudeX: Horizontal distance from center (0 for vertical-only)
+  ///   - amplitudeY: Vertical distance from center (0 for horizontal-only)
+  ///   - speed: Max movement speed in pixels/second (defaults to actor's physics speed)
+  ///   - phaseOffset: Starting phase offset (0-1, useful for staggering multiple enemies)
   public init(
-    leftBound: Float,
-    rightBound: Float,
-    baseSpeed: Float = 30,
-    phaseSpeedMultiplier: [Int: Float] = [:]
+    amplitudeX: Float = 0,
+    amplitudeY: Float = 20,
+    speed: Float? = nil,
+    phaseOffset: Float = 0
   ) {
-    self.leftBound = leftBound
-    self.rightBound = rightBound
-    self.baseSpeed = baseSpeed
-    self.phaseSpeedMultiplier = phaseSpeedMultiplier
+    self.amplitudeX = amplitudeX
+    self.amplitudeY = amplitudeY
+    self.speed = speed
+    self.phaseOffset = phaseOffset
   }
 
-  public func speed(forPhase phase: Int) -> Float {
-    baseSpeed * (phaseSpeedMultiplier[phase] ?? 1.0)
-  }
+  public mutating func process(actor: ActorState, delta: Double) {
+    guard let node = actor.node else { return }
 
-  public static func boss(levelWidth: Float) -> ActorArenaPatrol {
-    ActorArenaPatrol(
-      leftBound: 10,
-      rightBound: levelWidth - 10,
-      baseSpeed: 30,
-      phaseSpeedMultiplier: [1: 1.0, 2: 1.5, 3: 2.0]
+    time += delta
+
+    let phase = Float(time) + phaseOffset * Float.pi * 2
+
+    let offsetX = amplitudeX * sin(phase * frequencyX * Float.pi * 2)
+    let offsetY = amplitudeY * sin(phase * frequencyY * Float.pi * 2)
+
+    let newX = spawnPosition.x + offsetX
+    let velocityX = newX - node.position.x
+
+    node.position = Vector2(
+      x: newX,
+      y: spawnPosition.y + offsetY
     )
-  }
-}
 
-// MARK: - Sine Wave Config
-
-/// Configuration for sine wave movement (flying enemies)
-public struct ActorSineWave: Sendable {
-  public let amplitude: Float
-  public let frequency: Double
-  public let baseY: Float?
-
-  public init(amplitude: Float = 30, frequency: Double = 2.0, baseY: Float? = nil) {
-    self.amplitude = amplitude
-    self.frequency = frequency
-    self.baseY = baseY
-  }
-}
-
-// MARK: - Charge Attack Config
-
-/// Configuration for charge attack behavior
-public struct ActorCharge: Sendable {
-  public let speed: Float
-  public let stunOnWallHit: Bool
-  public let wallStunDuration: Double
-
-  public init(
-    speed: Float = 200,
-    stunOnWallHit: Bool = true,
-    wallStunDuration: Double = 0.5
-  ) {
-    self.speed = speed
-    self.stunOnWallHit = stunOnWallHit
-    self.wallStunDuration = wallStunDuration
-  }
-}
-
-// MARK: - Attack Patterns Config
-
-/// Types of attacks an actor can perform
-public enum ActorAttackType: Sendable {
-  case shoot
-  case jump
-  case charge
-  case summon
-}
-
-/// Configuration for a single attack pattern
-public struct ActorAttackPattern: Sendable {
-  public let type: ActorAttackType
-  public let baseCooldown: Double
-  public let minPhase: Int
-  public let cooldownMultiplier: [Int: Double]
-
-  public init(
-    type: ActorAttackType,
-    cooldown: Double,
-    minPhase: Int = 1,
-    cooldownMultiplier: [Int: Double] = [:]
-  ) {
-    self.type = type
-    baseCooldown = cooldown
-    self.minPhase = minPhase
-    self.cooldownMultiplier = cooldownMultiplier
+    // Update facing based on horizontal movement direction
+    if velocityX > 0.1 {
+      actor.facing = .right
+    } else if velocityX < -0.1 {
+      actor.facing = .left
+    }
   }
 
-  public func cooldown(forPhase phase: Int) -> Double {
-    baseCooldown * (cooldownMultiplier[phase] ?? 1.0)
+  public mutating func enter(actor: ActorState) {
+    spawnPosition = actor.node?.position ?? .zero
+    time = 0
+
+    // Derive frequency from speed and amplitude
+    // Max velocity of sine wave = amplitude * angular_frequency = amplitude * 2π * frequency
+    // So frequency = speed / (amplitude * 2π)
+    let effectiveSpeed = speed ?? actor.physics?.config.speed ?? 30
+
+    if amplitudeX > 0 {
+      frequencyX = effectiveSpeed / (amplitudeX * Float.pi * 2)
+    }
+    if amplitudeY > 0 {
+      frequencyY = effectiveSpeed / (amplitudeY * Float.pi * 2)
+    }
   }
-}
 
-/// Container for multiple attack patterns
-public struct ActorAttackPatterns: Sendable {
-  public let patterns: [ActorAttackPattern]
-
-  public init(_ patterns: [ActorAttackPattern]) {
-    self.patterns = patterns
-  }
-}
-
-// MARK: - Simple Shoot Config
-
-/// Configuration for simple interval-based shooting
-public struct ActorShoot: Sendable {
-  public let interval: Double
-  public let projectileOffset: Vector2
-
-  public init(interval: Double = 2.0, projectileOffset: Vector2 = .zero) {
-    self.interval = interval
-    self.projectileOffset = projectileOffset
-  }
+  public func exit(actor _: ActorState) {}
 }
