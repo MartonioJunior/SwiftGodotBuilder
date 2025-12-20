@@ -98,43 +98,33 @@ public final class ObservableState<T: AnyObject & Observable>: @unchecked Sendab
     nonisolated(unsafe) let unsafeHandler = handler
     nonisolated(unsafe) let unsafeKeyPath = keyPath
 
-    // Call immediately with current value (synchronous)
-    unsafeHandler(self.object[keyPath: unsafeKeyPath])
-
-    // Set up observation for future changes (async)
-    Task { @MainActor [weak self] in
-      guard let self = self else { return }
-      await self.observeChanges(keyPath: unsafeKeyPath, handler: unsafeHandler)
-    }
+    // Set up observation synchronously - no Task delay
+    // This ensures we don't miss changes between initial read and observation setup
+    setupObservation(keyPath: unsafeKeyPath, handler: unsafeHandler)
   }
 
-  /// Internal helper to set up observation tracking
-  @MainActor
-  private func observeChanges<V>(keyPath: KeyPath<T, V>, handler: @escaping (V) -> Void) async {
-    // Safe: handler and keyPath are only used on the main thread
+  /// Internal helper to set up observation and call handler with current value
+  private nonisolated func setupObservation<V>(keyPath: KeyPath<T, V>, handler: @escaping (V) -> Void) {
     nonisolated(unsafe) let unsafeHandler = handler
     nonisolated(unsafe) let unsafeKeyPath = keyPath
 
+    // Call handler with current value
+    unsafeHandler(self.object[keyPath: unsafeKeyPath])
+
+    // Set up observation (one-shot, will re-register in onChange)
     withObservationTracking {
-      // Access the property to register it with the observation system
-      _ = object[keyPath: unsafeKeyPath]
+      _ = self.object[keyPath: unsafeKeyPath]
     } onChange: { [weak self] in
-      // Safe: ObservableState is @unchecked Sendable and everything runs on main thread
-      // Warning about T.Type capture is benign since all observation runs on main thread
-      Task { @MainActor in
-        guard let self else { return }
+      guard let self else { return }
 
-        // Track for debugging
-        ReactiveDebug.recordObservableChange(
-          objectType: String(describing: T.self),
-          keyPath: String(describing: unsafeKeyPath)
-        )
+      ReactiveDebug.recordObservableChange(
+        objectType: String(describing: T.self),
+        keyPath: String(describing: unsafeKeyPath)
+      )
 
-        // Call handler with new value
-        unsafeHandler(self.object[keyPath: unsafeKeyPath])
-
-        // Re-establish observation (observation is one-shot)
-        await self.observeChanges(keyPath: unsafeKeyPath, handler: unsafeHandler)
+      // Re-setup observation on next frame to avoid re-entrancy issues
+      Engine.onNextFrame {
+        self.setupObservation(keyPath: unsafeKeyPath, handler: unsafeHandler)
       }
     }
   }
@@ -147,42 +137,29 @@ public final class ObservableState<T: AnyObject & Observable>: @unchecked Sendab
   public nonisolated func observeAny(handler: @escaping (T) -> Void) {
     nonisolated(unsafe) let unsafeHandler = handler
 
-    // Call immediately with current object (synchronous)
-    unsafeHandler(self.object)
-
-    // Set up observation for future changes (async)
-    Task { @MainActor [weak self] in
-      guard let self = self else { return }
-      await self.observeAnyChanges(handler: unsafeHandler)
-    }
+    // Set up observation synchronously
+    setupAnyObservation(handler: unsafeHandler)
   }
 
-  /// Internal helper to set up observation tracking for any changes
-  @MainActor
-  private func observeAnyChanges(handler: @escaping (T) -> Void) async {
-    // Safe: handler is only used on the main thread
+  /// Internal helper to set up observation for any property change
+  private nonisolated func setupAnyObservation(handler: @escaping (T) -> Void) {
     nonisolated(unsafe) let unsafeHandler = handler
 
+    // Call handler with current object
+    unsafeHandler(self.object)
+
     withObservationTracking {
-      // Access the object to register observation
-      _ = object
+      _ = self.object
     } onChange: { [weak self] in
-      // Safe: ObservableState is @unchecked Sendable and everything runs on main thread
-      // Warning about T.Type capture is benign since all observation runs on main thread
-      Task { @MainActor in
-        guard let self else { return }
+      guard let self else { return }
 
-        // Track for debugging - watchAny is often a performance smell
-        ReactiveDebug.recordObservableChange(
-          objectType: String(describing: T.self),
-          keyPath: "*any*"
-        )
+      ReactiveDebug.recordObservableChange(
+        objectType: String(describing: T.self),
+        keyPath: "*any*"
+      )
 
-        // Call handler with object
-        unsafeHandler(self.object)
-
-        // Re-establish observation (observation is one-shot)
-        await self.observeAnyChanges(handler: unsafeHandler)
+      Engine.onNextFrame {
+        self.setupAnyObservation(handler: unsafeHandler)
       }
     }
   }
@@ -313,6 +290,81 @@ public struct ObservableProperty<Root: AnyObject & Observable, Value> {
   }
 }
 
+// MARK: - Optional Type Protocol
+
+/// Protocol to identify Optional types for dynamic member lookup chaining
+public protocol OptionalType {
+  associatedtype Wrapped
+  var asOptional: Wrapped? { get }
+}
+
+extension Optional: OptionalType {
+  public var asOptional: Wrapped? { self }
+}
+
+// MARK: - Mapped Observable Property
+
+/// A wrapper that transforms an observable property's value.
+///
+/// This enables chaining through optional properties:
+/// ```swift
+/// // state.defense is ActorDefenseState?
+/// // state.defense.health returns MappedObservableProperty<..., Int?>
+/// Label$().text($state.defense.health) { "Health: \($0 ?? 0)" }
+/// ```
+@dynamicMemberLookup
+public struct MappedObservableProperty<Root: AnyObject & Observable, Source, Value>: ReactiveSource {
+  let observableState: ObservableState<Root>
+  let sourceKeyPath: KeyPath<Root, Source>
+  let transform: (Source) -> Value
+
+  public func observe(_ handler: @escaping (Value) -> Void) {
+    observableState.observe(sourceKeyPath) { source in
+      handler(transform(source))
+    }
+  }
+
+  /// Access the current transformed value
+  public var value: Value {
+    transform(observableState.object[keyPath: sourceKeyPath])
+  }
+}
+
+// MARK: - Optional Chaining for ObservableProperty
+
+public extension ObservableProperty where Value: OptionalType {
+  /// Access properties of the wrapped optional type.
+  ///
+  /// When `Value` is optional (e.g., `ActorDefenseState?`), this allows
+  /// accessing properties of the wrapped type, returning an optional result.
+  ///
+  /// ```swift
+  /// // $state.defense is ObservableProperty<ActorState, ActorDefenseState?>
+  /// // $state.defense.health is MappedObservableProperty<ActorState, ActorDefenseState?, Int?>
+  /// Label$().text($state.defense.health) { "Health: \($0 ?? 0)" }
+  /// ```
+  subscript<U>(dynamicMember nestedKeyPath: KeyPath<Value.Wrapped, U>) -> MappedObservableProperty<Root, Value, U?> {
+    MappedObservableProperty(
+      observableState: observableState,
+      sourceKeyPath: keyPath,
+      transform: { $0.asOptional?[keyPath: nestedKeyPath] }
+    )
+  }
+}
+
+// MARK: - Chaining for MappedObservableProperty
+
+public extension MappedObservableProperty where Value: OptionalType {
+  /// Continue chaining through nested optionals
+  subscript<U>(dynamicMember nestedKeyPath: KeyPath<Value.Wrapped, U>) -> MappedObservableProperty<Root, Source, U?> {
+    MappedObservableProperty<Root, Source, U?>(
+      observableState: observableState,
+      sourceKeyPath: sourceKeyPath,
+      transform: { self.transform($0).asOptional?[keyPath: nestedKeyPath] }
+    )
+  }
+}
+
 // MARK: - State Matching Helpers
 
 public extension ObservableProperty where Value: Equatable {
@@ -397,6 +449,42 @@ public extension GNode {
   ) -> (ObservableProperty<O, String>) -> Self {
     { observableProperty in
       self.bind(kp, to: observableProperty.observableState, observableProperty.keyPath) { StringName($0) }
+    }
+  }
+}
+
+// MARK: - GNode Dynamic Member Lookup for MappedObservableProperty
+
+public extension GNode {
+  /// Dynamic member lookup for MappedObservableProperty binding with transform.
+  ///
+  /// Usage: `.text($state.defense.health) { "Health: \($0 ?? 0)" }`
+  subscript<O: AnyObject & Observable, S, V, U>(
+    dynamicMember kp: ReferenceWritableKeyPath<T, U>
+  ) -> (MappedObservableProperty<O, S, V>, @escaping (V) -> U) -> Self {
+    { mappedProperty, transform in
+      var s = self
+      s.ops.append { node in
+        mappedProperty.observe { value in
+          node[keyPath: kp] = transform(value)
+        }
+      }
+      return s
+    }
+  }
+
+  /// Direct binding for MappedObservableProperty when types match.
+  subscript<O: AnyObject & Observable, S, V>(
+    dynamicMember kp: ReferenceWritableKeyPath<T, V>
+  ) -> (MappedObservableProperty<O, S, V>) -> Self {
+    { mappedProperty in
+      var s = self
+      s.ops.append { node in
+        mappedProperty.observe { value in
+          node[keyPath: kp] = value
+        }
+      }
+      return s
     }
   }
 }
