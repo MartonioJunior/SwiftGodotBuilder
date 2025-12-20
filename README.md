@@ -203,6 +203,45 @@ LabeledCell("Stats") {
 }
 ```
 
+#### GView Root Node Modifiers
+
+Set properties on a custom GView's root node using `.as()`.
+
+```swift
+MyCustomView()
+  .as(Node2D.self)
+  .scale([2, 2])
+  .rotation(0.5)
+```
+
+#### Passing State to Slots
+
+Components can expose state to their slot content via closure parameters.
+
+```swift
+// Component exposes its state to content
+struct PlayerPanel<Content: GView>: GView {
+  @ObservableState var player = PlayerState()
+  let content: (ObservableState<PlayerState>) -> Content
+
+  init(@GViewBuilder content: @escaping (ObservableState<PlayerState>) -> Content) {
+    self.content = content
+  }
+
+  var body: some GView {
+    PanelContainer$ {
+      content($player)  // Pass state to slot
+    }
+  }
+}
+
+// Usage - slot content can bind to exposed state
+PlayerPanel { player in
+  Label$().text(player.health) { "HP: \($0)" }
+  Label$().text(player.name)
+}
+```
+
 ## Reactive Data
 
 ### State Management
@@ -340,38 +379,23 @@ struct GameView: GView {
 ```
 
 
-### Computed Properties
+### Computed Bindings
 
 ```swift
-// Define computed properties as computed vars on the struct
 @State var score = 0
+@State var health = 80
+@State var maxHealth = 100
 
-var scoreText: GState<String> {
-  $score.computed { "Score: \($0)" }
-}
+// Single state with transform
+Label$().text($score) { "Score: \($0)" }
 
-var isHighScore: GState<Bool> {
-  $score.computed { $0 > 1000 }
-}
-
-Label$().text(scoreText)
-
-If(isHighScore) {
+// Conditional based on state
+If($score.computed { $0 > 1000 }) {
   Label$().text("New High Score!").modulate(.yellow)
 }
 
-// Combine multiple states
-@State var health = 80
-@State var maxHealth = 100
-@State var playerName = "Hero"
-
-var statusText: GState<String> {
-  $health.computed(with: $maxHealth, $playerName) { hp, maxHp, name in
-    "\(name): \(hp)/\(maxHp) HP"
-  }
-}
-
-Label$().text(statusText)
+// Multi-state binding with transform
+Label$().bind(\.text, to: $health, $maxHealth) { "\($0)/\($1)" }
 ```
 
 ### Watchers
@@ -737,6 +761,11 @@ CharacterBody2D$()
 // Custom layers
 CharacterBody2D$()
   .collisionMask(wallLayer | enemyLayer)
+
+// Debug border visualization for collision shapes
+CollisionShape2D$()
+  .shape(RectangleShape2D(w: 32, h: 32))
+  .debugBorder(color: .red, width: 2)
 ```
 
 ### Groups
@@ -1168,75 +1197,105 @@ NodeSpawner(GameEvent.self) { event in
 
 ### Actors
 
-Unified system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
+Composable actor system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
 
 ```swift
-// ActorView auto-includes: ActorSprite, ActorHurtBox, ActorWeaponHitbox, ActorCollector, etc.
-
-// Define collision layers
-let layers = ActorCollisionLayers(
-  player: .beta,
-  enemyHurtbox: .iota,
-  playerHurtbox: .theta,
-  enemyAttack: .kappa,
-  playerAttack: .delta,
-  terrain: .alpha,
-  collectible: .gamma,
-  interaction: .eta
-)
-
-// Player with full capabilities
-ActorView(
-  spawnPosition: [100, 200],
-  size: [16, 24],
-  spriteAsset: "Hero",
-  animations: .withWeaponPrefix(defaultLayer: "Unarmed"),
-  collisionLayers: layers,
-  controller: PlayerActorController(),
-  physics: ActorPhysics(speed: 80, jumpSpeed: 150),
-  combat: ActorCombat(maxHealth: 5),
-  capabilities: .player,
-  startingWeapons: [WeaponRegistry.sword]
-) {
-  // Children closure is for custom additions like camera
-  ActorCamera(target: .actor(state), levelWidth: 400, levelHeight: 240)
+// Basic enemy with physics and defense
+Actor(ActorState()) { state in
+  AseSprite$(path: "Skeleton")
 }
+.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 16)) }
+.hurtbox { _ in CollisionShape2D$().shape(RectangleShape2D(w: 14, h: 14)) }
+.physics(ActorPhysicsConfig(speed: 40, gravity: 400))
+.defense(ActorDefenseConfig(maxHealth: 3))
 
-// Enemy with AI behaviors
-ActorView(
-  spawnPosition: [200, 200],
-  size: [16, 16],
-  spriteAsset: "Skeleton",
-  animations: .perAction(idle: "Idle", walk: "Walk", attack: "Attack"),
-  collisionLayers: layers,
-  healthBar: HealthBarConfig(showWhenFull: false, barWidth: 24, barHeight: 3),
-  behaviors: [.pathPatrol(.fromBounds(100, 300)), .shoot(.init(interval: 2.0))],
-  physics: .grounded(speed: 40),
-  combat: ActorCombat(maxHealth: 3, touchDamage: 1),
-  capabilities: .enemy,
-  startingWeapons: [WeaponRegistry.fireball]
-)
-
-// Projectile spawner - uses same collision layers config
-ActorProjectileSpawner(collisionLayers: layers)
+// Player with attacks
+Actor(ActorState()) { state in
+  AseSprite$(path: "Hero")
+}
+.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 24)) }
+.hurtbox { _ in CollisionShape2D$().shape(RectangleShape2D(w: 14, h: 22)) }
+.hitbox { state, weapon in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 16)) }
+.physics(ActorPhysicsConfig(speed: 80, jumpSpeed: 150))
+.defense(ActorDefenseConfig(maxHealth: 5, invincibilityDuration: 1.0))
+.attacks(melee: MeleeWeaponConfig(damage: 1, knockback: 80))
+.isPlayer()
 ```
 
-#### Actor Events
+#### Actor Behaviors
+
+Use `.behavior()` to compose AI behaviors for actors.
 
 ```swift
-// Combat events
-ActorEvent.tookDamage(actorId: id, damage: 1, position: pos)
-ActorEvent.died(actorId: id, position: pos)
-ActorEvent.meleeHit(actorId: id, targetId: targetId, position: pos, damage: 1, knockback: 80, direction: [1, 0])
-ActorEvent.projectileFired(actorId: id, position: pos, direction: dir, config: rangedConfig)
+Actor(ActorState()) { state in
+  AseSprite$(path: "Enemy")
+}
+.physics(ActorPhysicsConfig(speed: 40))
+.targeting()
+.behavior(initial: "patrol") {
+  During("patrol") {
+    Patrol(left: 100, right: 300)
+    Shoot(cooldown: 2.0) // Concurrent with patrol
+  }
+  .transition(to: "chase") { $0.distanceToTarget ?? .infinity < 80 }
 
-// Movement events
-ActorEvent.jumped(actorId: id, position: pos)
-ActorEvent.landed(actorId: id, position: pos, impact: velocity.y)
+  During("chase") {
+    Chase()
+    FaceTarget()
+  }
+  .transition(to: "patrol") { $0.distanceToTarget ?? 0 > 150 }
+  .transition(to: "attack") { $0.distanceToTarget ?? .infinity < 32 }
 
-// Interaction events
-ActorEvent.collected(actorId: id, itemId: "key", position: pos)
-ActorEvent.interacted(actorId: id, interactorId: playerId)
+  During("attack") {
+    Idle()
+  }
+  .transition(to: "chase") { !($0.weapon?.attackPhase.isAttacking ?? false) }
+}
+```
+
+**Built-in Behaviors:** `Patrol`, `Chase`, `Charge`, `Shoot`, `JumpOnInterval`, `SineWave`, `Idle`, `FaceTarget`
+
+#### Actor Dialog
+
+Add dialog capability to NPCs with `.dialog {}`. Requires separate `.interaction {}` for the interaction zone.
+
+```swift
+Actor(npcState) { state in
+  AseSprite$(path: "Merchant")
+}
+.interaction { _ in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 32)) }
+.dialog { actorState, dialogState in
+  Dialog(id: "merchant") {
+    Branch("main") {
+      if dialogState.isFirstVisit {
+        Merchant ~ "Welcome to my shop!"
+      } else {
+        Merchant ~ "Back for more?"
+      }
+    }
+  }
+}
+```
+
+Emits `ActorEvent.dialogTriggered` and `ActorEvent.dialogCompleted`. Game code listens for events to show dialog UI.
+
+Custom behaviors implement `ActorBehavior`:
+
+```swift
+struct CustomBehavior: ActorBehavior {
+  var timer: Double = 0
+
+  mutating func process(actor: ActorState, delta: Double) {
+    timer -= delta
+    if timer <= 0 {
+      actor.physics?.jumpRequested = true
+      timer = 2.0
+    }
+  }
+
+  mutating func enter(actor: ActorState) { timer = 1.0 }
+  mutating func exit(actor: ActorState) {}
+}
 ```
 
 ### Input Actions
