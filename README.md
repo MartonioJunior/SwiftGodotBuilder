@@ -978,6 +978,138 @@ transitionState.irisOutTransition(
 }
 ```
 
+## Actors
+
+Composable actor system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
+
+```swift
+// Basic enemy with physics and defense
+Actor { state in
+  AseSprite$(path: "Skeleton")
+}
+.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 16)) }
+.hurtbox { _ in CollisionShape2D$().shape(RectangleShape2D(w: 14, h: 14)) }
+.physics(.init(speed: 40, gravity: 400))
+.defense(.init(maxHealth: 3))
+
+// Player with attacks
+Actor { state in
+  AseSprite$(path: "Hero")
+    .scale(state.facingScale) // flip based on direction
+  Camera2D$()
+}
+.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 24)) }
+.hurtbox { _ in CollisionShape2D$().shape(RectangleShape2D(w: 14, h: 22)) }
+.hitbox { _, _ in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 16)) }
+.physics(.init(speed: 80, jumpSpeed: 150))
+.defense(.init(maxHealth: 5, invincibilityDuration: 1.0))
+.attacks([.init(melee: .init(damage: 1, knockback: 80))])
+.isPlayer()
+
+// Use outside state
+@ObservableState var state = ActorState()
+Actor(state) { ... }
+```
+
+### Actor Modifiers
+
+Appending modifiers adds rich capabilities.
+
+```swift
+Actor { ... }
+.collision { _ in ... }    // Terrain collision shape
+.hurtbox { _ in ... }      // Can receive damage
+.hitbox { _, _ in ... }    // Can deal damage
+.targetbox { _ in ... }    // Target scanning (auto-enables targeting)
+.interaction { _ in ... }  // NPC interaction zone
+.collector { _ in ... }    // Item pickup area
+.physics(config)           // Movement/gravity
+.defense(config)           // Health/invincibility
+.attacks([weapons])        // Weapon configs
+.isPlayer()                // Won't delete on death
+.behavior(initial: "state") { ... } // AI state machine
+.dialog { state, dialogState in ... } // NPC dialog
+```
+
+### Actor Behaviors
+
+Use `.behavior()` to compose AI behaviors for actors.
+
+```swift
+Actor { state in
+  AseSprite$(path: "Enemy")
+}
+.physics(.init(speed: 40))
+.targetbox { _ in CollisionShape2D$().shape(CircleShape2D(radius: 100)) }
+.behavior(initial: "patrol") {
+  During("patrol") {
+    Patrol(left: 100, right: 300)
+    Shoot(cooldown: 2.0) // Concurrent with patrol
+  }
+  .transition(to: "chase") { $0.distanceToTarget ?? .infinity < 80 }
+
+  During("chase") {
+    Chase()
+    FaceTarget()
+  }
+  .transition(to: "patrol") { $0.distanceToTarget ?? 0 > 150 }
+  .transition(to: "attack") { $0.distanceToTarget ?? .infinity < 32 }
+
+  During("attack") {
+    Idle()
+  }
+  .transition(to: "chase") { !($0.weapon?.attackPhase.isAttacking ?? false) }
+}
+```
+
+**Built-in Behaviors:** `Patrol`, `Chase`, `Charge`, `Shoot`, `JumpOnInterval`, `SineWave`, `Idle`, `FaceTarget`
+
+### Ranged Weapons
+
+Use `ActorProjectileSpawner` to handle projectile spawning from actors with ranged weapons.
+
+```swift
+Node2D$ {
+  ActorProjectileSpawner() // Add once to scene
+
+  Actor { state in
+    AseSprite$(path: "Turret")
+  }
+  .attacks([.init(ranged: .init(damage: 1, speed: 200))])
+  .behavior(initial: "shoot") {
+    During("shoot") {
+      Shoot(cooldown: 1.5)
+    }
+  }
+}
+```
+
+Listens for `ActorEvent.projectileFired` and spawns projectiles with appropriate collision layers.
+
+### Actor Dialog
+
+Add dialog capability to NPCs with `.dialog {}`. Requires separate `.interaction {}` for the interaction zone.
+
+```swift
+Actor(npcState) { state in
+  AseSprite$(path: "Merchant")
+}
+.interaction { _ in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 32)) }
+.dialog { actorState, dialogState in
+  Dialog(id: "merchant") {
+    Branch("main") {
+      if dialogState.isFirstVisit {
+        Merchant ~ "Welcome to my shop!"
+      } else {
+        Merchant ~ "Back for more?"
+      }
+    }
+  }
+}
+```
+
+Use with `DialogManager` (see Dialog Trees section) for automatic dialog UI handling.
+
 ## Game Systems
 
 ### Dialog Trees
@@ -1220,149 +1352,6 @@ NodeSpawner(GameEvent.self) { event in
 } resetWhen: { event in
   if case .gameReset = event { return true }
   return false
-}
-```
-
-### Actors
-
-Composable actor system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
-
-```swift
-// Basic enemy with physics and defense
-Actor(ActorState()) { state in
-  AseSprite$(path: "Skeleton")
-}
-.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 16)) }
-.hurtbox { _ in CollisionShape2D$().shape(RectangleShape2D(w: 14, h: 14)) }
-.physics(ActorPhysicsConfig(speed: 40, gravity: 400))
-.defense(ActorDefenseConfig(maxHealth: 3))
-
-// Player with attacks
-Actor(ActorState()) { state in
-  AseSprite$(path: "Hero")
-}
-.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 24)) }
-.hurtbox { _ in CollisionShape2D$().shape(RectangleShape2D(w: 14, h: 22)) }
-.hitbox { state, weapon in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 16)) }
-.physics(ActorPhysicsConfig(speed: 80, jumpSpeed: 150))
-.defense(ActorDefenseConfig(maxHealth: 5, invincibilityDuration: 1.0))
-.attacks(melee: MeleeWeaponConfig(damage: 1, knockback: 80))
-.isPlayer()
-```
-
-#### Actor Behaviors
-
-Use `.behavior()` to compose AI behaviors for actors.
-
-```swift
-Actor(ActorState()) { state in
-  AseSprite$(path: "Enemy")
-}
-.physics(ActorPhysicsConfig(speed: 40))
-.targetbox { _ in CollisionShape2D$().shape(CircleShape2D(radius: 100)) }
-.behavior(initial: "patrol") {
-  During("patrol") {
-    Patrol(left: 100, right: 300)
-    Shoot(cooldown: 2.0) // Concurrent with patrol
-  }
-  .transition(to: "chase") { $0.distanceToTarget ?? .infinity < 80 }
-
-  During("chase") {
-    Chase()
-    FaceTarget()
-  }
-  .transition(to: "patrol") { $0.distanceToTarget ?? 0 > 150 }
-  .transition(to: "attack") { $0.distanceToTarget ?? .infinity < 32 }
-
-  During("attack") {
-    Idle()
-  }
-  .transition(to: "chase") { !($0.weapon?.attackPhase.isAttacking ?? false) }
-}
-```
-
-**Built-in Behaviors:** `Patrol`, `Chase`, `Charge`, `Shoot`, `JumpOnInterval`, `SineWave`, `Idle`, `FaceTarget`
-
-#### Actor Modifiers
-
-```swift
-Actor(state) { ... }
-.collision { _ in ... }    // Terrain collision
-.hurtbox { _ in ... }      // Can receive damage
-.hitbox { _, weapon in ... } // Can deal damage
-.targetbox { _ in ... }    // Target scanning (auto-enables targeting)
-.interaction { _ in ... }  // NPC interaction zone
-.collector { _ in ... }    // Item pickup area
-.physics(config)           // Movement/gravity
-.defense(config)           // Health/invincibility
-.attacks([weapons])        // Weapon configs
-.isPlayer()                // Mark as player
-.behavior(initial: "state") { ... } // AI state machine
-.dialog { state, dialogState in ... } // NPC dialog
-```
-
-#### Ranged Weapons
-
-Use `ActorProjectileSpawner` to handle projectile spawning from actors with ranged weapons.
-
-```swift
-Node2D$ {
-  ActorProjectileSpawner() // Add once to scene
-
-  Actor(enemyState) { state in
-    AseSprite$(path: "Turret")
-  }
-  .attacks([ActorWeaponConfig(ranged: RangedWeaponConfig(damage: 1, speed: 200))])
-  .behavior(initial: "shoot") {
-    During("shoot") {
-      Shoot(cooldown: 1.5)
-    }
-  }
-}
-```
-
-Listens for `ActorEvent.projectileFired` and spawns projectiles with appropriate collision layers.
-
-#### Actor Dialog
-
-Add dialog capability to NPCs with `.dialog {}`. Requires separate `.interaction {}` for the interaction zone.
-
-```swift
-Actor(npcState) { state in
-  AseSprite$(path: "Merchant")
-}
-.interaction { _ in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 32)) }
-.dialog { actorState, dialogState in
-  Dialog(id: "merchant") {
-    Branch("main") {
-      if dialogState.isFirstVisit {
-        Merchant ~ "Welcome to my shop!"
-      } else {
-        Merchant ~ "Back for more?"
-      }
-    }
-  }
-}
-```
-
-Use with `DialogManager` (see Dialog Trees section) for automatic dialog UI handling.
-
-Custom behaviors implement `ActorBehavior`:
-
-```swift
-struct CustomBehavior: ActorBehavior {
-  var timer: Double = 0
-
-  mutating func process(actor: ActorState, delta: Double) {
-    timer -= delta
-    if timer <= 0 {
-      actor.physics?.jumpRequested = true
-      timer = 2.0
-    }
-  }
-
-  mutating func enter(actor: ActorState) { timer = 1.0 }
-  mutating func exit(actor: ActorState) {}
 }
 ```
 
