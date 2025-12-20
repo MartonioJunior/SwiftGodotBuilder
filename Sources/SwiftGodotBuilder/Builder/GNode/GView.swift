@@ -83,6 +83,29 @@ public struct EmptyGView: GView {
   public func toNode() -> Node { Node() }
 }
 
+/// A wrapper for optional content from `if let` without else.
+/// Renders the wrapped content if present, otherwise renders nothing.
+public struct GOptionalContent<Wrapped: GView>: GView {
+  let wrapped: Wrapped?
+
+  public var shouldFlattenChildren: Bool { true }
+
+  public func toNode() -> Node {
+    wrapped?.toNode() ?? Node()
+  }
+
+  public func toNodeWithParent(_ parent: Node) -> Node? {
+    if let wrapped {
+      if wrapped.shouldFlattenChildren {
+        _ = wrapped.toNodeWithParent(parent)
+      } else {
+        parent.addChild(node: wrapped.toNode())
+      }
+    }
+    return nil
+  }
+}
+
 /// A result builder for composing GView content in custom components.
 ///
 /// Works with both single and multiple children:
@@ -109,8 +132,8 @@ public enum GViewBuilder {
     GViewGroup(views: views)
   }
 
-  public static func buildOptional<V: GView>(_ v: V?) -> any GView {
-    v ?? GViewGroup(views: [])
+  public static func buildOptional<V: GView>(_ v: V?) -> GOptionalContent<V> {
+    GOptionalContent(wrapped: v)
   }
 
   public static func buildEither<V: GView>(first: V) -> V { first }
@@ -229,7 +252,7 @@ public extension GView {
   ///
   /// Use this when you need to set properties on a GView's root node:
   /// ```swift
-  /// NewActorView { ... }
+  /// Actor { ... }
   ///   .as(CharacterBody2D.self)
   ///   .position(entity.position)
   ///   .visible(true)

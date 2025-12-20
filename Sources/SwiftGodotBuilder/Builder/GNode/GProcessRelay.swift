@@ -1,7 +1,7 @@
 import SwiftGodot
 
 /// A hidden node that relays process and ready calls to closures.
-/// Used by `GNode` extensions onProcess, onPhysicsProcess, onReady.
+/// Used by `GNode` extensions onProcess, onPhysicsProcess, onReady, onExitTree.
 @_documentation(visibility: private)
 @Godot
 public final class GProcessRelay: Node {
@@ -9,6 +9,7 @@ public final class GProcessRelay: Node {
   public var onReadyCall: ((Node) -> Void)?
   public var onProcessCall: ((Node, Double) -> Void)?
   public var onPhysicsCall: ((Node, Double) -> Void)?
+  public var onExitTreeCall: ((Node) -> Void)?
 
   override public func _ready() {
     if onProcessCall == nil { setProcess(enable: false) } else { setProcess(enable: true) }
@@ -31,5 +32,10 @@ public final class GProcessRelay: Node {
     let start = ProcessDebug.beginProcess(source: source)
     onPhysicsCall?(host, delta)
     ProcessDebug.endProcess(startTime: start, source: source)
+  }
+
+  override public func _exitTree() {
+    guard let host = ownerNode.value else { return }
+    onExitTreeCall?(host)
   }
 }

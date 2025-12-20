@@ -46,6 +46,21 @@ public extension GNode where T: Node {
     return s
   }
 
+  /// Registers a closure to be called when the node exits the scene tree.
+  ///
+  /// ### Usage:
+  /// ```swift
+  /// Node2D$()
+  ///   .onExitTree { node in
+  ///     // Clean up resources
+  ///   }
+  /// ```
+  func onExitTree(_ body: @escaping (T) -> Void) -> Self {
+    var s = self
+    s.ops.append { host in _attachOrUpdateRelay(host, onExitTree: body) }
+    return s
+  }
+
   /// Captures a reference to the node when it's ready.
   ///
   /// ### Usage:
@@ -73,7 +88,8 @@ private func _attachOrUpdateRelay<T: Node>(
   _ host: T,
   onReady: ((T) -> Void)? = nil,
   onProcess: ((T, Double) -> Void)? = nil,
-  onPhysics: ((T, Double) -> Void)? = nil
+  onPhysics: ((T, Double) -> Void)? = nil,
+  onExitTree: ((T) -> Void)? = nil
 ) {
   let relay: GProcessRelay = {
     // Use getNodeOrNull to avoid triggering the typed array resolution
@@ -114,5 +130,13 @@ private func _attachOrUpdateRelay<T: Node>(
       onPhysics(typed, dt)
     }
     relay.setPhysicsProcess(enable: true)
+  }
+  if let onExitTree {
+    let prev = relay.onExitTreeCall
+    relay.onExitTreeCall = { [weak host] n in
+      guard let typed = host ?? (n as? T) else { return }
+      prev?(n)
+      onExitTree(typed)
+    }
   }
 }
