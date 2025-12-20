@@ -1060,6 +1060,34 @@ runner.selectChoice(0)     // Pick choice
 }
 ```
 
+#### DialogManager
+
+Self-contained dialog UI that handles dialog lifecycle automatically. Add once to your scene.
+
+```swift
+Node2D$ {
+  DialogManager(speakerColors: ["Guard": .blue, "Merchant": .gold])
+
+  // NPCs with .dialog modifier trigger automatically
+  Actor(guardState) { ... }
+    .interaction { _ in CollisionShape2D$().shape(RectangleShape2D(w: 24, h: 32)) }
+    .dialog { _, _ in guardDialog }
+}
+```
+
+Features typewriter text effect, choice buttons, and emits `DialogManagerEvent` for integration:
+
+```swift
+.onEvent(DialogManagerEvent.self) { _, event in
+  switch event {
+  case .dialogActive(true): pauseGame()
+  case .dialogActive(false): resumeGame()
+  case .dialogEnded(let actorId, let dialogId): handleDialogComplete(actorId, dialogId)
+  default: break
+  }
+}
+```
+
 ### Object Pools
 
 #### ObjectPool
@@ -1231,7 +1259,7 @@ Actor(ActorState()) { state in
   AseSprite$(path: "Enemy")
 }
 .physics(ActorPhysicsConfig(speed: 40))
-.targeting()
+.targetbox { _ in CollisionShape2D$().shape(CircleShape2D(radius: 100)) }
 .behavior(initial: "patrol") {
   During("patrol") {
     Patrol(left: 100, right: 300)
@@ -1255,6 +1283,46 @@ Actor(ActorState()) { state in
 
 **Built-in Behaviors:** `Patrol`, `Chase`, `Charge`, `Shoot`, `JumpOnInterval`, `SineWave`, `Idle`, `FaceTarget`
 
+#### Actor Modifiers
+
+```swift
+Actor(state) { ... }
+.collision { _ in ... }    // Terrain collision
+.hurtbox { _ in ... }      // Can receive damage
+.hitbox { _, weapon in ... } // Can deal damage
+.targetbox { _ in ... }    // Target scanning (auto-enables targeting)
+.interaction { _ in ... }  // NPC interaction zone
+.collector { _ in ... }    // Item pickup area
+.physics(config)           // Movement/gravity
+.defense(config)           // Health/invincibility
+.attacks([weapons])        // Weapon configs
+.isPlayer()                // Mark as player
+.behavior(initial: "state") { ... } // AI state machine
+.dialog { state, dialogState in ... } // NPC dialog
+```
+
+#### Ranged Weapons
+
+Use `ActorProjectileSpawner` to handle projectile spawning from actors with ranged weapons.
+
+```swift
+Node2D$ {
+  ActorProjectileSpawner() // Add once to scene
+
+  Actor(enemyState) { state in
+    AseSprite$(path: "Turret")
+  }
+  .attacks([ActorWeaponConfig(ranged: RangedWeaponConfig(damage: 1, speed: 200))])
+  .behavior(initial: "shoot") {
+    During("shoot") {
+      Shoot(cooldown: 1.5)
+    }
+  }
+}
+```
+
+Listens for `ActorEvent.projectileFired` and spawns projectiles with appropriate collision layers.
+
 #### Actor Dialog
 
 Add dialog capability to NPCs with `.dialog {}`. Requires separate `.interaction {}` for the interaction zone.
@@ -1277,7 +1345,7 @@ Actor(npcState) { state in
 }
 ```
 
-Emits `ActorEvent.dialogTriggered` and `ActorEvent.dialogCompleted`. Game code listens for events to show dialog UI.
+Use with `DialogManager` (see Dialog Trees section) for automatic dialog UI handling.
 
 Custom behaviors implement `ActorBehavior`:
 
