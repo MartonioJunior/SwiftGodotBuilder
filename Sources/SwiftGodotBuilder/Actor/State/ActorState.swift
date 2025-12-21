@@ -52,6 +52,24 @@ public class ActorState: Equatable {
     !nearbyInteractorIds.isEmpty
   }
 
+  // MARK: - Callbacks
+
+  /// Called when this actor takes damage. Receives (damage, knockback).
+  /// If set, replaces default damage handling - call `takeDamage` manually if needed.
+  public var onHurt: ((Int, Vector2) -> Void)?
+
+  /// Called when this actor hits a target. Receives (targetId, damage).
+  public var onHit: ((Int, Int) -> Void)?
+
+  /// Called when this actor dies.
+  public var onDeath: (() -> Void)?
+
+  /// Called when targeting acquires a new target.
+  public var onAcquiredTarget: ((Area2D) -> Void)?
+
+  /// Called when targeting loses all targets.
+  public var onLostAllTargets: (() -> Void)?
+
   // MARK: - Computed Properties
 
   /// Scale vector based on facing direction

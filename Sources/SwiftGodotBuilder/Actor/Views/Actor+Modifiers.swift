@@ -156,4 +156,37 @@ public extension Actor {
     state.dialog = ActorDialogState(dialogFactory: factory)
     return self
   }
+
+  // MARK: - Combat Callbacks
+
+  /// Called when this actor takes damage. Receives (damage, knockback).
+  /// If set, replaces default damage handling - call `state.takeDamage` manually if needed.
+  func onHurt(_ handler: @escaping (Int, Vector2) -> Void) -> Self {
+    state.onHurt = handler
+    return self
+  }
+
+  /// Called when this actor hits a target. Receives (targetId, damage).
+  func onHit(_ handler: @escaping (Int, Int) -> Void) -> Self {
+    state.onHit = handler
+    return self
+  }
+
+  /// Called when this actor dies.
+  func onDeath(_ handler: @escaping () -> Void) -> Self {
+    state.onDeath = handler
+    return self
+  }
+
+  /// Called when targeting acquires a new target.
+  func onAcquiredTarget(_ handler: @escaping (Area2D) -> Void) -> Self {
+    state.onAcquiredTarget = handler
+    return self
+  }
+
+  /// Called when targeting loses all targets.
+  func onLostAllTargets(_ handler: @escaping () -> Void) -> Self {
+    state.onLostAllTargets = handler
+    return self
+  }
 }

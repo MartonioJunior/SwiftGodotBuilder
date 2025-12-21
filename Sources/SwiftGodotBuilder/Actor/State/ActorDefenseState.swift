@@ -59,6 +59,7 @@ public class ActorDefenseState {
       health = 0
       isDying = true
       ActorEvent.died(actorId: coreState.id).emit()
+      coreState.onDeath?()
     } else {
       // Start invincibility if configured
       if config.invincibilityDuration > 0 {

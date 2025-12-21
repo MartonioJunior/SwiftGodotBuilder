@@ -61,12 +61,20 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
           case let .meleeHitTarget(_, targetId, damage, knockbackAmount, _, direction):
             if targetId == nodeId {
               let knockback = direction * knockbackAmount
-              state.takeDamage(damage, knockback: knockback)
+              if let onHurt = state.onHurt {
+                onHurt(damage, knockback)
+              } else {
+                state.takeDamage(damage, knockback: knockback)
+              }
             }
           case let .projectileHitTarget(_, targetId, _, damage, knockbackAmount, direction):
             if targetId == nodeId {
               let knockback = direction * knockbackAmount
-              state.takeDamage(damage, knockback: knockback)
+              if let onHurt = state.onHurt {
+                onHurt(damage, knockback)
+              } else {
+                state.takeDamage(damage, knockback: knockback)
+              }
             }
           default:
             break
@@ -98,6 +106,9 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
             position: hitPos,
             direction: direction
           ).emit()
+
+          // Call onHit callback
+          state.onHit?(targetId, melee.damage)
         }
         .watch($state, \.weapon?.hitboxActive) { (node: Area2D, active) in
           Engine.onNextFrame {
@@ -117,11 +128,21 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
         .collisionMask(state.isPlayer ? .iota : .theta)
         .onSignal(\.areaEntered) { _, area in
           guard let area else { return }
+          let hadTargets = targeting.closestTarget != nil
           targeting.addTarget(area, relativeTo: state.node)
+          // Call onAcquiredTarget if we just got our first target
+          if !hadTargets, targeting.closestTarget != nil {
+            state.onAcquiredTarget?(area)
+          }
         }
         .onSignal(\.areaExited) { _, area in
           guard let area else { return }
+          let hadTargets = targeting.closestTarget != nil
           targeting.removeTarget(area)
+          // Call onLostAllTargets if we just lost our last target
+          if hadTargets, targeting.closestTarget == nil {
+            state.onLostAllTargets?()
+          }
         }
       }
 
@@ -169,13 +190,13 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
         }
       }
 
-      // Collector area
+      // Collector area (detects pickups on .lambda layer)
       if let builder = collectorBuilder {
         Area2D$ {
           builder(state)
         }
         .collisionLayer(.zero)
-        .collisionMask(.gamma)
+        .collisionMask(.lambda)
       }
 
       // User content - pass ObservableState for reactive bindings
