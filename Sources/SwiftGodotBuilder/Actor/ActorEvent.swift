@@ -33,7 +33,7 @@ public enum ActorEvent: EmittableEvent {
   case exitedZone(bodyInstanceId: Int, zone: String)
 
   // Interactions
-  case collected(actorId: Int, itemId: String, position: Vector2)
+  case collected(actorId: Int, item: Any, position: Vector2)
   case enteredDoor(actorId: Int, targetLevelIid: String, targetEntityIid: String)
   case interactorEntered(actorId: Int, interactorId: Int)
   case interactorExited(actorId: Int, interactorId: Int)
