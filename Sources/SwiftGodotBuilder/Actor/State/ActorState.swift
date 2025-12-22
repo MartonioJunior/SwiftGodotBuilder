@@ -1,18 +1,21 @@
 import Foundation
 import SwiftGodot
 
-@Observable
 public class ActorState: Equatable {
   // MARK: - Properties
 
-  /// Unique actor ID
-  public let id: Int
+  /// Unique actor ID (regenerated on pool reset)
+  public private(set) var id: Int
 
   /// Reference to the CharacterBody2D node (set after body is created)
-  public internal(set) var node: CharacterBody2D?
+  /// Weak to avoid retain cycles with ActorPool
+  public internal(set) weak var node: CharacterBody2D?
 
   /// Whether this is the player (affects death handling)
   public var isPlayer = false
+
+  /// Whether this actor is managed by an ActorPool
+  public var isPooled = false
 
   // MARK: - Core Movement
 
@@ -39,6 +42,9 @@ public class ActorState: Equatable {
   /// Dialog capability (provides dialog when interacted)
   public var dialog: ActorDialogState?
 
+  /// Selection capability (can be selected by player)
+  public var selection: ActorSelectionState?
+
   /// Behavior machine for AI behaviors (type-erased)
   var behaviorMachine: AnyBehaviorMachine?
 
@@ -53,22 +59,57 @@ public class ActorState: Equatable {
   }
 
   // MARK: - Callbacks
+  //
+  // IMPORTANT: Callbacks can create retain cycles if you capture `self` strongly.
+  // Always use `[weak self]` in callback closures to avoid memory leaks:
+  //
+  // ```swift
+  // // GOOD - uses weak self
+  // state.onDeath = { [weak self] actor in
+  //   self?.handleDeath(actor)
+  // }
+  //
+  // // BAD - creates retain cycle
+  // state.onDeath = { actor in
+  //   self.handleDeath(actor)  // 'self' captured strongly!
+  // }
+  // ```
 
-  /// Called when this actor takes damage. Receives (damage, knockback).
+  /// Called when this actor takes damage. Receives (actor, damage, knockback).
   /// If set, replaces default damage handling - call `takeDamage` manually if needed.
-  public var onHurt: ((Int, Vector2) -> Void)?
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onHurt: ((ActorState, Int, Vector2) -> Void)?
 
-  /// Called when this actor hits a target. Receives (targetId, damage).
-  public var onHit: ((Int, Int) -> Void)?
+  /// Called when this actor hits a target. Receives (actor, targetId, damage).
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onHit: ((ActorState, Int, Int) -> Void)?
 
   /// Called when this actor dies.
-  public var onDeath: (() -> Void)?
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onDeath: ((ActorState) -> Void)?
 
   /// Called when targeting acquires a new target.
-  public var onAcquiredTarget: ((Area2D) -> Void)?
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onAcquiredTarget: ((ActorState, Area2D) -> Void)?
 
   /// Called when targeting loses all targets.
-  public var onLostAllTargets: (() -> Void)?
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onLostAllTargets: ((ActorState) -> Void)?
+
+  /// Called before an attack starts. Receives (actor, weaponIndex). Return false to cancel.
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onBeforeAttack: ((ActorState, Int) -> Bool)?
+
+  /// Called after an attack fires (for ranged) or activates (for melee).
+  ///
+  /// - Warning: Use `[weak self]` to avoid retain cycles.
+  public var onAttack: ((ActorState, Int) -> Void)?
 
   // MARK: - Computed Properties
 
@@ -117,6 +158,11 @@ public class ActorState: Equatable {
     defense?.isInvincible ?? false
   }
 
+  /// Whether actor is currently selected
+  public var isSelected: Bool {
+    selection?.isSelected ?? false
+  }
+
   // MARK: - Initialization
 
   public init() {
@@ -140,5 +186,44 @@ public class ActorState: Equatable {
   /// Process behavior machine (called by Actor each physics frame)
   func processBehaviorMachine(_ delta: Double) {
     behaviorMachine?.process(actor: self, delta: delta)
+  }
+
+  // MARK: - Reset (for pooling)
+
+  /// Resets state for reuse from pool. Generates a fresh ID.
+  /// - Parameters:
+  ///   - facing: Initial facing direction
+  /// Note: behaviorMachine must be set separately after reset.
+  /// Note: Callbacks are cleared separately via clearCallbacks() on pool release.
+  public func reset(facing: Facing = .right) {
+    // Generate fresh ID
+    id = Int.random(in: 1 ... Int.max)
+
+    // Reset core state
+    self.facing = facing
+    moveStatus = .idle
+    nearbyInteractorIds = []
+
+    // Reset capabilities
+    physics?.reset()
+    defense?.reset()
+    weapon?.reset()
+    targeting?.reset()
+    selection?.isSelected = false
+
+    // Clear behavior machine (must be recreated by consumer)
+    behaviorMachine = nil
+  }
+
+  /// Clears all callbacks to release captured references.
+  /// Called automatically by ActorPool on release to prevent retain cycles.
+  public func clearCallbacks() {
+    onHurt = nil
+    onHit = nil
+    onDeath = nil
+    onAcquiredTarget = nil
+    onLostAllTargets = nil
+    onBeforeAttack = nil
+    onAttack = nil
   }
 }

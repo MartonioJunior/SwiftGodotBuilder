@@ -3,7 +3,7 @@ import SwiftGodot
 
 // MARK: - Persistable Protocol
 
-/// A protocol for making `@Observable` classes automatically persistable to disk.
+/// A protocol for making classes automatically persistable to disk.
 ///
 /// Classes conforming to `Persistable` can easily save and load their state
 /// to Godot's user data directory using JSON serialization.
@@ -112,7 +112,8 @@ public extension Persistable {
 
     let jsonString = file.getAsText()
     guard let parsed = JSON.parseString(jsonString: String(jsonString)),
-          let dict = VariantDictionary(parsed) else {
+          let dict = VariantDictionary(parsed)
+    else {
       GD.printerr(arg1: Variant("Failed to parse JSON from: \(persistencePath)"))
       return
     }

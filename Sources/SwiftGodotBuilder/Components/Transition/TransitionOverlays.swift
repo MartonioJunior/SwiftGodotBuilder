@@ -5,9 +5,9 @@ import SwiftGodot
 
 /// A full-screen fade overlay that transitions opacity based on TransitionState
 public struct FadeOverlay: GView {
-  let transitionState: ObservableState<TransitionState>
+  let transitionState: TransitionState
 
-  public init(transitionState: ObservableState<TransitionState>) {
+  public init(transitionState: TransitionState) {
     self.transitionState = transitionState
   }
 
@@ -17,14 +17,13 @@ public struct FadeOverlay: GView {
       .anchorsAndOffsets(.fullRect)
       .visible(false)
       .onProcess { node, _ in
-        let state = transitionState.wrappedValue
-        guard state.transitionType == .fade else {
+        guard transitionState.transitionType == .fade else {
           node.visible = false
           return
         }
 
-        node.visible = state.progress > 0
-        node.modulate = Color(r: 1, g: 1, b: 1, a: state.progress)
+        node.visible = transitionState.progress > 0
+        node.modulate = Color(r: 1, g: 1, b: 1, a: transitionState.progress)
       }
   }
 }
@@ -33,11 +32,11 @@ public struct FadeOverlay: GView {
 
 /// A horizontal wipe overlay that sweeps across the screen
 public struct WipeOverlay: GView {
-  let transitionState: ObservableState<TransitionState>
+  let transitionState: TransitionState
   let screenWidth: Float
   let screenHeight: Float
 
-  public init(transitionState: ObservableState<TransitionState>, screenWidth: Float, screenHeight: Float) {
+  public init(transitionState: TransitionState, screenWidth: Float, screenHeight: Float) {
     self.transitionState = transitionState
     self.screenWidth = screenWidth
     self.screenHeight = screenHeight
@@ -48,13 +47,12 @@ public struct WipeOverlay: GView {
       .color(Color.black)
       .visible(false)
       .onProcess { node, _ in
-        let state = transitionState.wrappedValue
-        guard state.transitionType == .wipe else {
+        guard transitionState.transitionType == .wipe else {
           node.visible = false
           return
         }
 
-        let rawProgress = state.rawProgress
+        let rawProgress = transitionState.rawProgress
         node.visible = rawProgress > 0 && rawProgress < 1
 
         if rawProgress <= 0.5 {
@@ -80,11 +78,11 @@ public struct WipeOverlay: GView {
 
 /// An iris wipe overlay that shrinks to a point and expands back
 public struct IrisOverlay: GView {
-  let transitionState: ObservableState<TransitionState>
+  let transitionState: TransitionState
   let screenWidth: Float
   let screenHeight: Float
 
-  public init(transitionState: ObservableState<TransitionState>, screenWidth: Float, screenHeight: Float) {
+  public init(transitionState: TransitionState, screenWidth: Float, screenHeight: Float) {
     self.transitionState = transitionState
     self.screenWidth = screenWidth
     self.screenHeight = screenHeight
@@ -95,11 +93,10 @@ public struct IrisOverlay: GView {
       .visible(false)
       .anchorsAndOffsets(.fullRect)
       .onProcess { node, _ in
-        let state = transitionState.wrappedValue
-        let isIris = state.transitionType == .irisOut
-        let rawProgress = state.rawProgress
+        let isIris = transitionState.transitionType == .irisOut
+        let rawProgress = transitionState.rawProgress
         node.visible = isIris && rawProgress > 0 && rawProgress < 1
-        if isIris && state.isTransitioning {
+        if isIris && transitionState.isTransitioning {
           node.queueRedraw()
         }
       }
@@ -111,18 +108,17 @@ public struct IrisOverlay: GView {
 
 // MARK: - Iris Drawing Helper
 
-private func drawIris(control: Control, transitionState: ObservableState<TransitionState>, screenWidth: Float, screenHeight: Float) {
-  let state = transitionState.wrappedValue
-  let type = state.transitionType
+private func drawIris(control: Control, transitionState: TransitionState, screenWidth: Float, screenHeight: Float) {
+  let type = transitionState.transitionType
   guard type == .irisOut else { return }
 
   let size: Vector2 = [screenWidth, screenHeight]
-  let center: Vector2 = [size.x * state.irisCenter.x, size.y * state.irisCenter.y]
+  let center: Vector2 = [size.x * transitionState.irisCenter.x, size.y * transitionState.irisCenter.y]
 
   // Max radius to cover entire screen from center
   let maxRadius = sqrt(screenWidth * screenWidth + screenHeight * screenHeight)
 
-  let rawProgress = state.rawProgress
+  let rawProgress = transitionState.rawProgress
   let radius: Float
 
   // irisOut: circle shrinks to close, then opens back up

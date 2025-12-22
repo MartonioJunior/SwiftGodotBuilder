@@ -2,7 +2,6 @@ import Foundation
 import SwiftGodot
 
 /// Defense capability state for actors that can take damage
-@Observable
 public class ActorDefenseState {
   // MARK: - Config
 
@@ -59,7 +58,7 @@ public class ActorDefenseState {
       health = 0
       isDying = true
       ActorEvent.died(actorId: coreState.id).emit()
-      coreState.onDeath?()
+      coreState.onDeath?(coreState)
     } else {
       // Start invincibility if configured
       if config.invincibilityDuration > 0 {
@@ -79,5 +78,16 @@ public class ActorDefenseState {
 
   public func heal(_ amount: Int) {
     health = min(health + amount, maxHealth)
+  }
+
+  // MARK: - Reset (for pooling)
+
+  /// Resets state to initial values for reuse from pool
+  public func reset() {
+    health = config.maxHealth
+    maxHealth = config.maxHealth
+    isInvincible = false
+    invincibilityTimer = 0
+    isDying = false
   }
 }

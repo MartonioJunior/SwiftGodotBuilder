@@ -2,7 +2,6 @@ import Foundation
 import SwiftGodot
 
 /// Weapon capability state for actors with weapons
-@Observable
 public class ActorWeaponState {
   // MARK: - Weapons
 
@@ -83,7 +82,12 @@ public class ActorWeaponState {
     if let melee = weapon.melee, melee.alwaysActive {
       // Still fire ranged immediately if requested and not recovering
       if attackRequested, let ranged = weapon.ranged, attackPhase == .idle {
-        fireProjectile(body: body, coreState: coreState, config: ranged)
+        // Check onBeforeAttack callback
+        let shouldFire = coreState.onBeforeAttack?(coreState, currentIndex) ?? true
+        if shouldFire {
+          coreState.onAttack?(coreState, currentIndex)
+          fireProjectile(body: body, coreState: coreState, config: ranged)
+        }
       }
       attackRequested = false
       return
@@ -91,6 +95,13 @@ public class ActorWeaponState {
 
     // Start attack if requested and idle
     if attackRequested, attackPhase == .idle {
+      // Check onBeforeAttack callback - if it returns false, cancel attack
+      if let onBeforeAttack = coreState.onBeforeAttack {
+        guard onBeforeAttack(coreState, currentIndex) else {
+          attackRequested = false
+          return
+        }
+      }
       startAttack(body: body, coreState: coreState, weapon: weapon)
       attackRequested = false
       return
@@ -124,6 +135,9 @@ public class ActorWeaponState {
       attackTimer = weapon.activeDuration
       ActorEvent.attackActive(actorId: coreState.id, position: body.position, facing: coreState.facing).emit()
 
+      // Call onAttack callback
+      coreState.onAttack?(coreState, currentIndex)
+
       // Fire projectile at start of active phase
       if let ranged = weapon.ranged {
         fireProjectile(body: body, coreState: coreState, config: ranged)
@@ -154,5 +168,15 @@ public class ActorWeaponState {
       config: config,
       isPlayerOwned: coreState.isPlayer
     ).emit()
+  }
+
+  // MARK: - Reset (for pooling)
+
+  /// Resets state to initial values for reuse from pool
+  public func reset() {
+    currentIndex = 0
+    attackPhase = .idle
+    attackTimer = 0
+    attackRequested = false
   }
 }

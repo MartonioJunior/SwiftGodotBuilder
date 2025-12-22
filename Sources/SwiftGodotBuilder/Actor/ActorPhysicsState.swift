@@ -2,7 +2,6 @@ import Foundation
 import SwiftGodot
 
 /// Physics capability state for actors with movement physics
-@Observable
 public class ActorPhysicsState {
   // MARK: - Config
 
@@ -279,5 +278,38 @@ public class ActorPhysicsState {
     } else if inputDirection < -0.1 {
       coreState.facing = .left
     }
+  }
+
+  // MARK: - Reset (for pooling)
+
+  /// Resets state to initial values for reuse from pool
+  public func reset() {
+    // Floor/Wall Detection
+    isOnFloor = false
+    wasOnFloor = false
+    isOnWall = false
+    isInWater = false
+    isCrouching = false
+
+    // Knockback
+    knockbackVelocity = .zero
+    knockbackTimer = 0
+
+    // Jump
+    coyoteTimer = 0
+    jumpBufferTimer = 0
+    hasDoubleJump = true
+
+    // Dash
+    dashTimer = 0
+    dashCooldownTimer = 0
+    dashDirection = .zero
+
+    // Input State
+    inputDirection = 0
+    jumpRequested = false
+    jumpHeld = false
+    dashRequested = false
+    crouchHeld = false
   }
 }

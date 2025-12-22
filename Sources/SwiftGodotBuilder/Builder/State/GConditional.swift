@@ -42,7 +42,7 @@ import SwiftGodot
 /// }
 /// ```
 public struct If: GView {
-    private let condition: any ReactiveSource<Bool>
+    private let condition: GState<Bool>
     private let trueContent: [any GView]
     private let falseContent: [any GView]
     private var renderMode: Mode = .hide
@@ -68,7 +68,7 @@ public struct If: GView {
     ///   - condition: The reactive boolean source to watch (GState or ObservableProperty)
     ///   - content: The content to show when condition is true
     public init(
-        _ condition: some ReactiveSource<Bool>,
+        _ condition: GState<Bool>,
         @NodeBuilder content: () -> [any GView]
     ) {
         self.condition = condition
@@ -78,7 +78,7 @@ public struct If: GView {
 
     // Private initializer for method chaining
     private init(
-        condition: any ReactiveSource<Bool>,
+        condition: GState<Bool>,
         trueContent: [any GView],
         falseContent: [any GView],
         mode: Mode,
@@ -148,8 +148,8 @@ public struct If: GView {
         }
 
         // Watch state changes with throttling and warnings
-        condition.observe { [weak container] isTrue in
-            guard let container = container else { return }
+        condition.observe(owner: container) { isTrue in
+            guard container.isInsideTree() else { return }
 
             switch renderMode {
             case .hide:
@@ -283,7 +283,7 @@ public extension If {
     ///   - content: The content to show when condition is true
     /// - Returns: A conditional configured with hide mode
     static func hide(
-        _ condition: some ReactiveSource<Bool>,
+        _ condition: GState<Bool>,
         @NodeBuilder content: () -> [any GView]
     ) -> If {
         If(condition, content: content).mode(.hide)
@@ -295,7 +295,7 @@ public extension If {
     ///   - content: The content to show when condition is true
     /// - Returns: A conditional configured with remove mode
     static func remove(
-        _ condition: some ReactiveSource<Bool>,
+        _ condition: GState<Bool>,
         @NodeBuilder content: () -> [any GView]
     ) -> If {
         If(condition, content: content).mode(.remove)
@@ -307,7 +307,7 @@ public extension If {
     ///   - content: The content to show when condition is true
     /// - Returns: A conditional configured with destroy mode
     static func destroy(
-        _ condition: some ReactiveSource<Bool>,
+        _ condition: GState<Bool>,
         @NodeBuilder content: () -> [any GView]
     ) -> If {
         If(condition, content: content).mode(.destroy)

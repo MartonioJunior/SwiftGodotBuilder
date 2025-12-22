@@ -41,6 +41,7 @@ public struct Patrol: ActorBehavior {
 
   public mutating func process(actor: ActorState, delta _: Double) {
     guard let physics = actor.physics, let node = actor.node else { return }
+    guard let body = node as? CharacterBody2D else { return }
 
     let pos = node.position.x
 
@@ -49,6 +50,17 @@ public struct Patrol: ActorBehavior {
       direction = 1
     } else if pos >= rightBound {
       direction = -1
+    }
+
+    // Reverse when hitting a wall (use wall normal to determine direction)
+    if actor.isOnWall {
+      let wallNormal = body.getWallNormal()
+      // Wall normal points away from wall, so move in that direction
+      if wallNormal.x > 0.1 {
+        direction = 1
+      } else if wallNormal.x < -0.1 {
+        direction = -1
+      }
     }
 
     // Use physics speed by default, or scale input if speed override provided

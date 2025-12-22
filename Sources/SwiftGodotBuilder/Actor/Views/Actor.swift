@@ -4,8 +4,8 @@ import SwiftGodot
 // MARK: - Actor
 
 /// A composable actor view with role-based modifiers.
-public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GView, Targetbox: GView, Interaction: GView, Collector: GView>: GView {
-  let contentBuilder: (ObservableState<ActorState>) -> Content
+public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GView, Targetbox: GView, Interaction: GView, Collector: GView, Selectbox: GView>: GView {
+  let contentBuilder: (ActorState) -> Content
 
   // Role modifiers
   let collisionBuilder: ((ActorState) -> Collision)?
@@ -14,8 +14,12 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
   let targetboxBuilder: ((ActorState) -> Targetbox)?
   let interactionBuilder: ((ActorState) -> Interaction)?
   let collectorBuilder: ((ActorState) -> Collector)?
+  let selectboxBuilder: ((ActorState) -> Selectbox)?
 
-  @ObservableState var state: ActorState
+  let state: ActorState
+
+  // Direct node references for high-frequency updates (avoids observation overhead)
+  private let hitboxRef = GState<Area2D?>(wrappedValue: nil)
 
   // MARK: - Initialization
 
@@ -27,7 +31,8 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
     targetboxBuilder: ((ActorState) -> Targetbox)?,
     interactionBuilder: ((ActorState) -> Interaction)?,
     collectorBuilder: ((ActorState) -> Collector)?,
-    @GViewBuilder content: @escaping (ObservableState<ActorState>) -> Content
+    selectboxBuilder: ((ActorState) -> Selectbox)?,
+    @GViewBuilder content: @escaping (ActorState) -> Content
   ) {
     self.collisionBuilder = collisionBuilder
     self.hurtboxBuilder = hurtboxBuilder
@@ -35,8 +40,9 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
     self.targetboxBuilder = targetboxBuilder
     self.interactionBuilder = interactionBuilder
     self.collectorBuilder = collectorBuilder
+    self.selectboxBuilder = selectboxBuilder
     contentBuilder = content
-    _state = ObservableState(wrappedValue: state)
+    self.state = state
   }
 
   // MARK: - Body
@@ -58,20 +64,22 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
         .onEvent(ActorEvent.self) { node, event in
           let nodeId = Int(node.getInstanceId())
           switch event {
-          case let .meleeHitTarget(_, targetId, damage, knockbackAmount, _, direction):
-            if targetId == nodeId {
+          case let .meleeHitTarget(actorId, targetId, damage, knockbackAmount, _, direction):
+            // Skip self-damage
+            if targetId == nodeId, actorId != state.id {
               let knockback = direction * knockbackAmount
               if let onHurt = state.onHurt {
-                onHurt(damage, knockback)
+                onHurt(state, damage, knockback)
               } else {
                 state.takeDamage(damage, knockback: knockback)
               }
             }
-          case let .projectileHitTarget(_, targetId, _, damage, knockbackAmount, direction):
-            if targetId == nodeId {
+          case let .projectileHitTarget(actorId, targetId, _, damage, knockbackAmount, direction):
+            // Skip self-damage
+            if targetId == nodeId, actorId != state.id {
               let knockback = direction * knockbackAmount
               if let onHurt = state.onHurt {
-                onHurt(damage, knockback)
+                onHurt(state, damage, knockback)
               } else {
                 state.takeDamage(damage, knockback: knockback)
               }
@@ -88,10 +96,10 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
           builder(state, weapon)
         }
         .collisionLayer(state.isPlayer ? .delta : .kappa)
-        .collisionMask(state.isPlayer ? .iota : .theta)
+        .collisionMask(state.isPlayer ? .iota : [.theta, .iota])
         .monitoring(weapon.hitboxActive)
         .monitorable(weapon.hitboxActive)
-        .scale($state.facingScale)
+        .ref(hitboxRef) // Scale updated directly in physics loop to avoid observation overhead
         .onSignal(\.areaEntered) { node, area in
           guard let area, let weaponState = state.weapon, weaponState.hitboxActive else { return }
           guard let melee = weaponState.currentMelee else { return }
@@ -108,14 +116,7 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
           ).emit()
 
           // Call onHit callback
-          state.onHit?(targetId, melee.damage)
-        }
-        .watch($state, \.weapon?.hitboxActive) { (node: Area2D, active) in
-          Engine.onNextFrame {
-            let isActive = active ?? false
-            node.monitoring = isActive
-            node.monitorable = isActive
-          }
+          state.onHit?(state, targetId, melee.damage)
         }
       }
 
@@ -132,7 +133,7 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
           targeting.addTarget(area, relativeTo: state.node)
           // Call onAcquiredTarget if we just got our first target
           if !hadTargets, targeting.closestTarget != nil {
-            state.onAcquiredTarget?(area)
+            state.onAcquiredTarget?(state, area)
           }
         }
         .onSignal(\.areaExited) { _, area in
@@ -141,7 +142,7 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
           targeting.removeTarget(area)
           // Call onLostAllTargets if we just lost our last target
           if hadTargets, targeting.closestTarget == nil {
-            state.onLostAllTargets?()
+            state.onLostAllTargets?(state)
           }
         }
       }
@@ -195,12 +196,65 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
         Area2D$ {
           builder(state)
         }
-        .collisionLayer(.zero)
+        .collisionLayer(.mu)
         .collisionMask(.lambda)
       }
 
-      // User content - pass ObservableState for reactive bindings
-      contentBuilder($state)
+      // Selectbox (can be selected by player)
+      if let builder = selectboxBuilder, let selection = state.selection {
+        Area2D$ {
+          builder(state)
+        }
+        .collisionLayer(.nu)
+        .collisionMask(.zero)
+        .monitorable(true)
+        .monitoring(false)
+        .onEvent(SelectionEvent.self) { node, event in
+          // Use the Area2D's instance ID to match what SelectionBox queries
+          let areaId = Int(node.getInstanceId())
+          switch event {
+          case let .selectRequested(ids, additive):
+            GD.print("Actor selectbox \(areaId): received selectRequested ids=\(ids) additive=\(additive)")
+            if ids.contains(areaId) {
+              if !selection.isSelected {
+                selection.isSelected = true
+                GD.print("Actor selectbox \(areaId): now selected")
+                SelectionEvent.selected(actorId: areaId).emit()
+              }
+            } else if !additive {
+              if selection.isSelected {
+                selection.isSelected = false
+                GD.print("Actor selectbox \(areaId): now deselected")
+                SelectionEvent.deselected(actorId: areaId).emit()
+              }
+            }
+          case let .deselectRequested(ids):
+            if ids.contains(areaId), selection.isSelected {
+              selection.isSelected = false
+              SelectionEvent.deselected(actorId: areaId).emit()
+            }
+          case .clearRequested:
+            if selection.isSelected {
+              selection.isSelected = false
+              SelectionEvent.deselected(actorId: areaId).emit()
+            }
+          case let .toggleRequested(id):
+            if id == areaId {
+              selection.isSelected.toggle()
+              if selection.isSelected {
+                SelectionEvent.selected(actorId: areaId).emit()
+              } else {
+                SelectionEvent.deselected(actorId: areaId).emit()
+              }
+            }
+          default:
+            break
+          }
+        }
+      }
+
+      // User content
+      contentBuilder(state)
     }
     // Actor physics collision: only collide with terrain (alpha), not other actors
     .collisionLayer(state.isPlayer ? .beta : .gamma)
@@ -217,8 +271,12 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
       if let defense = state.defense, defense.isDying {
         if !state.isPlayer {
           body.visible = false
-          Engine.onNextFrame {
-            body.queueFree()
+          // Pooled actors are released by ActorPool listening for ActorEvent.died
+          // Non-pooled actors are freed immediately
+          if !state.isPooled {
+            Engine.onNextFrame {
+              body.queueFree()
+            }
           }
         }
         return
@@ -235,6 +293,14 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
 
       // Process weapon if configured
       state.weapon?.process(body: body, delta: delta, coreState: state)
+
+      // Update hitbox directly (avoids observation overhead)
+      if let hitbox = hitboxRef.wrappedValue {
+        hitbox.scale = state.facingScale
+        let isActive = state.weapon?.hitboxActive ?? false
+        hitbox.monitoring = isActive
+        hitbox.monitorable = isActive
+      }
     }
   }
 }
@@ -247,11 +313,12 @@ public extension Actor where
   Hitbox == EmptyGView,
   Targetbox == EmptyGView,
   Interaction == EmptyGView,
-  Collector == EmptyGView
+  Collector == EmptyGView,
+  Selectbox == EmptyGView
 {
   init(
     _ state: ActorState,
-    @GViewBuilder content: @escaping (ObservableState<ActorState>) -> Content
+    @GViewBuilder content: @escaping (ActorState) -> Content
   ) {
     self.init(
       state,
@@ -261,12 +328,13 @@ public extension Actor where
       targetboxBuilder: nil,
       interactionBuilder: nil,
       collectorBuilder: nil,
+      selectboxBuilder: nil,
       content: content
     )
   }
 
   init(
-    @GViewBuilder content: @escaping (ObservableState<ActorState>) -> Content
+    @GViewBuilder content: @escaping (ActorState) -> Content
   ) {
     self.init(ActorState(), content: content)
   }

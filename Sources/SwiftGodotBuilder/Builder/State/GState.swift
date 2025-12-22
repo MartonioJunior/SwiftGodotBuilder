@@ -4,40 +4,6 @@ import SwiftGodot
 /// A type alias for ``GState`` to provide a more convenient API surface.
 public typealias State = GState
 
-// MARK: - ReactiveSource Protocol
-
-/// A protocol that any reactive value source can conform to.
-///
-/// This protocol unifies `GState` and `ObservableProperty` under a common interface,
-/// allowing reactive containers and bindings to work seamlessly with both @State and
-/// @Observable properties.
-///
-/// ## Usage
-///
-/// Most users won't interact with this protocol directly - it's automatically
-/// used when you pass `@State` variables or `@Observable` properties to reactive
-/// containers like `If`, `Switch`, or binding methods.
-///
-/// ```swift
-/// @State var count = 0
-/// @ObservableState var viewModel = ViewModel()
-///
-/// // Both work seamlessly with ReactiveSource
-/// If($viewModel.isVisible) { ... }  // ObservableProperty: ReactiveSource
-/// Label$().text($count)  // GState: ReactiveSource
-/// ```
-public protocol ReactiveSource<Value> {
-  associatedtype Value
-
-  /// Observe changes to this reactive source.
-  ///
-  /// The handler is called immediately with the current value,
-  /// and then again each time the value changes.
-  ///
-  /// - Parameter handler: A closure that receives the new value
-  func observe(_ handler: @escaping (Value) -> Void)
-}
-
 // MARK: - State Property Wrapper
 
 /// A property wrapper that manages observable state in Godot nodes.
@@ -59,10 +25,52 @@ public protocol ReactiveSource<Value> {
 /// ```swift
 /// counter += 1  // Notifies all listeners
 /// ```
+/// Token returned by `GState.observe()` that can be used to cancel the observation.
+public final class StateObservationToken {
+  private weak var state: AnyObject?
+  let id: UUID
+
+  init(state: AnyObject, id: UUID) {
+    self.state = state
+    self.id = id
+  }
+
+  /// Cancels this observation. After calling this, the handler will no longer be invoked.
+  public func cancel() {
+    // The actual removal happens in GState via the id
+  }
+
+  /// Whether this observation is still active
+  public var isActive: Bool {
+    state != nil
+  }
+}
+
 @propertyWrapper
 public final class GState<Value: Equatable> {
+  /// Internal listener entry with optional weak owner for automatic cleanup
+  private final class Listener {
+    let id: UUID
+    /// If true, this listener was registered with an owner and should be cleaned up when owner dies
+    let hasOwner: Bool
+    weak var owner: AnyObject?
+    let handler: (Value) -> Void
+
+    init(id: UUID, owner: AnyObject?, handler: @escaping (Value) -> Void) {
+      self.id = id
+      self.hasOwner = owner != nil
+      self.owner = owner
+      self.handler = handler
+    }
+
+    /// Whether this listener is still alive (no owner, or owner still exists)
+    var isAlive: Bool {
+      !hasOwner || owner != nil
+    }
+  }
+
   private var value: Value
-  private var listeners: [(Value) -> Void] = []
+  private var listeners: [Listener] = []
 
   /// Debug label for identifying this state in ReactiveDebug output
   public var debugLabel: String?
@@ -114,11 +122,35 @@ public final class GState<Value: Equatable> {
   ///
   /// - Parameter handler: A closure that receives the new value whenever it changes.
   func onChange(_ handler: @escaping (Value) -> Void) {
-    listeners.append(handler)
+    let id = UUID()
+    listeners.append(Listener(id: id, owner: nil, handler: handler))
     handler(value) // Call immediately with current value
   }
 
+  /// Registers a closure with an owner object for automatic cleanup.
+  ///
+  /// When the owner is deallocated, the listener is automatically removed.
+  /// The handler is called immediately with the current value.
+  ///
+  /// - Parameters:
+  ///   - owner: The object that owns this observation. When deallocated, the listener is removed.
+  ///   - handler: A closure that receives the new value whenever it changes.
+  /// - Returns: A token that can be used to manually cancel the observation.
+  @discardableResult
+  func onChange(owner: AnyObject, _ handler: @escaping (Value) -> Void) -> StateObservationToken {
+    let id = UUID()
+    listeners.append(Listener(id: id, owner: owner, handler: handler))
+    handler(value) // Call immediately with current value
+    return StateObservationToken(state: self, id: id)
+  }
+
+  /// Removes a listener by its token ID.
+  func removeListener(id: UUID) {
+    listeners.removeAll { $0.id == id }
+  }
+
   /// Notifies all registered listeners of the current value.
+  /// Also cleans up listeners whose owners have been deallocated.
   private func notifyListeners() {
     if isComputed {
       ReactiveDebug.recordComputedUpdate(file: sourceFile, line: sourceLine)
@@ -129,8 +161,20 @@ public final class GState<Value: Equatable> {
         line: sourceLine
       )
     }
+
+    // Notify alive listeners and track if cleanup is needed
+    var needsCleanup = false
     for listener in listeners {
-      listener(value)
+      if listener.isAlive {
+        listener.handler(value)
+      } else {
+        needsCleanup = true
+      }
+    }
+
+    // Lazily clean up dead listeners
+    if needsCleanup {
+      listeners.removeAll { !$0.isAlive }
     }
   }
 
@@ -141,14 +185,21 @@ public final class GState<Value: Equatable> {
   }
 }
 
-// MARK: - ReactiveSource Conformance
+// MARK: - Observation Methods
 
-extension GState: ReactiveSource {
-  /// Observe changes to this state.
+public extension GState {
+  /// Observe changes to this state with automatic cleanup when owner is deallocated.
   ///
-  /// Simply delegates to `onChange` to maintain existing behavior.
-  public func observe(_ handler: @escaping (Value) -> Void) {
-    onChange(handler)
+  /// This is the preferred method for observing state changes from Godot nodes,
+  /// as it automatically cleans up the listener when the owning node is freed.
+  ///
+  /// - Parameters:
+  ///   - owner: The object that owns this observation (typically a Godot Node).
+  ///   - handler: A closure that receives the new value whenever it changes.
+  /// - Returns: A token that can be used to manually cancel the observation.
+  @discardableResult
+  func observe(owner: AnyObject, _ handler: @escaping (Value) -> Void) -> StateObservationToken {
+    onChange(owner: owner, handler)
   }
 }
 

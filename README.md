@@ -221,10 +221,10 @@ Components can expose state to their slot content via closure parameters.
 ```swift
 // Component exposes its state to content
 struct PlayerPanel<Content: GView>: GView {
-  @ObservableState var player = PlayerState()
-  let content: (ObservableState<PlayerState>) -> Content
+  var player = PlayerState()
+  let content: (PlayerState) -> Content
 
-  init(@GViewBuilder content: @escaping (ObservableState<PlayerState>) -> Content) {
+  init(@GViewBuilder content: @escaping (PlayerState) -> Content) {
     self.content = content
   }
 
@@ -285,12 +285,6 @@ LineEdit$().text($username)
 Slider$().value($volume)
 CheckBox$().pressed($isEnabled)
 OptionButton$().selected($selectedIndex)
-
-// ObservableState bindings (shorthand)
-@ObservableState var state = GameViewModel()
-Label$().text(state.playerName)              // reactive binding
-Label$().text(state.score) { "Score: \($0)" } // with transform
-Node2D$().position($state.position)          // $ prefix also works
 ```
 
 ### Dynamic Views
@@ -470,47 +464,6 @@ let store = Store(
 let analytics = Middleware<GameState, GameEvent> { event, state, dispatch in
   Analytics.track(event)
 }
-```
-
-### Persistable
-
-Auto-save `@Observable` classes to disk.
-
-```swift
-@Observable
-class GameSettings: Persistable {
-  static let PersistenceKey = "settings"
-
-  var masterVolume = 0.7
-  var musicVolume = 0.6
-  var fullscreen = false
-
-  init() { loadPersistence() }
-
-  func toDictionary() -> VariantDictionary {
-    let dict = VariantDictionary()
-    dict["masterVolume"] = Variant(masterVolume)
-    dict["musicVolume"] = Variant(musicVolume)
-    dict["fullscreen"] = Variant(fullscreen)
-    return dict
-  }
-
-  func fromDictionary(_ dict: VariantDictionary) {
-    if let v: Double = dict["masterVolume"]?.to() { masterVolume = v }
-    if let v: Double = dict["musicVolume"]?.to() { musicVolume = v }
-    if let v: Bool = dict["fullscreen"]?.to() { fullscreen = v }
-  }
-}
-
-// Auto-save on any property change
-Node2D$().watchAny($settings) { _, _ in
-  settings.savePersistence()
-}
-
-// Manual operations
-settings.savePersistence()
-settings.deletePersistence()
-settings.resetPersistence()
 ```
 
 ### EventBus
@@ -879,105 +832,6 @@ HealthBar$()
   }
 ```
 
-## Scenes & Navigation
-
-### SceneRouter
-
-Scene navigation with built-in transitions.
-
-```swift
-enum GameScene { case splash, menu, playing, gameOver }
-
-@ObservableState var router = SceneRouter(initial: GameScene.splash)
-
-// Navigate with transitions
-router.navigate(to: .menu, transition: .fade())
-router.navigate(to: .playing, transition: .wipe(duration: 0.5))
-router.navigate(to: .gameOver, transition: .iris(center: playerPos))
-
-// With midpoint callback for setup
-router.navigate(to: .playing, transition: .fade()) {
-  state.reset()
-  state.currentLevel = selectedLevel
-}
-
-// Use with Switch for reactive UI
-Switch($router.scene) {
-  Case(.splash) { SplashOverlay() }
-  Case(.menu) { MainMenu() }
-  Case(.playing) { GameLevel() }
-  Case(.gameOver) { GameOverScreen() }
-}
-.mode(.destroy)
-
-// Pass router's transition state to TransitionManager
-TransitionManager(state: $router.transitionState, screenSize: [428, 240])
-
-// Nested routes (child routers)
-let levelRouter = router.child(for: .playing, initial: 1)
-levelRouter.navigate(to: 3, transition: .fade())
-```
-
-### Transitions
-
-```swift
-struct GameUI: GView {
-  @ObservableState var transitionState = TransitionState()
-
-  var body: some GView {
-    CanvasLayer$ {
-      // Game UI here
-    }
-
-    TransitionManager(state: $transitionState, screenSize: [428, 240])
-  }
-}
-
-// Simple fade
-transitionState.fadeTransition(onMidpoint: {
-  loadNextLevel()
-})
-
-// Wipe with custom duration
-transitionState.wipeTransition(duration: 0.8)
-
-// Iris centered on player
-let playerCenter: Vector2 = [0.3, 0.6] // normalized 0-1
-transitionState.irisOutTransition(center: playerCenter)
-
-// Hold at midpoint for minimum duration
-transitionState.fadeTransition(holdDuration: 0.5, onMidpoint: {
-  loadLevel()
-})
-
-// Wait for async work to complete
-transitionState.fadeTransition(waitForResume: true, onMidpoint: {
-  loadLevelAsync {
-    transitionState.resume() // Continue transition when ready
-  }
-})
-
-// Both: minimum hold time + wait for async
-transitionState.irisOutTransition(
-  holdDuration: 0.3,
-  waitForResume: true,
-  onMidpoint: { startLoading() },
-  onComplete: { print("Done!") }
-)
-```
-
-#### Transition Events
-
-```swift
-.onEvent(TransitionEvent.self) { _, event in
-  switch event {
-  case .started(let type): print("Started \(type)")
-  case .midpoint: print("Midpoint reached")
-  case .completed(let type): print("Completed \(type)")
-  }
-}
-```
-
 ## Actors
 
 Composable actor system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
@@ -1006,8 +860,8 @@ Actor { state in
 .attacks([.init(melee: .init(damage: 1, knockback: 80))])
 .isPlayer()
 
-// Use outside state
-@ObservableState var state = ActorState()
+// Pre-build state
+var state = ActorState()
 Actor(state) { ... }
 ```
 
@@ -1023,13 +877,71 @@ Actor { ... }
 .targetbox { _ in ... }    // Target scanning (auto-enables targeting)
 .interaction { _ in ... }  // NPC interaction zone
 .collector { _ in ... }    // Item pickup area
+.selectbox { _ in ... }    // Selection area (RTS-style)
 .physics(config)           // Movement/gravity
 .defense(config)           // Health/invincibility
 .attacks([weapons])        // Weapon configs
 .isPlayer()                // Won't delete on death
 .behavior(initial: "state") { ... } // AI state machine
 .dialog { state, dialogState in ... } // NPC dialog
+.onHurt { actor, damage, knockback in ... } // Custom damage handling
+.onHit { actor, targetId, damage in ... }   // When hitting a target
+.onDeath { actor in ... }                  // Death callback
+.onAcquiredTarget { actor, target in ... } // Target acquired
+.onLostAllTargets { actor in ... }         // Lost all targets
 ```
+
+### Combat Callbacks
+
+Handle combat events with custom game logic. Events still fire for particles/sound.
+
+```swift
+Actor { state in ... }
+  .onHurt { actor, damage, knockback in
+    // Replaces default damage - call takeDamage manually if needed
+    let reducedDamage = max(1, damage - playerArmor)
+    actor.takeDamage(reducedDamage, knockback: knockback)
+  }
+  .onHit { actor, targetId, damage in
+    comboCounter += 1
+    score += damage * 10
+  }
+  .onDeath { actor in
+    GameEvent.playerDied.emit()
+  }
+  .onAcquiredTarget { actor, target in
+    showTargetIndicator = true
+  }
+  .onLostAllTargets { _ in
+    showTargetIndicator = false
+  }
+```
+
+### Pickups
+
+Collectible items with typed data.
+
+```swift
+enum Item {
+  case coin(value: Int)
+  case health(amount: Int)
+}
+
+Pickup(.health(amount: 10)) {
+  AseSprite$(path: "Items").autoplay("heart")
+  CollisionShape2D$().shape(CircleShape2D(radius: 6))
+} onCollected: { (item: Item, actorId) in
+  if case .health(let amount) = item {
+    player.heal(amount)
+  }
+}
+
+// Player needs .collector() to pick up items
+Actor(playerState) { ... }
+  .collector { _ in CollisionShape2D$().shape(RectangleShape2D(w: 12, h: 12)) }
+```
+
+Emits `ActorEvent.collected(actorId, item, position)` for particles/sound.
 
 ### Actor Behaviors
 
@@ -1062,7 +974,7 @@ Actor { state in
 }
 ```
 
-**Built-in Behaviors:** `Patrol`, `Chase`, `Charge`, `Shoot`, `JumpOnInterval`, `SineWave`, `Idle`, `FaceTarget`
+**Built-in Behaviors:** `Patrol` (reverses on walls), `Chase`, `Charge`, `Shoot`, `JumpOnInterval`, `SineWave`, `Idle`, `FaceTarget`
 
 ### Ranged Weapons
 
@@ -1109,6 +1021,42 @@ Actor(npcState) { state in
 ```
 
 Use with `DialogManager` (see Dialog Trees section) for automatic dialog UI handling.
+
+### Selection System
+
+RTS-style unit selection with click and box selection.
+
+```swift
+// Make actor selectable
+Actor { state in
+  AseSprite$(path: "Unit")
+
+  // Selection indicator
+  if state.isSelected {
+    ColorBox$([18, 18]).color(Color.green.withAlpha(0.3)).position([-9, -9])
+  }
+}
+.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 16)) }
+.selectbox(group: "units") { _ in
+  CollisionShape2D$().shape(RectangleShape2D(w: 18, h: 18))
+}
+
+// Add SelectionBox to scene for click/drag selection
+Node2D$ {
+  SelectableUnit().position([100, 50])
+  SelectableUnit().position([150, 50])
+  SelectionBox() // Handles mouse input for selection
+}
+.onEvent(SelectionEvent.self) { _, event in
+  switch event {
+  case .selected(let actorId): print("Selected: \(actorId)")
+  case .deselected(let actorId): print("Deselected: \(actorId)")
+  default: break
+  }
+}
+```
+
+Selection groups prevent mixing different unit types in multi-selection. Shift+click toggles selection.
 
 ## Game Systems
 
@@ -1299,6 +1247,38 @@ particles.setup(parent: self)
 particles.spawn(type: .dust, at: position)
 particles.spawn(type: .spark, at: hitPoint, scale: [2, 2])
 ```
+
+#### ActorPool
+
+Pool for reusing Actor nodes. One pool per actor type.
+
+```swift
+// Create pool with make and makeBehavior closures
+let slimePool = ActorPool(
+  prewarm: 10,
+  max: 50,
+  make: {
+    let state = ActorState()
+    let node = SlimeActor(state: state).toNode() as! CharacterBody2D
+    return (node, state)
+  },
+  makeBehavior: { AnyBehaviorMachine(SlimeBehavior()) }
+)
+
+slimePool.setup(parent: levelNode)
+
+// Spawn actors
+slimePool.spawn(at: spawnPoint, facing: .left)
+
+// Release via ActorEvent.died listener
+.onEvent(ActorEvent.self) { _, event in
+  if case let .died(actorId) = event {
+    slimePool.release(actorId: actorId)
+  }
+}
+```
+
+Pooled actors skip `queueFree()` on death - the pool handles node lifecycle.
 
 ### Particle Effects
 

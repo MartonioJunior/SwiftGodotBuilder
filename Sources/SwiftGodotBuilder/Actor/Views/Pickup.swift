@@ -44,10 +44,14 @@ public struct Pickup<T, Content: GView>: GView {
       contentBuilder()
     }
     .collisionLayer(.lambda)
-    .collisionMask(.zero)
+    .collisionMask(.mu)
     .onSignal(\.areaEntered) { node, collectorArea in
       guard let collectorArea else { return }
-      guard let actorBody = collectorArea.getParent() as? CharacterBody2D else { return }
+      let parents: [CharacterBody2D] = collectorArea.getParents()
+      guard let actorBody = parents.first else {
+        GD.pushWarning("[Pickup] Collector has no CharacterBody2D ancestor")
+        return
+      }
       let actorId = Int(actorBody.getInstanceId())
 
       // Event for particles/sound

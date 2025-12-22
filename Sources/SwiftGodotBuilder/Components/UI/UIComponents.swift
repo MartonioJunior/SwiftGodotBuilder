@@ -1,4 +1,3 @@
-import Observation
 import SwiftGodot
 
 // MARK: - Spacers
@@ -71,13 +70,13 @@ public struct InfoLabel: GView {
   }
 }
 
-// MARK: - Info Label (reactive text from ObservableState)
+// MARK: - Info Label (reactive text from GState)
 
-public struct LiveInfoLabel<O: AnyObject & Observable>: GView {
-  let text: ObservableProperty<O, String>
+public struct LiveInfoLabel: GView {
+  let text: GState<String>
   let color: Color
 
-  public init(_ text: ObservableProperty<O, String>, color: Color? = nil) {
+  public init(_ text: GState<String>, color: Color? = nil) {
     self.text = text
     self.color = color ?? Palette.shared.darkGray
   }

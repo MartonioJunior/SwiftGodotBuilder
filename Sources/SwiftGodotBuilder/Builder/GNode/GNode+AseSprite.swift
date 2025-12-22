@@ -48,17 +48,6 @@ public extension GNode where T == AseSprite {
     }
   }
 
-  /// Reactively set the current layer from an ObservableState keypath with a transform.
-  func layer<O: Observable, V>(
-    _ observable: ObservableState<O>,
-    _ keyPath: KeyPath<O, V>,
-    _ transform: @escaping (V) -> String
-  ) -> Self {
-    watch(observable, keyPath) { sprite, value in
-      sprite.currentLayer = transform(value)
-    }
-  }
-
   /// Stop animation playback after ready (shows first frame only).
   /// Useful for static icon display in UI.
   func paused() -> Self {

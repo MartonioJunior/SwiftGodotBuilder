@@ -1,7 +1,6 @@
 import Foundation
 
 /// Dialog capability state for actors that can provide dialog when interacted with
-@Observable
 public class ActorDialogState {
   // MARK: - Config
 

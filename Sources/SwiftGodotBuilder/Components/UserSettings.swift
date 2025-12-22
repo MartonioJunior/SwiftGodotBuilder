@@ -1,9 +1,7 @@
 import Foundation
-import Observation
 import SwiftGodot
 
 /// Persistable user settings for audio volumes and display options
-@Observable
 public class UserSettings: Persistable {
   public static let PersistenceKey = "user_settings"
 

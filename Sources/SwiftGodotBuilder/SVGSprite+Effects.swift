@@ -1,5 +1,4 @@
 import Foundation
-import Observation
 import SwiftGodot
 
 // MARK: - Composable Effect System
@@ -85,14 +84,6 @@ public struct SVGPulse: SVGEffectProtocol {
   ///   - amplitude: Scale variation (0.2 = ±20% size change)
   public init(speed: Double = 2.0, amplitude: Double = 0.2) {
     self.speedProvider = { speed }
-    self.amplitude = amplitude
-  }
-
-  public init<O: AnyObject & Observable>(
-    speed: ObservableProperty<O, Double>,
-    amplitude: Double = 0.2
-  ) {
-    self.speedProvider = { speed.value }
     self.amplitude = amplitude
   }
 
@@ -254,11 +245,6 @@ public struct SVGWobble: SVGEffectProtocol {
     self.speed = speed
   }
 
-  public init<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 4.0) {
-    self.amountProvider = { amount.value }
-    self.speed = speed
-  }
-
   public init(amount: GState<Double>, speed: Double = 4.0) {
     self.amountProvider = { amount.wrappedValue }
     self.speed = speed
@@ -294,11 +280,6 @@ public struct SVGExplode: SVGEffectProtocol {
 
   public init(progress: Double, scale: Double = 50.0) {
     self.progressProvider = { progress }
-    self.scale = scale
-  }
-
-  public init<O: AnyObject & Observable>(progress: ObservableProperty<O, Double>, scale: Double = 50.0) {
-    self.progressProvider = { progress.value }
     self.scale = scale
   }
 
@@ -340,12 +321,6 @@ public struct SVGWave: SVGEffectProtocol {
     self.speed = speed
   }
 
-  public init<O: AnyObject & Observable>(amplitude: ObservableProperty<O, Double>, frequency: Double = 0.2, speed: Double = 3.0) {
-    self.amplitudeProvider = { amplitude.value }
-    self.frequency = frequency
-    self.speed = speed
-  }
-
   public func update(delta: Double, state: SVGEffectSharedState) {}
 
   public func apply(sprite: SVGSprite, state: SVGEffectSharedState, currentVerts: [[Vector2]]) -> [[Vector2]] {
@@ -381,11 +356,6 @@ public struct SVGInflate: SVGEffectProtocol {
   ///   - speed: Breathing rate (oscillations per second * 2π)
   public init(amount: Double = 5.0, speed: Double = 2.0) {
     self.amountProvider = { amount }
-    self.speed = speed
-  }
-
-  public init<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 2.0) {
-    self.amountProvider = { amount.value }
     self.speed = speed
   }
 
@@ -436,12 +406,6 @@ public struct SVGSkew: SVGEffectProtocol {
     self.animated = animated
   }
 
-  public init<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 2.0, animated: Bool = true) {
-    self.amountProvider = { amount.value }
-    self.speed = speed
-    self.animated = animated
-  }
-
   public init(amount: GState<Double>, speed: Double = 2.0, animated: Bool = true) {
     self.amountProvider = { amount.wrappedValue }
     self.speed = speed
@@ -486,11 +450,6 @@ public struct SVGNoise: SVGEffectProtocol {
   ///   - speed: How fast the noise changes
   public init(amount: Double = 2.0, speed: Double = 10.0) {
     self.amountProvider = { amount }
-    self.speed = speed
-  }
-
-  public init<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 10.0) {
-    self.amountProvider = { amount.value }
     self.speed = speed
   }
 
@@ -545,12 +504,6 @@ public struct SVGScatter: SVGEffectProtocol {
   ///   - rotate: Whether elements also rotate as they scatter
   public init(progress: Double, scale: Double = 50.0, rotate: Bool = true) {
     self.progressProvider = { progress }
-    self.scale = scale
-    self.rotate = rotate
-  }
-
-  public init<O: AnyObject & Observable>(progress: ObservableProperty<O, Double>, scale: Double = 50.0, rotate: Bool = true) {
-    self.progressProvider = { progress.value }
     self.scale = scale
     self.rotate = rotate
   }
@@ -635,12 +588,6 @@ public struct SVGRipple: SVGEffectProtocol {
     self.speed = speed
   }
 
-  public init<O: AnyObject & Observable>(amplitude: ObservableProperty<O, Double>, frequency: Double = 0.3, speed: Double = 5.0) {
-    self.amplitudeProvider = { amplitude.value }
-    self.frequency = frequency
-    self.speed = speed
-  }
-
   public func update(delta: Double, state: SVGEffectSharedState) {}
 
   public func apply(sprite: SVGSprite, state: SVGEffectSharedState, currentVerts: [[Vector2]]) -> [[Vector2]] {
@@ -681,11 +628,6 @@ public struct SVGTwist: SVGEffectProtocol {
   ///   - speed: Animation speed (0 for static twist)
   public init(amount: Double = 0.5, speed: Double = 2.0) {
     self.amountProvider = { amount }
-    self.speed = speed
-  }
-
-  public init<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 2.0) {
-    self.amountProvider = { amount.value }
     self.speed = speed
   }
 
@@ -828,14 +770,6 @@ public extension GNode where T == SVGSprite {
     svgEffects { SVGPulse(speed: speed, amplitude: amplitude) }
   }
 
-  /// Pulses the sprite scale using ObservableState binding.
-  func pulse<O: AnyObject & Observable>(
-    speed: ObservableProperty<O, Double>,
-    amplitude: Double = 0.2
-  ) -> Self {
-    svgEffects { SVGPulse(speed: speed, amplitude: amplitude) }
-  }
-
   /// Cycles the fill color through an array of colors.
   func colorCycle(_ colors: [Color], speed: Double = 0.5, elementIndex: Int = 0) -> Self {
     svgEffects { SVGColorCycle(colors, speed: speed, elementIndex: elementIndex) }
@@ -870,28 +804,13 @@ public extension GNode where T == SVGSprite {
     svgEffects { SVGWobble(amount: amount, speed: speed) }
   }
 
-  /// Wobbles vertices with ObservableState binding.
-  func wobble<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 4.0) -> Self {
-    svgEffects { SVGWobble(amount: amount, speed: speed) }
-  }
-
   /// Expands vertices outward from their center point.
   func explode(progress: Double, scale: Double = 50.0) -> Self {
     svgEffects { SVGExplode(progress: progress, scale: scale) }
   }
 
-  /// Expands vertices with ObservableState binding.
-  func explode<O: AnyObject & Observable>(progress: ObservableProperty<O, Double>, scale: Double = 50.0) -> Self {
-    svgEffects { SVGExplode(progress: progress, scale: scale) }
-  }
-
   /// Applies a horizontal wave deformation based on Y position.
   func wave(amplitude: Double = 3.0, frequency: Double = 0.2, speed: Double = 3.0) -> Self {
-    svgEffects { SVGWave(amplitude: amplitude, frequency: frequency, speed: speed) }
-  }
-
-  /// Wave with ObservableState binding.
-  func wave<O: AnyObject & Observable>(amplitude: ObservableProperty<O, Double>, frequency: Double = 0.2, speed: Double = 3.0) -> Self {
     svgEffects { SVGWave(amplitude: amplitude, frequency: frequency, speed: speed) }
   }
 
@@ -902,18 +821,8 @@ public extension GNode where T == SVGSprite {
     svgEffects { SVGInflate(amount: amount, speed: speed) }
   }
 
-  /// Inflate with ObservableState binding.
-  func inflate<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 2.0) -> Self {
-    svgEffects { SVGInflate(amount: amount, speed: speed) }
-  }
-
   /// Shears/leans the shape based on Y position.
   func skew(amount: Double = 0.3, speed: Double = 2.0, animated: Bool = true) -> Self {
-    svgEffects { SVGSkew(amount: amount, speed: speed, animated: animated) }
-  }
-
-  /// Skew with ObservableState binding.
-  func skew<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 2.0, animated: Bool = true) -> Self {
     svgEffects { SVGSkew(amount: amount, speed: speed, animated: animated) }
   }
 
@@ -922,18 +831,8 @@ public extension GNode where T == SVGSprite {
     svgEffects { SVGNoise(amount: amount, speed: speed) }
   }
 
-  /// Noise with ObservableState binding.
-  func noise<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 10.0) -> Self {
-    svgEffects { SVGNoise(amount: amount, speed: speed) }
-  }
-
   /// Each path element drifts apart from global center.
   func scatter(progress: Double, scale: Double = 50.0, rotate: Bool = true) -> Self {
-    svgEffects { SVGScatter(progress: progress, scale: scale, rotate: rotate) }
-  }
-
-  /// Scatter with ObservableState binding.
-  func scatter<O: AnyObject & Observable>(progress: ObservableProperty<O, Double>, scale: Double = 50.0, rotate: Bool = true) -> Self {
     svgEffects { SVGScatter(progress: progress, scale: scale, rotate: rotate) }
   }
 
@@ -942,19 +841,8 @@ public extension GNode where T == SVGSprite {
     svgEffects { SVGRipple(amplitude: amplitude, frequency: frequency, speed: speed) }
   }
 
-  /// Ripple with ObservableState binding.
-  func ripple<O: AnyObject & Observable>(amplitude: ObservableProperty<O, Double>, frequency: Double = 0.3, speed: Double = 5.0) -> Self {
-    svgEffects { SVGRipple(amplitude: amplitude, frequency: frequency, speed: speed) }
-  }
-
   /// Rotates vertices based on distance from center (spiral/vortex).
   func twist(amount: Double = 0.5, speed: Double = 2.0) -> Self {
     svgEffects { SVGTwist(amount: amount, speed: speed) }
   }
-
-  /// Twist with ObservableState binding.
-  func twist<O: AnyObject & Observable>(amount: ObservableProperty<O, Double>, speed: Double = 2.0) -> Self {
-    svgEffects { SVGTwist(amount: amount, speed: speed) }
-  }
-
 }

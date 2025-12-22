@@ -167,10 +167,10 @@ public extension GNode where T: Control {
   /// Button$()
   ///   .theme("normal", $normalStyleBox)
   /// ```
-  func theme(_ name: String, _ state: some ReactiveSource<StyleBox>) -> Self {
+  func theme(_ name: String, _ state: GState<StyleBox>) -> Self {
     var s = self
     s.ops.append { [state] node in
-      state.observe { styleBox in
+      state.observe(owner: node) { styleBox in
         node.addThemeStyleboxOverride(name: StringName(name), stylebox: styleBox)
       }
     }
@@ -185,10 +185,10 @@ public extension GNode where T: Control {
   /// Button$()
   ///   .theme("normal", normalStyleBoxState)
   /// ```
-  func theme<S: StyleBox>(_ name: String, _ state: some ReactiveSource<S>) -> Self {
+  func theme<S: StyleBox>(_ name: String, _ state: GState<S>) -> Self {
     var s = self
     s.ops.append { [state] node in
-      state.observe { styleBox in
+      state.observe(owner: node) { styleBox in
         node.addThemeStyleboxOverride(name: StringName(name), stylebox: styleBox)
       }
     }

@@ -5,8 +5,8 @@ public extension Actor {
   /// Add terrain collision shape
   func collision<NewCollision: GView>(
     @GViewBuilder _ builder: @escaping (ActorState) -> NewCollision
-  ) -> Actor<Content, NewCollision, Hurtbox, Hitbox, Targetbox, Interaction, Collector> {
-    Actor<Content, NewCollision, Hurtbox, Hitbox, Targetbox, Interaction, Collector>(
+  ) -> Actor<Content, NewCollision, Hurtbox, Hitbox, Targetbox, Interaction, Collector, Selectbox> {
+    Actor<Content, NewCollision, Hurtbox, Hitbox, Targetbox, Interaction, Collector, Selectbox>(
       state,
       collisionBuilder: builder,
       hurtboxBuilder: hurtboxBuilder,
@@ -14,6 +14,7 @@ public extension Actor {
       targetboxBuilder: targetboxBuilder,
       interactionBuilder: interactionBuilder,
       collectorBuilder: collectorBuilder,
+      selectboxBuilder: selectboxBuilder,
       content: contentBuilder
     )
   }
@@ -21,8 +22,8 @@ public extension Actor {
   /// Add hurtbox (can receive damage)
   func hurtbox<NewHurtbox: GView>(
     @GViewBuilder _ builder: @escaping (ActorState) -> NewHurtbox
-  ) -> Actor<Content, Collision, NewHurtbox, Hitbox, Targetbox, Interaction, Collector> {
-    Actor<Content, Collision, NewHurtbox, Hitbox, Targetbox, Interaction, Collector>(
+  ) -> Actor<Content, Collision, NewHurtbox, Hitbox, Targetbox, Interaction, Collector, Selectbox> {
+    Actor<Content, Collision, NewHurtbox, Hitbox, Targetbox, Interaction, Collector, Selectbox>(
       state,
       collisionBuilder: collisionBuilder,
       hurtboxBuilder: builder,
@@ -30,6 +31,7 @@ public extension Actor {
       targetboxBuilder: targetboxBuilder,
       interactionBuilder: interactionBuilder,
       collectorBuilder: collectorBuilder,
+      selectboxBuilder: selectboxBuilder,
       content: contentBuilder
     )
   }
@@ -37,8 +39,8 @@ public extension Actor {
   /// Add hitbox (can deal damage)
   func hitbox<NewHitbox: GView>(
     @GViewBuilder _ builder: @escaping (ActorState, ActorWeaponState?) -> NewHitbox
-  ) -> Actor<Content, Collision, Hurtbox, NewHitbox, Targetbox, Interaction, Collector> {
-    Actor<Content, Collision, Hurtbox, NewHitbox, Targetbox, Interaction, Collector>(
+  ) -> Actor<Content, Collision, Hurtbox, NewHitbox, Targetbox, Interaction, Collector, Selectbox> {
+    Actor<Content, Collision, Hurtbox, NewHitbox, Targetbox, Interaction, Collector, Selectbox>(
       state,
       collisionBuilder: collisionBuilder,
       hurtboxBuilder: hurtboxBuilder,
@@ -46,6 +48,7 @@ public extension Actor {
       targetboxBuilder: targetboxBuilder,
       interactionBuilder: interactionBuilder,
       collectorBuilder: collectorBuilder,
+      selectboxBuilder: selectboxBuilder,
       content: contentBuilder
     )
   }
@@ -53,12 +56,12 @@ public extension Actor {
   /// Add targetbox (scans for targets) - automatically enables targeting capability
   func targetbox<NewTargetbox: GView>(
     @GViewBuilder _ builder: @escaping (ActorState) -> NewTargetbox
-  ) -> Actor<Content, Collision, Hurtbox, Hitbox, NewTargetbox, Interaction, Collector> {
+  ) -> Actor<Content, Collision, Hurtbox, Hitbox, NewTargetbox, Interaction, Collector, Selectbox> {
     // Auto-enable targeting when targetbox is added
     if state.targeting == nil {
       state.targeting = ActorTargetingState()
     }
-    return Actor<Content, Collision, Hurtbox, Hitbox, NewTargetbox, Interaction, Collector>(
+    return Actor<Content, Collision, Hurtbox, Hitbox, NewTargetbox, Interaction, Collector, Selectbox>(
       state,
       collisionBuilder: collisionBuilder,
       hurtboxBuilder: hurtboxBuilder,
@@ -66,6 +69,7 @@ public extension Actor {
       targetboxBuilder: builder,
       interactionBuilder: interactionBuilder,
       collectorBuilder: collectorBuilder,
+      selectboxBuilder: selectboxBuilder,
       content: contentBuilder
     )
   }
@@ -73,8 +77,8 @@ public extension Actor {
   /// Add interaction area
   func interaction<NewInteraction: GView>(
     @GViewBuilder _ builder: @escaping (ActorState) -> NewInteraction
-  ) -> Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, NewInteraction, Collector> {
-    Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, NewInteraction, Collector>(
+  ) -> Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, NewInteraction, Collector, Selectbox> {
+    Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, NewInteraction, Collector, Selectbox>(
       state,
       collisionBuilder: collisionBuilder,
       hurtboxBuilder: hurtboxBuilder,
@@ -82,6 +86,7 @@ public extension Actor {
       targetboxBuilder: targetboxBuilder,
       interactionBuilder: builder,
       collectorBuilder: collectorBuilder,
+      selectboxBuilder: selectboxBuilder,
       content: contentBuilder
     )
   }
@@ -89,8 +94,8 @@ public extension Actor {
   /// Add collector area (can pick up items)
   func collector<NewCollector: GView>(
     @GViewBuilder _ builder: @escaping (ActorState) -> NewCollector
-  ) -> Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, Interaction, NewCollector> {
-    Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, Interaction, NewCollector>(
+  ) -> Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, Interaction, NewCollector, Selectbox> {
+    Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, Interaction, NewCollector, Selectbox>(
       state,
       collisionBuilder: collisionBuilder,
       hurtboxBuilder: hurtboxBuilder,
@@ -98,6 +103,29 @@ public extension Actor {
       targetboxBuilder: targetboxBuilder,
       interactionBuilder: interactionBuilder,
       collectorBuilder: builder,
+      selectboxBuilder: selectboxBuilder,
+      content: contentBuilder
+    )
+  }
+
+  /// Add selectbox (can be selected by player) - automatically enables selection capability
+  func selectbox<NewSelectbox: GView>(
+    group: String? = nil,
+    @GViewBuilder _ builder: @escaping (ActorState) -> NewSelectbox
+  ) -> Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, Interaction, Collector, NewSelectbox> {
+    // Auto-enable selection when selectbox is added
+    if state.selection == nil {
+      state.selection = ActorSelectionState(selectionGroup: group)
+    }
+    return Actor<Content, Collision, Hurtbox, Hitbox, Targetbox, Interaction, Collector, NewSelectbox>(
+      state,
+      collisionBuilder: collisionBuilder,
+      hurtboxBuilder: hurtboxBuilder,
+      hitboxBuilder: hitboxBuilder,
+      targetboxBuilder: targetboxBuilder,
+      interactionBuilder: interactionBuilder,
+      collectorBuilder: collectorBuilder,
+      selectboxBuilder: builder,
       content: contentBuilder
     )
   }
@@ -159,34 +187,46 @@ public extension Actor {
 
   // MARK: - Combat Callbacks
 
-  /// Called when this actor takes damage. Receives (damage, knockback).
+  /// Called when this actor takes damage. Receives (actor, damage, knockback).
   /// If set, replaces default damage handling - call `state.takeDamage` manually if needed.
-  func onHurt(_ handler: @escaping (Int, Vector2) -> Void) -> Self {
+  func onHurt(_ handler: @escaping (ActorState, Int, Vector2) -> Void) -> Self {
     state.onHurt = handler
     return self
   }
 
-  /// Called when this actor hits a target. Receives (targetId, damage).
-  func onHit(_ handler: @escaping (Int, Int) -> Void) -> Self {
+  /// Called when this actor hits a target. Receives (actor, targetId, damage).
+  func onHit(_ handler: @escaping (ActorState, Int, Int) -> Void) -> Self {
     state.onHit = handler
     return self
   }
 
   /// Called when this actor dies.
-  func onDeath(_ handler: @escaping () -> Void) -> Self {
+  func onDeath(_ handler: @escaping (ActorState) -> Void) -> Self {
     state.onDeath = handler
     return self
   }
 
   /// Called when targeting acquires a new target.
-  func onAcquiredTarget(_ handler: @escaping (Area2D) -> Void) -> Self {
+  func onAcquiredTarget(_ handler: @escaping (ActorState, Area2D) -> Void) -> Self {
     state.onAcquiredTarget = handler
     return self
   }
 
   /// Called when targeting loses all targets.
-  func onLostAllTargets(_ handler: @escaping () -> Void) -> Self {
+  func onLostAllTargets(_ handler: @escaping (ActorState) -> Void) -> Self {
     state.onLostAllTargets = handler
+    return self
+  }
+
+  /// Called before an attack starts. Receives weapon index. Return false to cancel.
+  func onBeforeAttack(_ handler: @escaping (ActorState, Int) -> Bool) -> Self {
+    state.onBeforeAttack = handler
+    return self
+  }
+
+  /// Called after an attack fires (for ranged) or activates (for melee).
+  func onAttack(_ handler: @escaping (ActorState, Int) -> Void) -> Self {
+    state.onAttack = handler
     return self
   }
 }

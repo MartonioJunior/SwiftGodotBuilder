@@ -20,19 +20,16 @@ public final class GEventRelay: Node {
   /// Opaque tokens returned by the bus, used to cancel on exit.
   private var tokEach: Any?
 
-  /// Godot lifecycle hook: subscribes to the bus, if present.
-  ///
-  /// Subscriptions are captured weakly to avoid retaining the relay.
-  override public func _ready() {
-    guard let bus else { return }
+  /// Godot lifecycle hook: subscribes to the bus when entering tree.
+  override public func _enterTree() {
+    guard let bus, tokEach == nil else { return }
     tokEach = bus.onEach { [weak self] any in self?.routeEach(any) }
   }
 
-  /// Godot lifecycle hook: cancels subscriptions and clears receiver lists.
+  /// Godot lifecycle hook: cancels subscriptions when leaving tree.
   override public func _exitTree() {
     if let bus, let t = tokEach { bus.cancel(t) }
     tokEach = nil
-    each.removeAll()
   }
 
   /// Forwards a single payload to all live per-event receivers.

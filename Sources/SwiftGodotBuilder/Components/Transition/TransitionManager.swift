@@ -12,14 +12,14 @@ import SwiftGodot
 /// ### Example
 /// ```swift
 /// struct MyGameUI: GView {
-///   @ObservableState var transitionState = TransitionState()
+///   let transitionState = TransitionState()
 ///
 ///   var body: some GView {
 ///     CanvasLayer$ {
 ///       // Your game UI here
 ///     }
 ///
-///     TransitionManager(state: $transitionState, screenSize: [428, 240])
+///     TransitionManager(state: transitionState, screenSize: [428, 240])
 ///   }
 /// }
 ///
@@ -29,15 +29,15 @@ import SwiftGodot
 /// transitionState.irisOutTransition(center: [0.5, 0.5])
 /// ```
 public struct TransitionManager: GView {
-  let transitionState: ObservableState<TransitionState>
+  let transitionState: TransitionState
   let screenWidth: Float
   let screenHeight: Float
 
   /// Create a transition manager
   /// - Parameters:
-  ///   - state: Observable state binding for the transition
+  ///   - state: Transition state object
   ///   - screenSize: The screen dimensions as [width, height]
-  public init(state: ObservableState<TransitionState>, screenSize: Vector2) {
+  public init(state: TransitionState, screenSize: Vector2) {
     transitionState = state
     screenWidth = screenSize.x
     screenHeight = screenSize.y
@@ -47,8 +47,8 @@ public struct TransitionManager: GView {
   /// - Parameters:
   ///   - router: The scene router containing the transition state
   ///   - screenSize: The screen dimensions as [width, height]
-  public init<R: SceneRouterProtocol>(router: ObservableState<R>, screenSize: Vector2) {
-    transitionState = ObservableState(wrappedValue: router.wrappedValue.transitionState)
+  public init<R: SceneRouterProtocol>(router: R, screenSize: Vector2) {
+    transitionState = router.transitionState
     screenWidth = screenSize.x
     screenHeight = screenSize.y
   }
@@ -62,56 +62,55 @@ public struct TransitionManager: GView {
     .layer(100)
     .processMode(.always)
     .onProcess { _, delta in
-      let state = transitionState.wrappedValue
-      guard state.isTransitioning else { return }
+      guard transitionState.isTransitioning else { return }
 
-      let halfDuration = state.duration / 2
+      let halfDuration = transitionState.duration / 2
 
       // Handle holding at midpoint
-      if state.isHolding {
-        state.holdElapsed += delta
+      if transitionState.isHolding {
+        transitionState.holdElapsed += delta
 
-        let holdComplete = state.holdElapsed >= state.holdDuration
-        let resumeComplete = !state.waitForResume || state.resumeCalled
+        let holdComplete = transitionState.holdElapsed >= transitionState.holdDuration
+        let resumeComplete = !transitionState.waitForResume || transitionState.resumeCalled
 
         if holdComplete && resumeComplete {
           // Exit hold, continue with reveal
-          state.isHolding = false
-          state.elapsedTime = halfDuration
+          transitionState.isHolding = false
+          transitionState.elapsedTime = halfDuration
         }
         return
       }
 
-      state.elapsedTime += delta
-      state.rawProgress = Float(min(1.0, state.elapsedTime / state.duration))
+      transitionState.elapsedTime += delta
+      transitionState.rawProgress = Float(min(1.0, transitionState.elapsedTime / transitionState.duration))
 
-      if state.elapsedTime < halfDuration {
+      if transitionState.elapsedTime < halfDuration {
         // Covering phase
-        state.progress = Float(state.elapsedTime / halfDuration)
-      } else if !state.midpointFired {
+        transitionState.progress = Float(transitionState.elapsedTime / halfDuration)
+      } else if !transitionState.midpointFired {
         // Just reached midpoint
-        state.midpointFired = true
-        state.progress = 1.0
-        state.rawProgress = 0.5
+        transitionState.midpointFired = true
+        transitionState.progress = 1.0
+        transitionState.rawProgress = 0.5
         TransitionEvent.midpoint.emit()
-        state.onMidpoint?()
+        transitionState.onMidpoint?()
 
         // Check if we need to hold
-        if state.holdDuration > 0 || state.waitForResume {
-          state.isHolding = true
-          state.holdElapsed = 0
+        if transitionState.holdDuration > 0 || transitionState.waitForResume {
+          transitionState.isHolding = true
+          transitionState.holdElapsed = 0
         }
-      } else if state.elapsedTime < state.duration {
+      } else if transitionState.elapsedTime < transitionState.duration {
         // Revealing phase
-        let remaining = state.elapsedTime - halfDuration
-        state.progress = Float(1.0 - (remaining / halfDuration))
+        let remaining = transitionState.elapsedTime - halfDuration
+        transitionState.progress = Float(1.0 - (remaining / halfDuration))
       } else {
         // Complete
-        state.isTransitioning = false
-        state.progress = 0
-        state.rawProgress = 0
-        state.onComplete?()
-        TransitionEvent.completed(type: state.transitionType).emit()
+        transitionState.isTransitioning = false
+        transitionState.progress = 0
+        transitionState.rawProgress = 0
+        transitionState.onComplete?()
+        TransitionEvent.completed(type: transitionState.transitionType).emit()
       }
     }
   }

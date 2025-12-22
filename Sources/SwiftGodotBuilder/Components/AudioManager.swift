@@ -4,13 +4,11 @@ import SwiftGodot
 /// Audio manager that syncs volume settings with Godot's AudioServer.
 /// Pass your own SFX player nodes as children.
 public struct AudioManager<Content: GView>: GView {
-  let settings: ObservableState<UserSettings>
+  let settings: UserSettings
   let content: Content
 
-  private var gs: UserSettings { settings.wrappedValue }
-
   public init(
-    settings: ObservableState<UserSettings>,
+    settings: UserSettings,
     @GViewBuilder content: () -> Content
   ) {
     self.settings = settings
@@ -24,16 +22,10 @@ public struct AudioManager<Content: GView>: GView {
     .onReady { _ in
       applyVolumeSettings()
     }
-    .watch(settings, \.masterVolume) { _, _ in
-      applyVolumeSettings()
-    }
-    .watch(settings, \.sfxVolume) { _, _ in
-      applyVolumeSettings()
-    }
   }
 
   func applyVolumeSettings() {
-    let masterDb = linearToDb(gs.masterVolume * gs.sfxVolume)
+    let masterDb = linearToDb(settings.masterVolume * settings.sfxVolume)
     AudioServer.setBusVolumeDb(busIdx: 0, volumeDb: Double(masterDb))
   }
 

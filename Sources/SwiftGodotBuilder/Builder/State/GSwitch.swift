@@ -45,7 +45,7 @@ import SwiftGodot
 ///   .mode(.destroy)  // Good for heavy scenes
 /// ```
 public struct Switch<Value: Hashable>: GView {
-  private let state: any ReactiveSource<Value>
+  private let state: GState<Value>
   private let cases: [Case<Value>]
   private var defaultContent: [any GView]
   private var renderMode: If.Mode = .hide
@@ -56,7 +56,7 @@ public struct Switch<Value: Hashable>: GView {
   ///   - state: The reactive source to watch (GState or ObservableProperty)
   ///   - cases: The cases to match against
   public init(
-    _ state: some ReactiveSource<Value>,
+    _ state: GState<Value>,
     @CaseBuilder cases: () -> [Case<Value>]
   ) {
     self.state = state
@@ -66,7 +66,7 @@ public struct Switch<Value: Hashable>: GView {
 
   // Private initializer for method chaining
   private init(
-    state: any ReactiveSource<Value>,
+    state: GState<Value>,
     cases: [Case<Value>],
     defaultContent: [any GView],
     mode: If.Mode,
@@ -144,8 +144,8 @@ public struct Switch<Value: Hashable>: GView {
     var currentActiveNodes: [Node]? = nil
 
     // Watch state changes
-    state.observe { [weak container] value in
-      guard let container = container else { return }
+    state.observe(owner: container) { value in
+      guard container.isInsideTree() else { return }
 
       // Find matching case
       let matchingCase = cases.first { $0.value == value }

@@ -1,11 +1,9 @@
 import Foundation
-import Observation
 import SwiftGodot
 
 // MARK: - Transition State
 
-/// Observable state for managing screen transitions
-@Observable
+/// State for managing screen transitions
 public class TransitionState {
   public var isTransitioning = false
   public var progress: Float = 0

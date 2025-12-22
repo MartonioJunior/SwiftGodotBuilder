@@ -43,8 +43,10 @@ public struct ActorProjectileView: GView {
   }
 
   private var targetMask: Physics2DLayer {
-    let hurtboxLayer: Physics2DLayer = isPlayerOwned ? .iota : .theta
-    return Physics2DLayer([hurtboxLayer, .alpha])
+    // Player projectiles hit enemy hurtboxes (.iota)
+    // Enemy projectiles hit player hurtboxes (.theta) AND other enemy hurtboxes (.iota)
+    let hurtboxLayers: Physics2DLayer = isPlayerOwned ? .iota : [.theta, .iota]
+    return Physics2DLayer([hurtboxLayers, .alpha])
   }
 
   public var body: some GView {

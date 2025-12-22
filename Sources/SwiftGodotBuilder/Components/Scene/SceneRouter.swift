@@ -1,17 +1,17 @@
 import Foundation
-import Observation
 import SwiftGodot
 
 // MARK: - Scene Router Protocol
 
-/// Protocol for scene routers, enabling convenience methods on ObservableState.
-///
-/// This protocol allows `$router.navigate(to:)` syntax instead of `router.wrappedValue.navigate(to:)`.
-public protocol SceneRouterProtocol: AnyObject, Observable {
+/// Protocol for scene routers.
+public protocol SceneRouterProtocol: AnyObject {
   associatedtype Scene: Hashable
 
   /// The current scene
   var scene: Scene { get set }
+
+  /// Reactive binding to the current scene for use with Switch
+  var sceneBinding: GState<Scene> { get }
 
   /// The transition state for visual effects
   var transitionState: TransitionState { get }
@@ -31,7 +31,7 @@ public protocol SceneRouterProtocol: AnyObject, Observable {
 /// with automatic transition handling:
 ///
 /// ```swift
-/// @ObservableState var router = SceneRouter(initial: GameState.splash)
+/// let router = SceneRouter(initial: GameState.splash)
 ///
 /// // Navigate with transitions
 /// router.navigate(to: .levelSelect, transition: .wipe())
@@ -39,22 +39,30 @@ public protocol SceneRouterProtocol: AnyObject, Observable {
 ///
 /// // Nested routes (like Vue Router children)
 /// let levelRouter = router.child(for: .playing, initial: 1)
-/// levelRouter.scene = 3  // Switch to level 3
+/// levelRouter.scene = .level3  // Switch to level 3
 /// ```
 ///
 /// Use with Switch for reactive UI:
 /// ```swift
-/// Switch(router.scene) {
-///   Case(.splash) { SplashOverlay(router: $router) }
-///   Case(.welcome) { WelcomeOverlay(router: $router) }
-///   Case(.playing) { GameLevel(router: $router) }
+/// Switch(router.sceneBinding) {
+///   Case(.splash) { SplashOverlay(router: router) }
+///   Case(.welcome) { WelcomeOverlay(router: router) }
+///   Case(.playing) { GameLevel(router: router) }
 /// }
 /// .mode(.destroy)  // Memory management
 /// ```
-@Observable
-public class SceneRouter<Scene: Hashable>: SceneRouterProtocol {
+public class SceneRouter<Scene: Hashable & Equatable>: SceneRouterProtocol {
+  /// Internal GState for the current scene
+  private let _scene: GState<Scene>
+
   /// The current scene
-  public var scene: Scene
+  public var scene: Scene {
+    get { _scene.wrappedValue }
+    set { _scene.wrappedValue = newValue }
+  }
+
+  /// Reactive binding to the current scene for use with Switch
+  public var sceneBinding: GState<Scene> { _scene }
 
   /// The transition state for visual effects
   public let transitionState = TransitionState()
@@ -64,7 +72,7 @@ public class SceneRouter<Scene: Hashable>: SceneRouterProtocol {
 
   /// Creates a new router with an initial scene
   public init(initial: Scene) {
-    scene = initial
+    _scene = GState(wrappedValue: initial)
   }
 
   /// Navigate to a new scene with an optional transition effect.
@@ -181,7 +189,7 @@ public class SceneRouter<Scene: Hashable>: SceneRouterProtocol {
   ///   - parent: The parent scene that owns this child router
   ///   - initial: The initial scene for the child router
   /// - Returns: The child router (created if needed)
-  public func child<ChildScene: Hashable>(
+  public func child<ChildScene: Hashable & Equatable>(
     for parent: Scene,
     initial: ChildScene
   ) -> SceneRouter<ChildScene> {

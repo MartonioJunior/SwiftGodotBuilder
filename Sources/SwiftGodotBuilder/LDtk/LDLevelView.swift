@@ -27,7 +27,7 @@ public struct LDLevelView: GView {
   private let project: LDProject
 
   /// Reactive level identifier source
-  private let levelSource: any ReactiveSource<String>
+  private let levelSource: GState<String>
 
   /// Build configuration
   private var config: LDLevelBuildConfig
@@ -60,7 +60,7 @@ public struct LDLevelView: GView {
   /// - Parameters:
   ///   - project: Pre-loaded LDProject (must have been loaded via LDProject.load())
   ///   - level: Reactive source for the level identifier
-  public init(_ project: LDProject, level: some ReactiveSource<String>) {
+  public init(_ project: LDProject, level: GState<String>) {
     self.project = project
     levelSource = level
     config = LDLevelBuildConfig()
@@ -71,7 +71,7 @@ public struct LDLevelView: GView {
   }
 
   /// Builds a container node that reactively rebuilds when the level changes
-  private func buildReactiveNode(levelSource: any ReactiveSource<String>) -> Node {
+  private func buildReactiveNode(levelSource: GState<String>) -> Node {
     let container = Node2D()
     container.name = "LDLevelContainer"
 
@@ -80,8 +80,8 @@ public struct LDLevelView: GView {
     let config = self.config
     let mappers = self.mappers
 
-    levelSource.observe { [weak container] levelId in
-      guard let container else { return }
+    levelSource.observe(owner: container) { levelId in
+      guard container.isInsideTree() else { return }
 
       // Remove old level
       for child in container.getChildren() {

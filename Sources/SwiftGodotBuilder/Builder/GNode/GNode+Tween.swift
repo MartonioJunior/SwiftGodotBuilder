@@ -65,7 +65,7 @@ public extension GNode where T: Node {
   ) -> Self where P.Value == Vector2 {
     var currentTween: Tween?
     return configure { node in
-      state.observe { isTrue in
+      state.observe(owner: node) { isTrue in
         currentTween?.kill()
         currentTween = node.createTween()
         let target = isTrue ? whenTrue : whenFalse
@@ -91,7 +91,7 @@ public extension GNode where T: Node {
   ) -> Self where P.Value == Float {
     var currentTween: Tween?
     return configure { node in
-      state.observe { isTrue in
+      state.observe(owner: node) { isTrue in
         currentTween?.kill()
         currentTween = node.createTween()
         let target = isTrue ? whenTrue : whenFalse
@@ -117,7 +117,7 @@ public extension GNode where T: Node {
   ) -> Self where P.Value == Color {
     var currentTween: Tween?
     return configure { node in
-      state.observe { isTrue in
+      state.observe(owner: node) { isTrue in
         currentTween?.kill()
         currentTween = node.createTween()
         let target = isTrue ? whenTrue : whenFalse
@@ -164,7 +164,7 @@ public extension GNode where T: Node {
     otherwise onMismatch: @escaping (T) -> Void
   ) -> Self {
     configure { node in
-      state.observe { currentValue in
+      state.observe(owner: node) { currentValue in
         if currentValue == value {
           onMatch(node)
         } else {
@@ -196,7 +196,7 @@ public extension GNode where T: Node {
     _ handler: @escaping (T, V) -> Void
   ) -> Self {
     configure { node in
-      state.observe { value in
+      state.observe(owner: node) { value in
         handler(node, value)
       }
     }

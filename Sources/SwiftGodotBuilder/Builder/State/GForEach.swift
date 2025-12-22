@@ -34,7 +34,7 @@ import SwiftGodot
 /// - Maintains consistent node order matching array order
 /// - Batches updates for better performance
 public struct ForEach<Element: Equatable, ID: Hashable>: GView {
-    private let items: any ReactiveSource<[Element]>
+    private let items: GState<[Element]>
     private let idKeyPath: KeyPath<Element, ID>
     private let content: (GState<Element>) -> any GView
     private var nodeName: String?
@@ -59,7 +59,7 @@ public struct ForEach<Element: Equatable, ID: Hashable>: GView {
     ///   - mode: Rendering mode (.standard or .deferred) - defaults to .standard
     ///   - content: Builder that creates the view for each item, receives binding to item
     public init(
-        _ items: some ReactiveSource<[Element]>,
+        _ items: GState<[Element]>,
         id: KeyPath<Element, ID>,
         mode: Mode = .standard,
         content: @escaping (GState<Element>) -> any GView
@@ -178,8 +178,8 @@ public struct ForEach<Element: Equatable, ID: Hashable>: GView {
         }
 
         // Watch for array changes and update the tree
-        items.observe { [weak parent, mode, performUpdate] newItems in
-            guard parent != nil else { return }
+        items.observe(owner: parent) { [mode, performUpdate] newItems in
+            guard parent.isInsideTree() else { return }
 
             // Handle deferred mode
             if mode == .deferred {
