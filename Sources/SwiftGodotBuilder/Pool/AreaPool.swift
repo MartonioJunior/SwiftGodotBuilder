@@ -18,6 +18,9 @@ public final class AreaPool {
   private let preloadCount: Int
   private let makeArea: () -> GNode<Area2D>
 
+  // O(1) lookup: node ObjectIdentifier -> index in active array
+  private var nodeToIndex: [ObjectIdentifier: Int] = [:]
+
   public let speed: Float
   public let lifetime: Double
   public let bounds: (minX: Float, maxX: Float, minY: Float, maxY: Float)
@@ -50,6 +53,13 @@ public final class AreaPool {
 
   private weak var parentNode: Node?
 
+  deinit {
+    for activeArea in active {
+      activeArea.node.queueFree()
+    }
+    active.removeAll()
+  }
+
   /// Call this once the pool's parent node is in the scene tree.
   /// Preloads nodes and adds them to the parent so they stay in tree.
   public func start(parent: Node) {
@@ -59,19 +69,12 @@ public final class AreaPool {
       // Preload and immediately add all nodes to scene tree
       for _ in 0 ..< preloadCount {
         if let node = pool.acquire() {
-          parent.addChild(node: node)
+          if node.getParent() == nil {
+            parent.addChild(node: node)
+          }
           pool.release(node)
         }
       }
-    }
-  }
-
-  /// Legacy start method - just preloads without keeping in tree.
-  /// Prefer `start(parent:)` to avoid node churn.
-  public func start() {
-    pool.keepInTree = false
-    Engine.onNextFrame { [weak self] in
-      self?.pool.preload(self?.preloadCount ?? 0)
     }
   }
 
@@ -90,6 +93,10 @@ public final class AreaPool {
       parent.addChild(node: node)
     }
 
+    // Track index for O(1) collision lookup
+    let index = active.count
+    nodeToIndex[ObjectIdentifier(node)] = index
+
     active.append(ActiveArea(
       node: node,
       velocity: normalizedDir * speed
@@ -97,9 +104,10 @@ public final class AreaPool {
   }
 
   public func update(delta: Double) {
-    var toRemove: [Int] = []
-
-    for i in active.indices {
+    // Update positions and collect expired projectiles
+    // Iterate backwards so we can swap-remove in place
+    var i = active.count - 1
+    while i >= 0 {
       active[i].age += delta
       active[i].node.position += active[i].velocity * Float(delta)
 
@@ -109,12 +117,9 @@ public final class AreaPool {
         pos.x < bounds.minX || pos.x > bounds.maxX ||
         pos.y < bounds.minY || pos.y > bounds.maxY
       {
-        toRemove.append(i)
+        returnToPoolSwap(index: i)
       }
-    }
-
-    for i in toRemove.reversed() {
-      returnToPool(index: i)
+      i -= 1
     }
   }
 
@@ -133,25 +138,39 @@ public final class AreaPool {
   }
 
   private func handleCollision(node: Area2D) {
-    guard let index = active.firstIndex(where: { $0.node == node }) else { return }
-    returnToPool(index: index)
+    // O(1) lookup via dictionary
+    let nodeId = ObjectIdentifier(node)
+    guard let index = nodeToIndex[nodeId] else { return }
+    returnToPoolSwap(index: index)
   }
 
-  private func returnToPool(index: Int) {
+  /// O(1) swap-and-pop removal
+  private func returnToPoolSwap(index: Int) {
     let projectile = active[index]
-    active.remove(at: index)
-
-    // Immediately hide and move off-screen to prevent visual glitches
     let node = projectile.node
+    let nodeId = ObjectIdentifier(node)
+
+    // Remove from index tracking
+    nodeToIndex.removeValue(forKey: nodeId)
+
+    // Swap with last element for O(1) removal
+    let lastIndex = active.count - 1
+    if index != lastIndex {
+      active[index] = active[lastIndex]
+      // Update the swapped element's index in the dictionary
+      nodeToIndex[ObjectIdentifier(active[index].node)] = index
+    }
+    active.removeLast()
+
+    // Immediately hide to prevent visual glitches
     node.visible = false
     node.position = [-9999, -9999]
 
-    // Defer physics property changes to avoid "Function blocked during in/out signal" errors
-    Engine.onNextFrame { [weak self, weak node] in
-      guard let self, let node else { return }
+    // Defer physics changes to avoid modifying state during callbacks
+    Engine.onNextFrame { [weak self] in
       node.monitorable = false
       node.monitoring = false
-      self.pool.release(node)
+      self?.pool.release(node)
     }
   }
 }

@@ -123,6 +123,10 @@ public final class ObjectPool<T: Object> {
 
   /// Number of free instances currently in the pool.
   public var availableCount: Int { free.count }
+
+  deinit {
+    free.removeAll()
+  }
 }
 
 /// A convenience wrapper to use a pooled object within a closure scope.

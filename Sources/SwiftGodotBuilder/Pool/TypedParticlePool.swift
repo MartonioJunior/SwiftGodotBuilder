@@ -1,25 +1,43 @@
 import SwiftGodot
 
-/// Multi-variant fire-and-forget pool for particles keyed by type
+/// Multi-variant fire-and-forget pool for particles keyed by type.
+///
+/// Call `update(delta:)` each frame to process expirations.
 public final class TypedParticlePool<Key: Hashable, T: Node2D> {
   /// Configuration for typed particle pool
   public struct Config {
     public var prewarmPerType: Int
+    public var maxPerType: Int
     public var defaultLifetime: Double
 
-    public init(prewarmPerType: Int = 5, defaultLifetime: Double = 1.0) {
+    public init(prewarmPerType: Int = 5, maxPerType: Int = 50, defaultLifetime: Double = 1.0) {
       self.prewarmPerType = prewarmPerType
+      self.maxPerType = maxPerType
       self.defaultLifetime = defaultLifetime
     }
+  }
+
+  /// Tracks a pending expiration
+  private struct Expiration {
+    let node: T
+    let type: Key
+    let expireAt: Double
   }
 
   public let config: Config
 
   private weak var parentNode: Node?
-  private var pools: [Key: [T]] = [:]
+  private var pools: [Key: ObjectPool<T>] = [:]
   private var activeCount: [Key: Int] = [:]
   private let keys: [Key]
   private let factory: (Key) -> T
+
+  // Expiration tracking
+  private var expirations: [Expiration] = []
+  private var currentTime: Double = 0
+
+  // Cache lifetime per type (assumes all particles of same type have same lifetime)
+  private var lifetimeCache: [Key: Double] = [:]
 
   /// Total number of active particles across all types
   public var totalActive: Int {
@@ -28,9 +46,7 @@ public final class TypedParticlePool<Key: Hashable, T: Node2D> {
 
   /// Total number of available particles across all types
   public var totalAvailable: Int {
-    pools.values.reduce(0) { total, pool in
-      total + pool.filter { !isNodeActive($0) }.count
-    }
+    pools.values.reduce(0) { $0 + $1.availableCount }
   }
 
   /// Active count for a specific type
@@ -43,69 +59,103 @@ public final class TypedParticlePool<Key: Hashable, T: Node2D> {
     self.config = config
     self.factory = factory
 
-    // Initialize pools for each key
+    // Initialize ObjectPool for each key
     for key in keys {
-      pools[key] = []
+      let pool = ObjectPool<T>(factory: { factory(key) }, max: config.maxPerType)
+      pool.keepInTree = true
+      pools[key] = pool
       activeCount[key] = 0
     }
   }
 
-  /// Sets up the pool with a parent node
+  /// Sets up the pool with a parent node and prewarms particles
   public func setup(parent: Node) {
     parentNode = parent
 
     Engine.onNextFrame { [weak self, weak parent] in
       guard let self, let parent else { return }
       for key in keys {
+        guard let pool = pools[key] else { continue }
+
+        // Prewarm by acquiring and immediately releasing
         for _ in 0 ..< config.prewarmPerType {
-          let node = factory(key)
-          node.visible = false
-          parent.addChild(node: node)
-          pools[key]?.append(node)
+          if let node = pool.acquire() {
+            node.visible = false
+            if node.getParent() == nil {
+              parent.addChild(node: node)
+            }
+
+            // Cache lifetime from first node of each type
+            if lifetimeCache[key] == nil {
+              lifetimeCache[key] = getLifetime(for: node)
+            }
+
+            pool.release(node)
+          }
         }
       }
     }
   }
 
-  /// Spawns a particle of the given type at position
-  public func spawn(type: Key, at position: Vector2, scale: Vector2 = [1, 1]) {
-    guard let parent = parentNode else { return }
+  /// Updates expiration tracking. Call this every frame from onProcess.
+  public func update(delta: Double) {
+    currentTime += delta
 
-    // Find an available particle or create new
-    var node: T?
+    // Process expired particles (expirations are sorted by expireAt)
+    while let first = expirations.first, first.expireAt <= currentTime {
+      expirations.removeFirst()
+      first.node.visible = false
 
-    if let pool = pools[type] {
-      node = pool.first { !isNodeActive($0) }
+      // Return to pool
+      pools[first.type]?.release(first.node)
+      activeCount[first.type, default: 1] -= 1
     }
-
-    if node == nil {
-      // Create new particle if pool exhausted (dynamic growth)
-      let newNode = factory(type)
-      parent.addChild(node: newNode)
-      pools[type]?.append(newNode)
-      node = newNode
-    }
-
-    guard let n = node else { return }
-
-    n.position = position
-    n.scale = scale
-    n.visible = true
-    activateNode(n)
-    activeCount[type, default: 0] += 1
-
-    // Schedule return to pool after lifetime
-    scheduleDeactivation(node: n, type: type, lifetime: getLifetime(for: n))
   }
 
-  /// Check if a node is currently active
-  private func isNodeActive(_ node: T) -> Bool {
-    // For CPUParticles2D, check emitting state
-    if let particles = node as? CPUParticles2D {
-      return particles.emitting || particles.visible
+  deinit {
+    // Clear pending expirations (nodes will be freed by their pools)
+    expirations.removeAll()
+    // ObjectPool deinits will handle freeing nodes when pools dict is released
+    pools.removeAll()
+  }
+
+  /// Spawns a particle of the given type at position
+  public func spawn(type: Key, at position: Vector2, scale: Vector2 = [1, 1]) {
+    guard let parent = parentNode,
+          let pool = pools[type],
+          let node = pool.acquire() else { return }
+
+    // Add to tree if needed (first time use after dynamic growth)
+    if node.getParent() == nil {
+      parent.addChild(node: node)
+
+      // Cache lifetime if not already cached
+      if lifetimeCache[type] == nil {
+        lifetimeCache[type] = getLifetime(for: node)
+      }
     }
-    // For other nodes, just check visibility
-    return node.visible
+
+    node.position = position
+    node.scale = scale
+    node.visible = true
+    activateNode(node)
+    activeCount[type, default: 0] += 1
+
+    // Schedule expiration (insert sorted by expireAt)
+    let lifetime = lifetimeCache[type] ?? config.defaultLifetime
+    let expireAt = currentTime + lifetime
+    insertExpiration(Expiration(node: node, type: type, expireAt: expireAt))
+  }
+
+  /// Insert expiration maintaining sorted order by expireAt
+  private func insertExpiration(_ exp: Expiration) {
+    // Most particles have similar lifetimes, so new expirations usually go near the end
+    // Search from the end for efficiency
+    var insertIndex = expirations.count
+    while insertIndex > 0, expirations[insertIndex - 1].expireAt > exp.expireAt {
+      insertIndex -= 1
+    }
+    expirations.insert(exp, at: insertIndex)
   }
 
   /// Activate a node for emission
@@ -121,18 +171,5 @@ public final class TypedParticlePool<Key: Hashable, T: Node2D> {
       return particles.lifetime + 0.1 // Small buffer for safety
     }
     return config.defaultLifetime
-  }
-
-  /// Schedule deactivation after lifetime
-  private func scheduleDeactivation(node: T, type: Key, lifetime: Double) {
-    guard let tree = Engine.getSceneTree(),
-          let timer = tree.createTimer(timeSec: lifetime)
-    else { return }
-
-    _ = timer.timeout.connect { [weak self, weak node] in
-      guard let node else { return }
-      node.visible = false
-      self?.activeCount[type, default: 1] -= 1
-    }
   }
 }
