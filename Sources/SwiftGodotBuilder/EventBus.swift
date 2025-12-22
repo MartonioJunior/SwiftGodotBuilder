@@ -8,35 +8,54 @@ import Foundation
 ///
 /// ### Example
 /// ```swift
-/// enum AppEvent { case ping(String) }
-/// let bus = EventBus<AppEvent>()
-///
-/// let token = bus.onEach { event in
-///   if case let .ping(message) = event { print("got:", message) }
+/// // In a Godot node's setup:
+/// bus.onEach(owner: self) { [weak self] event in
+///   self?.handleEvent(event)
 /// }
-///
-/// bus.publish(.ping("hello"))
-/// bus.cancel(token)
+/// // Automatically cancelled when 'self' is deallocated
 /// ```
 public final class EventBus<Event> {
   /// Opaque handle used to cancel a previously registered handler.
   public typealias Token = UUID
 
-  private var handlers: [Token: (Event) -> Void] = [:]
-  private let lock = NSLock()
+  /// Internal handler entry with optional weak owner for automatic cleanup
+  private final class Handler {
+    let id: Token
+    let hasOwner: Bool
+    weak var owner: AnyObject?
+    let callback: (Event) -> Void
 
-  init(handlers: [Token: (Event) -> Void] = [:]) {
-    self.handlers = handlers
+    init(id: Token, owner: AnyObject?, callback: @escaping (Event) -> Void) {
+      self.id = id
+      hasOwner = owner != nil
+      self.owner = owner
+      self.callback = callback
+    }
+
+    var isAlive: Bool {
+      !hasOwner || owner != nil
+    }
   }
 
-  /// Registers a handler invoked once for every published event.
+  private var handlers: [Token: Handler] = [:]
+  private let lock = NSLock()
+
+  init() {}
+
+  /// Registers a handler with automatic cleanup when owner is deallocated.
   ///
-  /// - Important: Keep the handler fast or dispatch to a background queue to avoid blocking the publisher.
+  /// This is the preferred method for subscribing to events, as it automatically
+  /// cleans up the handler when the owning object is freed.
+  ///
+  /// - Parameters:
+  ///   - owner: The object that owns this subscription. When deallocated, the handler is removed.
+  ///   - h: The handler to invoke for each event.
+  /// - Returns: A token that can be used to manually cancel early if needed.
   @discardableResult
-  public func onEach(_ h: @escaping (Event) -> Void) -> Token {
+  public func onEach(owner: AnyObject, _ h: @escaping (Event) -> Void) -> Token {
     let id = UUID()
     lock.lock()
-    handlers[id] = h
+    handlers[id] = Handler(id: id, owner: owner, callback: h)
     lock.unlock()
     return id
   }
@@ -49,11 +68,31 @@ public final class EventBus<Event> {
   }
 
   /// Publishes a single event to all per-event handlers.
+  /// Dead handlers (whose owners have been deallocated) are automatically cleaned up.
   public func publish(_ e: Event) {
     lock.lock()
-    let hs = Array(handlers.values)
+
+    // Collect alive handlers and track dead ones for cleanup
+    var aliveHandlers: [(Event) -> Void] = []
+    var deadIds: [Token] = []
+
+    for (id, handler) in handlers {
+      if handler.isAlive {
+        aliveHandlers.append(handler.callback)
+      } else {
+        deadIds.append(id)
+      }
+    }
+
+    // Clean up dead handlers
+    for id in deadIds {
+      handlers.removeValue(forKey: id)
+    }
+
     lock.unlock()
-    for h in hs {
+
+    // Invoke handlers outside the lock
+    for h in aliveHandlers {
       h(e)
     }
   }
@@ -64,7 +103,7 @@ public extension EventBus {
   /// Logs every event to MsgLog until the returned token is cancelled.
   @discardableResult
   func tapLog(level: MsgLog.Level = .debug, name: String? = nil, format: ((Event) -> String)? = nil) -> Token {
-    onEach { event in
+    onEach(owner: self) { event in
       let body = format?(event) ?? String(describing: event)
       if body.isEmpty { return }
       MsgLog.shared.write("[\(name ?? "EventBus")] \(body)", level: level)
