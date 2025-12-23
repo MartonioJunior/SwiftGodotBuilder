@@ -77,7 +77,6 @@ Useful flags:
 - `--codesign` – codesign dylibs (macOS only, off by default)
 - `--clean` – delete cached playground workspaces and exit
 - `--verbose` / `--quiet` – increase or decrease CLI logging
-- `--version` – print the CLI version and exit
 
 ## Core Features
 

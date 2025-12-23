@@ -1,80 +1,5 @@
 import Foundation
 
-private enum CLIInfo {
-  private static let fallbackVersion = "0.1.0"
-  static let version: String = {
-    guard let gitRoot = findGitRoot() else {
-      return fallbackVersion
-    }
-    if let tag = gitTagVersion(at: gitRoot) {
-      return tag
-    }
-    if let timestamp = gitTimestampVersion(at: gitRoot) {
-      return timestamp
-    }
-    return fallbackVersion
-  }()
-
-  private static func findGitRoot() -> URL? {
-    let fileManager = FileManager.default
-    var url = URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
-    while true {
-      if fileManager.fileExists(atPath: url.appendingPathComponent(".git").path) {
-        return url
-      }
-      let parent = url.deletingLastPathComponent()
-      if parent.path == url.path {
-        return nil
-      }
-      url = parent
-    }
-  }
-
-  private static func gitTagVersion(at root: URL) -> String? {
-    guard let output = runGit(["tag", "--points-at", "HEAD"], in: root) else {
-      return nil
-    }
-    let tags = output
-      .split(separator: "\n")
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty }
-    return tags.first
-  }
-
-  private static func gitTimestampVersion(at root: URL) -> String? {
-    runGit(["log", "-1", "--format=%cd", "--date=format:%Y%m%d"], in: root)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-      .nonEmpty
-  }
-
-  private static func runGit(_ arguments: [String], in directory: URL) -> String? {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = ["git"] + arguments
-    process.currentDirectoryURL = directory
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = Pipe()
-    do {
-      try process.run()
-    } catch {
-      return nil
-    }
-    process.waitUntilExit()
-    guard process.terminationStatus == 0 else {
-      return nil
-    }
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    return String(data: data, encoding: .utf8)
-  }
-}
-
-private extension String {
-  var nonEmpty: String? {
-    isEmpty ? nil : self
-  }
-}
-
 @main
 enum SwiftGodotBuilderCLI {
   static func main() {
@@ -140,10 +65,6 @@ private struct CLIConfig {
 
   static func parseCommand(arguments: [String]) throws -> CLICommand {
     let args = Array(arguments.dropFirst())
-    if args.contains("--version") {
-      printVersion()
-      exit(0)
-    }
     if args.isEmpty || args.contains(where: { $0 == "--help" || $0 == "-h" }) {
       printUsage()
       exit(0)
@@ -276,7 +197,6 @@ private struct CLIConfig {
 
   private static func printUsage() {
     let message = """
-    SwiftGodotBuilder CLI \(CLIInfo.version)
     Usage: swiftgodotbuilder <GView.swift> [options]
 
     Options:
@@ -289,7 +209,6 @@ private struct CLIConfig {
       --verbose               Print extra logs and commands
       --quiet                 Suppress informational logs
       --clean                 Delete cached playgrounds and exit
-      --version               Print the CLI version and exit
       --release               Build in release mode
       --debug                 Build in debug mode (default)
       --no-run                Do not launch Godot after building
@@ -297,10 +216,6 @@ private struct CLIConfig {
       -h, --help              Show this help text
     """
     print(message)
-  }
-
-  private static func printVersion() {
-    print("swiftgodotbuilder \(CLIInfo.version)")
   }
 
   private static func detectViewType(in source: String) throws -> String {
