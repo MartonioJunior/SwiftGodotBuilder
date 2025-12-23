@@ -152,7 +152,7 @@ private struct CLIConfig {
     var viewPath: String?
     var explicitViewType: String?
     var assetDirectories: [URL] = []
-    var godotCommand = "godot"
+    var godotCommand: String?
     var runGodot = true
     var cacheRoot = Self.defaultCacheRoot()
     var builderPathOverride: URL?
@@ -252,6 +252,7 @@ private struct CLIConfig {
       overridePath: builderPathOverride,
       baseDirectory: baseDirectory
     )
+    let resolvedGodotCommand = godotCommand ?? resolveGodotCommand()
 
     return .build(
       CLIConfig(
@@ -259,7 +260,7 @@ private struct CLIConfig {
         viewSource: viewSource,
         viewType: viewType,
         assetDirectories: assetDirectories,
-        godotCommand: godotCommand,
+        godotCommand: resolvedGodotCommand,
         runGodot: runGodot,
         cacheRoot: cacheRoot,
         builderDependency: builderDependency,
@@ -281,7 +282,7 @@ private struct CLIConfig {
     Options:
       --assets <dir>          Symlink an assets directory into the Godot project
       --project <file>        Use a custom project.godot file (Use "res://main.tscn" for main_scene)
-      --godot <command>       Path to the Godot executable (default: godot)
+      --godot <command>       Path to Godot (default: godot in PATH, or /Applications/Godot.app)
       --cache <dir>           Workspace cache directory (default: ~/.swiftgodotbuilder/playgrounds)
       --builder-path <path>   Override the SwiftGodotBuilder dependency path
       --view <Type>           Override the GView type to instantiate
@@ -351,6 +352,35 @@ private struct CLIConfig {
   private static func directoryExists(at url: URL) -> Bool {
     var isDirectory: ObjCBool = false
     return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+  }
+
+  private static func resolveGodotCommand() -> String {
+    // Check if godot is available in PATH
+    let whichProcess = Process()
+    whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+    whichProcess.arguments = ["godot"]
+    whichProcess.standardOutput = Pipe()
+    whichProcess.standardError = Pipe()
+    do {
+      try whichProcess.run()
+      whichProcess.waitUntilExit()
+      if whichProcess.terminationStatus == 0 {
+        return "godot"
+      }
+    } catch {
+      // Fall through to check macOS app bundle
+    }
+
+    // Check macOS Godot.app bundle
+    #if os(macOS)
+    let macOSPath = "/Applications/Godot.app/Contents/MacOS/Godot"
+    if FileManager.default.fileExists(atPath: macOSPath) {
+      return macOSPath
+    }
+    #endif
+
+    // Default to godot and let it fail with a clear error if not found
+    return "godot"
   }
 }
 
