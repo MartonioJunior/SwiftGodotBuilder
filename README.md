@@ -49,6 +49,36 @@ struct GameView: GView {
 }
 ```
 
+## CLI Playground
+
+Use the bundled `swiftgodotbuilder` CLI to preview any `GView` without hand-creating a Godot project. Point it at a Swift file (the CLI auto-detects the first type that conforms to `GView`) and it will:
+
+- scaffold a throwaway Swift package and Godot project under `~/.swiftgodotbuilder/playgrounds/<hash>`
+- copy your Swift file and symlink any asset directories you provide
+- build the temporary package, copy the produced `.dylib`s into the Godot project, and launch Godot
+
+```bash
+# From the repository root
+swift run swiftgodotbuilder MinimalGameView.swift \
+  --assets Assets \
+  --godot /Applications/Godot.app/Contents/MacOS/Godot
+```
+
+Useful flags:
+
+- `--view <TypeName>` – specify the `GView` to instantiate if auto-detection fails
+- `--assets <dir>` – symlink an entire assets directory (repeatable)
+- `--godot <path>` – override the `godot` binary (defaults to `godot` on `PATH`)
+- `--project <file>` – use a custom `project.godot` file instead of the generated one
+- `--release` / `--debug` – switch the Swift build configuration (`debug` is the default)
+- `--no-run` – stop after building; leaves the project ready to open manually
+- `--cache <dir>` – workspace cache directory (default `~/.swiftgodotbuilder/playgrounds`)
+- `--builder-path <path>` – override the SwiftGodotBuilder dependency path
+- `--codesign` – codesign dylibs (macOS only, off by default)
+- `--clean` – delete cached playground workspaces and exit
+- `--verbose` / `--quiet` – increase or decrease CLI logging
+- `--version` – print the CLI version and exit
+
 ## Core Features
 
 ### Builder Syntax
