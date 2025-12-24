@@ -45,8 +45,7 @@ public protocol SceneRouterProtocol: AnyObject {
 /// Use with Switch for reactive UI:
 /// ```swift
 /// Switch(router.sceneBinding) {
-///   Case(.splash) { SplashOverlay(router: router) }
-///   Case(.welcome) { WelcomeOverlay(router: router) }
+///   Case(.welcome) { WelcomeView(router: router) }
 ///   Case(.playing) { GameLevel(router: router) }
 /// }
 /// .mode(.destroy)  // Memory management

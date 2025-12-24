@@ -61,79 +61,6 @@ public struct SafeArea<Content: GView>: GView {
   }
 }
 
-// MARK: - Delayed
-
-/// Shows wrapped content after a delay.
-public struct Delayed<Content: GView>: GView {
-  let content: Content
-  let seconds: Double
-  let fadeIn: Bool
-  let fadeDuration: Double
-
-  @State var isVisible = false
-
-  public init(
-    seconds: Double,
-    fadeIn: Bool = true,
-    fadeDuration: Double = 0.2,
-    @GViewBuilder content: () -> Content
-  ) {
-    self.content = content()
-    self.seconds = seconds
-    self.fadeIn = fadeIn
-    self.fadeDuration = fadeDuration
-  }
-
-  public var body: some GView {
-    Node2D$ {
-      If($isVisible) {
-        if fadeIn {
-          FadeIn(duration: fadeDuration) {
-            content
-          }
-        } else {
-          content
-        }
-      }
-    }
-    .onReady { node in
-      let timer = node.getTree()?.createTimer(timeSec: seconds)
-      timer?.timeout.connect {
-        _isVisible.wrappedValue = true
-      }
-    }
-  }
-}
-
-// MARK: - AspectRatio
-
-/// Maintains a specific aspect ratio for wrapped content.
-public struct AspectRatio<Content: GView>: GView {
-  let content: Content
-  let ratio: Float
-  let stretchMode: AspectRatioContainer.StretchMode
-
-  public init(
-    _ ratio: Float,
-    stretchMode: AspectRatioContainer.StretchMode = .fit,
-    @GViewBuilder content: () -> Content
-  ) {
-    self.content = content()
-    self.ratio = ratio
-    self.stretchMode = stretchMode
-  }
-
-  public var body: some GView {
-    AspectRatioContainer$ {
-      content
-    }
-    .configure { container in
-      container.ratio = Double(ratio)
-      container.stretchMode = stretchMode
-    }
-  }
-}
-
 // MARK: - Centered
 
 /// Centers wrapped content in its parent.
@@ -152,29 +79,3 @@ public struct Centered<Content: GView>: GView {
   }
 }
 
-// MARK: - Scrollable
-
-/// Makes wrapped content scrollable.
-public struct Scrollable<Content: GView>: GView {
-  let content: Content
-  let horizontal: Bool
-  let vertical: Bool
-
-  public init(
-    horizontal: Bool = false,
-    vertical: Bool = true,
-    @GViewBuilder content: () -> Content
-  ) {
-    self.content = content()
-    self.horizontal = horizontal
-    self.vertical = vertical
-  }
-
-  public var body: some GView {
-    ScrollContainer$ {
-      content
-    }
-    .horizontalScrollMode(horizontal ? .auto : .disabled)
-    .verticalScrollMode(vertical ? .auto : .disabled)
-  }
-}

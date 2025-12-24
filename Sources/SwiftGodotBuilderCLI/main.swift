@@ -231,7 +231,7 @@ private struct CLIConfig {
 
   private static func detectViewType(in source: String) throws -> String {
     // Take the first struct/class that declares conformance to GView; good enough for quick previews.
-    let pattern = #"(?:(?:public|internal|fileprivate|open|final)\s+)*(?:struct|class)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*[^\{]*\bGView\b"#
+    let pattern = #"(?:(?:public|internal|fileprivate|open|final)\s+)*(?:struct|class)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*[^\{]*\bG?View\b"#
     guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
       throw CLIError("Failed to build parser for view type")
     }
@@ -510,6 +510,7 @@ private struct PlaygroundScaffold {
 
   private func writeIfChanged(_ contents: String, to file: URL) throws {
     let data = Data(contents.utf8)
+    // Important: avoid touching the file if contents are unchanged to prevent unnecessary rebuilds.
     if let existing = try? Data(contentsOf: file), existing == data {
       return
     }

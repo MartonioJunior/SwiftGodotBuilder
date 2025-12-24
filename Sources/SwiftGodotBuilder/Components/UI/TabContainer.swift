@@ -9,20 +9,38 @@ public protocol TabElement {
     func addTo(_ tabBar: TabBar)
 }
 
-/// A tab in a TabBar.
-public struct Tab: TabElement {
+// MARK: - Tab
+
+/// A tab for TabBar or TabContainer.
+public struct Tab<Content: GView>: TabElement, GView {
     public let title: String
     public let icon: Texture2D?
     public let disabled: Bool
+    public let content: Content?
 
+    /// Creates a tab without content (for TabBar).
     public init(
         _ title: String,
         icon: Texture2D? = nil,
         disabled: Bool = false
+    ) where Content == EmptyGView {
+        self.title = title
+        self.icon = icon
+        self.disabled = disabled
+        self.content = nil
+    }
+
+    /// Creates a tab with content (for TabContainer).
+    public init(
+        _ title: String,
+        icon: Texture2D? = nil,
+        disabled: Bool = false,
+        content: () -> Content
     ) {
         self.title = title
         self.icon = icon
         self.disabled = disabled
+        self.content = content()
     }
 
     public func addTo(_ tabBar: TabBar) {
@@ -31,6 +49,12 @@ public struct Tab: TabElement {
         if disabled {
             tabBar.setTabDisabled(tabIdx: idx, disabled: true)
         }
+    }
+
+    public func toNode() -> Node {
+        let node = content?.toNode() ?? Control()
+        node.name = StringName(title)
+        return node
     }
 }
 
@@ -67,19 +91,6 @@ public struct TabBuilder {
 
 public extension GNode where T == TabBar {
     /// Creates a TabBar with declarative tabs.
-    ///
-    /// ### Example
-    /// ```swift
-    /// TabBar$ {
-    ///     Tab("General")
-    ///     Tab("Audio")
-    ///     Tab("Video")
-    ///     Tab("Advanced", disabled: true)
-    /// }
-    /// .onTabChanged { index in
-    ///     print("Tab: \(index)")
-    /// }
-    /// ```
     init(_ name: String = UUID().uuidString, @TabBuilder content: () -> [TabElement]) {
         let elements = content()
         self.init(name, make: {
@@ -110,38 +121,10 @@ public extension GNode where T == TabBar {
     }
 }
 
-// MARK: - TabContainer Content
-
-/// A tab with content for TabContainer.
-public struct TabContent<Content: GView>: GView {
-    public let title: String
-    public let content: Content
-
-    public init(_ title: String, content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    public func toNode() -> Node {
-        let node = content.toNode()
-        node.name = StringName(title)
-        return node
-    }
-}
-
 // MARK: - GNode<TabContainer> Extension
 
 public extension GNode where T == TabContainer {
-    /// Creates a TabContainer with TabContent children.
-    ///
-    /// ### Example
-    /// ```swift
-    /// TabContainer$ {
-    ///     TabContent("General") { Label$().text("General settings") }
-    ///     TabContent("Audio") { Label$().text("Audio settings") }
-    /// }
-    /// .onTabChanged { index in ... }
-    /// ```
+    /// Creates a TabContainer with Tab children.
     init(_ name: String = UUID().uuidString, @NodeBuilder content: () -> [any GView]) {
         let tabs = content()
         self.init(name, make: {
