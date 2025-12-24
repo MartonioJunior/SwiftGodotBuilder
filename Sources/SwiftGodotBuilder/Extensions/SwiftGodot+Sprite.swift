@@ -30,6 +30,8 @@ public extension GNode where T: Sprite2D {
       x: (containerSize.x - spriteSize.x) * (pivot.x - 0.5),
       y: (containerSize.y - spriteSize.y) * (pivot.y - 0.5)
     )
-    return offset(offsetValue)
+    return configure { sprite in
+      sprite.offset = offsetValue
+    }
   }
 }
