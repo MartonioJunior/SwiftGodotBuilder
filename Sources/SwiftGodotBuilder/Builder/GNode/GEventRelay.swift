@@ -58,7 +58,7 @@ public struct AnyEventBus {
   /// Wraps a concrete `EventBus<E>` into a type-erased bus.
   /// - Parameter bus: The strongly typed bus to wrap.
   public init<E>(_ bus: EventBus<E>) {
-    _onEach = { h in bus.onEach { h($0) } }
+    _onEach = { h in bus.onEach(owner: bus) { h($0) } }
     _cancel = { tok in if let t = tok as? EventBus<E>.Token { bus.cancel(t) } }
   }
 
