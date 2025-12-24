@@ -13,7 +13,6 @@ let package = Package(
         .executable(name: "swiftgodotbuilder", targets: ["SwiftGodotBuilderCLI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
         .package(url: "https://github.com/migueldeicaza/SwiftGodot", branch: "main"),
     ],
@@ -59,8 +58,8 @@ let package = Package(
                 "SwiftGodot",
                 "SwiftGodotBuilderMacros",
             ],
-            exclude: ["Lib/SwiftDraw/LICENSE"],
-            plugins: ["GenNodeApi"]
+            exclude: ["Lib/SwiftDraw/LICENSE", "Resources"],
+            plugins: ["GenNodeApi"],
         ),
 
         .executableTarget(

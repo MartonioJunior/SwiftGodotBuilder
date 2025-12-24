@@ -14,7 +14,6 @@ enum SwiftGodotBuilderCLI {
         let scaffold = PlaygroundScaffold(config: config, logger: logger)
 
         try scaffold.prepare()
-        try scaffold.logGodotVersion()
         try scaffold.build()
 
         if config.runGodot {
@@ -52,6 +51,7 @@ private struct CLIConfig {
   let viewSource: String
   let viewType: String
   let assetDirectories: [URL]
+  let includeDirectories: [URL]
   let godotCommand: String
   let runGodot: Bool
   let cacheRoot: URL
@@ -73,6 +73,7 @@ private struct CLIConfig {
     var viewPath: String?
     var explicitViewType: String?
     var assetDirectories: [URL] = []
+    var includeDirectories: [URL] = []
     var godotCommand: String?
     var runGodot = true
     var cacheRoot = Self.defaultCacheRoot()
@@ -101,6 +102,14 @@ private struct CLIConfig {
           throw CLIError("Assets directory not found at \(dirURL.path)")
         }
         assetDirectories.append(dirURL)
+      case "--include":
+        index += 1
+        guard index < args.count else { throw CLIError("--include requires a directory path") }
+        let dirURL = Self.absoluteURL(for: args[index], baseDirectory: baseDirectory)
+        guard Self.directoryExists(at: dirURL) else {
+          throw CLIError("Include directory not found at \(dirURL.path)")
+        }
+        includeDirectories.append(dirURL)
       case "--godot":
         index += 1
         guard index < args.count else { throw CLIError("--godot requires a command path") }
@@ -181,6 +190,7 @@ private struct CLIConfig {
         viewSource: viewSource,
         viewType: viewType,
         assetDirectories: assetDirectories,
+        includeDirectories: includeDirectories,
         godotCommand: resolvedGodotCommand,
         runGodot: runGodot,
         cacheRoot: cacheRoot,
@@ -200,6 +210,7 @@ private struct CLIConfig {
     Usage: swiftgodotbuilder <GView.swift> [options]
 
     Options:
+      --include <dir>         Copy .swift files from directory into sources (repeatable)
       --assets <dir>          Symlink an assets directory into the Godot project
       --project <file>        Use a custom project.godot file (Use "res://main.tscn" for main_scene)
       --godot <command>       Path to Godot (default: godot in PATH, or /Applications/Godot.app)
@@ -288,10 +299,10 @@ private struct CLIConfig {
 
     // Check macOS Godot.app bundle
     #if os(macOS)
-    let macOSPath = "/Applications/Godot.app/Contents/MacOS/Godot"
-    if FileManager.default.fileExists(atPath: macOSPath) {
-      return macOSPath
-    }
+      let macOSPath = "/Applications/Godot.app/Contents/MacOS/Godot"
+      if FileManager.default.fileExists(atPath: macOSPath) {
+        return macOSPath
+      }
     #endif
 
     // Default to godot and let it fail with a clear error if not found
@@ -383,22 +394,9 @@ private struct PlaygroundScaffold {
     try linkAssetDirectories()
   }
 
-  func logGodotVersion() throws {
-    let versionOutput = try runProcess(
-      [config.godotCommand, "--version", "--headless"],
-      in: config.workspaceDirectory,
-      captureOutput: true
-    )?.trimmingCharacters(in: .whitespacesAndNewlines)
-    if let version = versionOutput, !version.isEmpty {
-      logger.info("Using Godot (\(config.godotCommand)): \(version)")
-    } else {
-      logger.info("Using Godot (\(config.godotCommand))")
-    }
-  }
-
   func build() throws {
     logger.info("Building Swift package in \(packageDirectory.path)...")
-    try runProcess(["swift", "build", "-c", config.buildConfiguration.rawValue], in: packageDirectory)
+    try runProcess(["swift", "build", "-c", config.buildConfiguration.rawValue], in: packageDirectory, suppressOutput: config.quiet)
     guard let binPathString = try runProcess(
       [
         "swift",
@@ -408,7 +406,8 @@ private struct PlaygroundScaffold {
         "--show-bin-path",
       ],
       in: packageDirectory,
-      captureOutput: true
+      captureOutput: true,
+      suppressOutput: config.quiet
     )?.trimmingCharacters(in: .whitespacesAndNewlines), !binPathString.isEmpty else {
       // Some SwiftPM setups don't use .build/debug; rely on --show-bin-path so we copy the right dylibs.
       throw CLIError("Unable to determine Swift build output path")
@@ -423,19 +422,38 @@ private struct PlaygroundScaffold {
 
   func launchGodot() throws {
     logger.info("Launching Godot from \(godotDirectory.path)...")
-    try runProcess(
-      [config.godotCommand, "--path", godotDirectory.path, "--disable-crash-handler"],
-      in: config.workspaceDirectory
-    )
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = [config.godotCommand, "--path", godotDirectory.path, "--disable-crash-handler"]
+    process.currentDirectoryURL = config.workspaceDirectory
+    process.standardOutput = FileHandle.standardOutput
+    process.standardError = FileHandle.standardError
+
+    // Set up signal handler to forward SIGINT to Godot
+    let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+    signal(SIGINT, SIG_IGN) // Ignore default handler
+    signalSource.setEventHandler {
+      process.terminate()
+    }
+    signalSource.resume()
+
+    try process.run()
+    process.waitUntilExit()
+
+    signalSource.cancel()
   }
 
   private func ensureDirectories() throws {
     try fileManager.createDirectory(at: config.cacheRoot, withIntermediateDirectories: true, attributes: nil)
     try fileManager.createDirectory(at: config.workspaceDirectory, withIntermediateDirectories: true, attributes: nil)
     try fileManager.createDirectory(at: packageDirectory, withIntermediateDirectories: true, attributes: nil)
+    // Clean stale .swift files but preserve directory to avoid triggering SPM rebuilds
     if fileManager.fileExists(atPath: sourcesDirectory.path) {
-      // Make sure no stale Swift files linger between runs, but leave the rest of the workspace untouched.
-      try fileManager.removeItem(at: sourcesDirectory)
+      let contents = try fileManager.contentsOfDirectory(at: sourcesDirectory, includingPropertiesForKeys: nil)
+      for file in contents where file.pathExtension == "swift" {
+        try fileManager.removeItem(at: file)
+      }
     }
     try fileManager.createDirectory(at: sourcesDirectory, withIntermediateDirectories: true, attributes: nil)
     try fileManager.createDirectory(at: godotDirectory, withIntermediateDirectories: true, attributes: nil)
@@ -444,8 +462,14 @@ private struct PlaygroundScaffold {
   }
 
   private func writeSwiftSources() throws {
+    // Copy the main view file
     let destination = sourcesDirectory.appendingPathComponent(config.viewFile.lastPathComponent)
-    try config.viewSource.write(to: destination, atomically: true, encoding: .utf8)
+    try writeIfChanged(config.viewSource, to: destination)
+
+    // Copy .swift files from included directories
+    for includeDir in config.includeDirectories {
+      try copySwiftFiles(from: includeDir)
+    }
 
     let entryPoint = """
     import SwiftGodot
@@ -466,7 +490,30 @@ private struct PlaygroundScaffold {
     """
 
     let entryURL = sourcesDirectory.appendingPathComponent("PlaygroundRoot.swift")
-    try entryPoint.write(to: entryURL, atomically: true, encoding: .utf8)
+    try writeIfChanged(entryPoint, to: entryURL)
+  }
+
+  private func writeIfChanged(_ contents: String, to file: URL) throws {
+    let data = Data(contents.utf8)
+    if let existing = try? Data(contentsOf: file), existing == data {
+      return
+    }
+    try data.write(to: file, options: [.atomic])
+  }
+
+  private func copySwiftFiles(from directory: URL) throws {
+    let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+    for file in contents where file.pathExtension == "swift" {
+      let destination = sourcesDirectory.appendingPathComponent(file.lastPathComponent)
+      // Skip if already exists (main view file takes precedence)
+      guard !fileManager.fileExists(atPath: destination.path) else {
+        logger.debug("Skipping \(file.lastPathComponent) (already exists)")
+        continue
+      }
+      let source = try String(contentsOf: file)
+      try writeIfChanged(source, to: destination)
+      logger.debug("Copied: \(file.lastPathComponent)")
+    }
   }
 
   private func writePackageManifest() throws {
@@ -498,7 +545,7 @@ private struct PlaygroundScaffold {
     """
 
     let packageURL = packageDirectory.appendingPathComponent("Package.swift")
-    try manifest.write(to: packageURL, atomically: true, encoding: .utf8)
+    try writeIfChanged(manifest, to: packageURL)
   }
 
   private func writeGodotFiles() throws {
@@ -638,7 +685,8 @@ private struct PlaygroundScaffold {
     logger.info("Importing Godot resources (headless)...")
     try runProcess(
       [config.godotCommand, "--headless", "--path", godotDirectory.path, "--import"],
-      in: config.workspaceDirectory
+      in: config.workspaceDirectory,
+      suppressOutput: config.quiet
     )
   }
 
@@ -663,7 +711,7 @@ private struct PlaygroundScaffold {
     } else {
       process.standardOutput = FileHandle.standardOutput
     }
-    process.standardError = suppressOutput ? FileHandle(forWritingAtPath: "/dev/null") : FileHandle.standardError
+    process.standardError = FileHandle.standardError
     do {
       try process.run()
     } catch {
