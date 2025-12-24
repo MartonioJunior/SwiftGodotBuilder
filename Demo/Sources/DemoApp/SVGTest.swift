@@ -1,5 +1,3 @@
-
-import Observation
 import SwiftGodot
 import SwiftGodotBuilder
 
@@ -11,33 +9,42 @@ final class SVGTest: Node2D {
   }
 }
 
-// MARK: - State
-
-@Observable
-class SVGDemoState {
-  var wobbleAmount: Double = 3
-  var pulseSpeed: Double = 2
-  var explosionProgress: Double = 0
-  var scatterProgress: Double = 0
-  var twistAmount: Double = 0.5
-  var waveAmplitude: Double = 3
-  var noiseAmount: Double = 1
-}
-
 // MARK: - Main View
 
 struct SVGTestView: GView {
-  let state = ObservableState(wrappedValue: SVGDemoState())
+  @State var wobbleAmount = 3.0
+  @State var pulseSpeed = 2.0
+  @State var explosionProgress = 0.0
+  @State var scatterProgress = 0.0
+  @State var twistAmount = 0.5
+  @State var waveAmplitude = 3.0
+  @State var noiseAmount = 1.0
 
   var body: some GView {
     CanvasLayer$ {
       VBoxContainer$ {
-        ControlPanel(state: state)
+        ControlPanel(
+          wobbleAmount: $wobbleAmount,
+          pulseSpeed: $pulseSpeed,
+          explosionProgress: $explosionProgress,
+          scatterProgress: $scatterProgress,
+          twistAmount: $twistAmount,
+          waveAmplitude: $waveAmplitude,
+          noiseAmount: $noiseAmount
+        )
         ScrollContainer$ {
           VBoxContainer$ {
-            Row1ColorEffects(state: state)
-            Row2Oscillating(state: state)
-            Row3OneShot(state: state)
+            Row1ColorEffects(pulseSpeed: $pulseSpeed)
+            Row2Oscillating(
+              wobbleAmount: $wobbleAmount,
+              waveAmplitude: $waveAmplitude,
+              twistAmount: $twistAmount
+            )
+            Row3OneShot(
+              explosionProgress: $explosionProgress,
+              scatterProgress: $scatterProgress,
+              noiseAmount: $noiseAmount
+            )
             Row4Combinations()
           }
           .theme(["separation": 8])
@@ -53,7 +60,7 @@ struct SVGTestView: GView {
 // MARK: - Row 1: Color effects
 
 struct Row1ColorEffects: GView {
-  let state: ObservableState<SVGDemoState>
+  let pulseSpeed: GState<Double>
 
   var body: some GView {
     HBoxContainer$ {
@@ -94,7 +101,7 @@ struct Row1ColorEffects: GView {
           .colors([.red, .darkRed, .crimson])
           .stroke(.darkRed, width: 2)
           .position([16, 16])
-          .pulse(speed: state.pulseSpeed)
+          .svgEffects { SVGPulse(speed: pulseSpeed) }
       }
     }
     .theme(["separation": 8])
@@ -104,7 +111,9 @@ struct Row1ColorEffects: GView {
 // MARK: - Row 2: Oscillating effects (time-based, automatic)
 
 struct Row2Oscillating: GView {
-  let state: ObservableState<SVGDemoState>
+  let wobbleAmount: GState<Double>
+  let waveAmplitude: GState<Double>
+  let twistAmount: GState<Double>
 
   var body: some GView {
     HBoxContainer$ {
@@ -114,7 +123,7 @@ struct Row2Oscillating: GView {
           .colors([.limeGreen, .green, .darkGreen])
           .stroke(.green, width: 1)
           .position([16, 16])
-          .wobble(amount: state.wobbleAmount)
+          .svgEffects { SVGWobble(amount: wobbleAmount) }
       }
 
       LabeledCell("Wave") {
@@ -123,7 +132,7 @@ struct Row2Oscillating: GView {
           .colors([.orangeRed, .orange, .yellow])
           .stroke(.orange, width: 1)
           .position([16, 16])
-          .wave(amplitude: state.waveAmplitude, frequency: 0.2, speed: 3.0)
+          .wave(amplitude: 3.0, frequency: 0.2, speed: 3.0)
       }
 
       LabeledCell("Inflate") {
@@ -159,7 +168,7 @@ struct Row2Oscillating: GView {
           .colors([.orange, .yellow, .gold])
           .stroke(.gold, width: 1)
           .position([16, 16])
-          .twist(amount: state.twistAmount, speed: 2.0)
+          .svgEffects { SVGTwist(amount: twistAmount) }
       }
     }
     .theme(["separation": 8])
@@ -169,7 +178,9 @@ struct Row2Oscillating: GView {
 // MARK: - Row 3: One-shot effects (progress-driven)
 
 struct Row3OneShot: GView {
-  let state: ObservableState<SVGDemoState>
+  let explosionProgress: GState<Double>
+  let scatterProgress: GState<Double>
+  let noiseAmount: GState<Double>
 
   var body: some GView {
     HBoxContainer$ {
@@ -179,7 +190,7 @@ struct Row3OneShot: GView {
           .colors([.orange, .red, .yellow])
           .stroke(.gold, width: 1)
           .position([16, 16])
-          .explode(progress: state.explosionProgress)
+          .svgEffects { SVGExplode(progress: explosionProgress) }
       }
 
       LabeledCell("Scatter") {
@@ -188,7 +199,7 @@ struct Row3OneShot: GView {
           .colors([.orange, .red, .yellow])
           .stroke(.white, width: 1)
           .position([16, 16])
-          .scatter(progress: state.scatterProgress, scale: 30.0)
+          .svgEffects { SVGScatter(progress: scatterProgress, scale: 30.0) }
       }
 
       LabeledCell("Noise") {
@@ -197,7 +208,7 @@ struct Row3OneShot: GView {
           .colors([.white, .lightGray, .gray])
           .stroke(.crimson, width: 1)
           .position([16, 16])
-          .noise(amount: state.noiseAmount, speed: 15.0)
+          .svgEffects { SVGNoise(amount: noiseAmount, speed: 15.0) }
       }
     }
     .theme(["separation": 8])
@@ -294,7 +305,13 @@ struct LabeledCell<Content: GView>: GView {
 // MARK: - Control Panel
 
 struct ControlPanel: GView {
-  let state: ObservableState<SVGDemoState>
+  let wobbleAmount: GState<Double>
+  let pulseSpeed: GState<Double>
+  let explosionProgress: GState<Double>
+  let scatterProgress: GState<Double>
+  let twistAmount: GState<Double>
+  let waveAmplitude: GState<Double>
+  let noiseAmount: GState<Double>
 
   var body: some GView {
     HBoxContainer$ {
@@ -306,7 +323,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(1)
             .step(0.1)
-            .value(state.wobbleAmount)
+            .value(wobbleAmount)
             .minSize([60, 0])
 
           Label$().text("Pulse").minSize([40, 0])
@@ -314,7 +331,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(10)
             .step(0.1)
-            .value(state.pulseSpeed)
+            .value(pulseSpeed)
             .minSize([60, 0])
 
           Label$().text("Explode").minSize([50, 0])
@@ -322,7 +339,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(0.8)
             .step(0.01)
-            .value(state.explosionProgress)
+            .value(explosionProgress)
             .minSize([60, 0])
         }
 
@@ -332,7 +349,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(0.8)
             .step(0.01)
-            .value(state.scatterProgress)
+            .value(scatterProgress)
             .minSize([60, 0])
 
           Label$().text("Twist").minSize([40, 0])
@@ -340,7 +357,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(2)
             .step(0.05)
-            .value(state.twistAmount)
+            .value(twistAmount)
             .minSize([60, 0])
 
           Label$().text("Wave").minSize([40, 0])
@@ -348,7 +365,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(10)
             .step(0.1)
-            .value(state.waveAmplitude)
+            .value(waveAmplitude)
             .minSize([60, 0])
 
           Label$().text("Noise").minSize([40, 0])
@@ -356,7 +373,7 @@ struct ControlPanel: GView {
             .minValue(0)
             .maxValue(5)
             .step(0.1)
-            .value(state.noiseAmount)
+            .value(noiseAmount)
             .minSize([60, 0])
         }
       }
