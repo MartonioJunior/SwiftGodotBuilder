@@ -16,6 +16,32 @@ A SwiftUI-style library for building Godot games and apps using [SwiftGodot](htt
 
 ## Quick Start
 
+### CLI
+
+1. Download and unzip the CLI from the [latest release](https://github.com/johnsusek/SwiftGodotBuilder/releases)
+
+2. Create a minimal `.swift` file:
+
+```swift
+import SwiftGodotBuilder
+
+struct HelloWorld: View {
+  var body: some View {
+    Label$().text("Hello from SwiftGodotBuilder!")
+  }
+}
+```
+
+3. Run it:
+
+```bash
+./swiftgodotbuilder HelloWorld.swift
+```
+
+The CLI scaffolds a temporary project, builds your code, and launches Godot.
+
+### Library
+
 Add SwiftGodotBuilder to your `Package.swift`:
 
 ```swift
@@ -40,44 +66,14 @@ final class Game: Node2D {
   }
 }
 
-struct GameView: GView {
-  var body: some GView {
+struct GameView: View {
+  var body: some View {
     Node2D$ {
       Label$().text("Hello World")
     }
   }
 }
 ```
-
-## CLI Playground
-
-Use the bundled `swiftgodotbuilder` CLI to preview any `GView` without hand-creating a Godot project. Point it at a Swift file (the CLI auto-detects the first type that conforms to `GView`) and it will:
-
-- scaffold a throwaway Swift package and Godot project under `~/.swiftgodotbuilder/playgrounds/<hash>`
-- copy your Swift file and symlink any asset directories you provide
-- build the temporary package, copy the produced `.dylib`s into the Godot project, and launch Godot
-
-```bash
-# From the repository root
-swift run swiftgodotbuilder MinimalGameView.swift \
-  --assets Assets \
-  --godot /Applications/Godot.app/Contents/MacOS/Godot
-```
-
-Useful flags:
-
-- `--view <TypeName>` – specify the `GView` to instantiate if auto-detection fails
-- `--include <dir>` – copy `.swift` files from directory into sources (repeatable)
-- `--assets <dir>` – symlink an entire assets directory (repeatable)
-- `--godot <path>` – path to Godot (defaults to `godot` in PATH, then mdfind on macOS)
-- `--project <file>` – use a custom `project.godot` file (use `res://main.tscn` for main_scene)
-- `--release` / `--debug` – switch the Swift build configuration (`debug` is the default)
-- `--no-run` – stop after building; leaves the project ready to open manually
-- `--cache <dir>` – workspace cache directory (default `~/.swiftgodotbuilder/playgrounds`)
-- `--builder-path <path>` – override the SwiftGodotBuilder dependency path
-- `--codesign` – codesign dylibs (macOS only, off by default)
-- `--clean` – delete cached playground workspaces and exit
-- `--verbose` / `--quiet` – increase or decrease CLI logging
 
 ## Core Features
 
@@ -100,10 +96,8 @@ CharacterBody2D$("Player") {
   Sprite2D$()
 }
 
-// Custom initializer
-GNode<CustomNode>("Name", make: { CustomNode(config: config) }) {
-  // children
-}
+// Custom @Godot class
+GNode<CustomNode>()
 ```
 
 ### Properties & Configuration
@@ -111,8 +105,8 @@ GNode<CustomNode>("Name", make: { CustomNode(config: config) }) {
 ```swift
 // Dynamic member lookup - set any property
 Sprite2D$()
-  .position(Vector2(100, 200))
-  .scale(Vector2(2, 2))
+  .position([100, 200])
+  .scale([2, 2])
   .rotation(45)
   .modulate(.red)
   .zIndex(10)
@@ -125,6 +119,14 @@ RichTextLabel$().configure { label in
   label.appendText("text")
 }
 ```
+
+#### Explanation
+
+The builder syntax is not magic, it's simply shorthand for `addChild`:
+
+| SwiftGodotBuilder | SwiftGodot |
+|---------|----------------------|
+| <pre>Node2D$ {<br>  Label$().text("Hello")<br>}<br><br></pre> | <pre>let node = Node2D()<br>let label = Label()<br>label.text = "Hello"<br>node.addChild(node: label)</pre> |
 
 ### Resource Loading
 
@@ -191,7 +193,7 @@ Capture references to nodes for later use.
 CharacterBody2D$()
   .ref($playerNode)
 
-// On GView - captures the root node produced by the component
+// On View - captures the root node produced by the component
 @State var cameraNode: Camera2D?
 
 CameraView()
@@ -204,16 +206,16 @@ Create reusable components with slots.
 
 ```swift
 // Component with a content slot
-struct LabeledCell<Content: GView>: GView {
+struct LabeledCell<Content: View>: View {
   let label: String
   let content: Content
 
-  init(_ label: String, @GViewBuilder content: () -> Content) {
+  init(_ label: String, @ViewBuilder content: () -> Content) {
     self.label = label
     self.content = content()
   }
 
-  var body: some GView {
+  var body: some View {
     VBoxContainer$ {
       Control$ { content }.minSize([64, 64])
       Label$().text(label).horizontalAlignment(.center)
@@ -233,9 +235,9 @@ LabeledCell("Stats") {
 }
 ```
 
-#### GView Root Node Modifiers
+#### View Root Node Modifiers
 
-Set properties on a custom GView's root node using `.as()`.
+Set properties on a custom View.s root node using `.as()`.
 
 ```swift
 MyCustomView()
@@ -250,15 +252,15 @@ Components can expose state to their slot content via closure parameters.
 
 ```swift
 // Component exposes its state to content
-struct PlayerPanel<Content: GView>: GView {
+struct PlayerPanel<Content: View>: View {
   var player = PlayerState()
   let content: (PlayerState) -> Content
 
-  init(@GViewBuilder content: @escaping (PlayerState) -> Content) {
+  init(@ViewBuilder content: @escaping (PlayerState) -> Content) {
     self.content = content
   }
 
-  var body: some GView {
+  var body: some View {
     PanelContainer$ {
       content($player)  // Pass state to slot
     }
@@ -277,11 +279,11 @@ PlayerPanel { player in
 ### State Management
 
 ```swift
-struct PlayerView: GView {
+struct PlayerView: View {
   @State var health: Int = 100
   @State var position: Vector2 = .zero
 
-  var body: some GView {
+  var body: some View {
     CharacterBody2D$ {
       Sprite2D$()
       ProgressBar$()
@@ -323,10 +325,10 @@ OptionButton$().selected($selectedIndex)
 
 ```swift
 // ForEach - dynamic lists
-struct InventoryView: GView {
+struct InventoryView: View {
   @State var items: [Item] = []
 
-  var body: some GView {
+  var body: some View {
     VBoxContainer$ {
       ForEach($items) { item in
         HBoxContainer$ {
@@ -345,16 +347,16 @@ struct InventoryView: GView {
 
 ```swift
 // If - conditional rendering
-struct MenuView: GView {
+struct MenuView: View {
   @State var showSettings = false
 
-  var body: some GView {
+  var body: some View {
     VBoxContainer$ {
       If($showSettings) {
-        SettingsPanel()
+        Label$().text("Settings")
       }
       .Else {
-        MainMenu()
+        Label$().text("Main Menu")
       }
     }
   }
@@ -372,10 +374,10 @@ If($condition) { /* ... */ }.mode(.destroy)  // queueFree/rebuild
 // Switch/Case - multi-way branching
 enum Page { case mainMenu, levelSelect, settings }
 
-struct GameView: GView {
+struct GameView: View {
   @State var currentPage: Page = .mainMenu
 
-  var body: some GView {
+  var body: some View {
     VBoxContainer$ {
       Switch($currentPage) {
         Case(.mainMenu) {
@@ -492,7 +494,7 @@ let store = Store(
 
 // Custom middleware
 let analytics = Middleware<GameState, GameEvent> { event, state, dispatch in
-  Analytics.track(event)
+  print("Event: \(event)")
 }
 ```
 
@@ -539,7 +541,9 @@ GameEvent.playerDied.emit()
 
 ## UI
 
-### Control Layout
+### Layout
+
+Shorthand modifiers for common layout properties.
 
 ```swift
 // Anchor/offset presets (non-container parents)
@@ -550,26 +554,17 @@ Control$()
   .anchor(top: 0, right: 1, bottom: 1, left: 0)
   .offset(top: 12, right: -12, bottom: -12, left: 12)
 
-// Container size flags (for VBox/HBox parents)
+// Container size flags (when inside a container)
 Button$()
-  .sizeH(.expandFill)
-  .sizeV(.shrinkCenter)
-  .size(.expandFill, .shrinkCenter)
-  .size(.expandFill)  // Both axes
+  .sizeH(.expandFill) // Horizontal
+  .sizeV(.shrinkCenter) // Vertical
+  .size(.expandFill, .shrinkCenter) // Both separate
+  .size(.expandFill)  // Both same
 ```
 
-### Theme Building
+### Themes
 
 ```swift
-Label$()
-  .theme(Theme([
-  "Label": [
-    "colors": ["fontColor": Color.white],
-    "fontSizes": ["fontSize": 16]
-  ]
-]))
-
-// Or create and reuse a Theme
 let theme = Theme([
   "Label": [
     "colors": ["fontColor": Color.white],
@@ -577,12 +572,14 @@ let theme = Theme([
   ]
 ])
 
-Control$().theme(theme)
+VBoxContainer$ {
+  Label$()
+    .text("This label uses a custom theme")
+}
+.theme(theme)
 ```
 
-### StyleBox Styling
-
-Declarative StyleBox builders for UI styling.
+#### StyleBox
 
 ```swift
 PanelContainer$ {
@@ -597,149 +594,25 @@ PanelContainer$ {
     .shadowColor(.black.withAlpha(0.5))
     .shadowSize(12)
 )
-
-// Generic styleBox modifier
-Control$()
-  .styleBox("panel", StyleBoxFlat$().bgColor(.red))
-  .styleBox("focus", StyleBoxFlat$().borderColor(.white))
 ```
 
-### Buttons
+### Builders
 
-```swift
-StyledButton("Play", width: 80, color: .cyan) { startGame() }
-AnimatedButton("Start", color: .green) { play() }  // Hover/press animations
-BounceButton("Jump", color: .yellow) { jump() }    // Bounce on press
-```
+Declarative builders for controls with parent-child relationships.
 
-### Labels
-
-```swift
-HeaderLabel("Game Over", size: 24, color: .red)
-InfoLabel("Press any key", color: .gray)
-LiveInfoLabel(state.scoreDisplay, color: .gold)  // Reactive text
-```
-
-### Overlays
-
-```swift
-// Scrolling BBCode credits with star particles
-CreditsOverlay(
-  isVisible: $showCredits,
-  creditsText: "[center][color=#00FFFF]My Game[/color]..."
-) {
-  showCredits = false
-}
-
-// Animated title with "press any button" prompt
-SplashOverlay(
-  isVisible: $showSplash,
-  title: "My Game",
-  prompt: "PRESS START"
-) {
-  showSplash = false
-}
-
-```
-
-### Containers
-
-Wrapper components that add behavior to child content.
-
-#### Interaction
-
-```swift
-// Make any content clickable
-Clickable(onPressed: { score += 1 }) {
-  ColorBox$([64, 64]).color(.cyan)
-}
-
-// Track hover state
-@State var isHovered = false
-Hoverable($isHovered) {
-  Label$().text("Hover me").modulate(isHovered ? .yellow : .white)
-}
-
-// Press feedback with scale animation
-Pressable(pressScale: 0.95, onPressed: { play() }) {
-  Label$().text("Press Me")
-}
-```
-
-#### Animation
-
-```swift
-// Continuous pulse
-Pulse(minScale: 0.95, maxScale: 1.05, duration: 1.0) {
-  Sprite2D$().res(\.texture, "icon.png")
-}
-
-// Shake on trigger
-@State var shake = false
-Shake($shake, intensity: 4, duration: 0.4) {
-  Label$().text("Ouch!")
-}
-
-// Fade in on appear
-FadeIn(duration: 0.3, delay: 0.5) {
-  Label$().text("Hello!")
-}
-
-// Fade out and remove
-@State var dismiss = false
-FadeOut($dismiss, duration: 0.3, removeOnComplete: true) {
-  PanelContainer$()
-}
-
-// Slide in from direction
-SlideIn(from: .left, distance: 50, duration: 0.3) {
-  MenuPanel()
-}
-```
-
-#### Layout
-
-```swift
-// Inset from edges
-SafeArea(top: 20, right: 10, bottom: 20, left: 10) {
-  GameUI()
-}
-
-// Show content after delay
-Delayed(seconds: 2.0, fadeIn: true) {
-  Label$().text("Ready!")
-}
-
-// Maintain aspect ratio
-AspectRatio(16/9, stretchMode: .fit) {
-  VideoPlayer()
-}
-
-// Center in parent
-Centered {
-  Label$().text("Centered")
-}
-
-// Scrollable content
-Scrollable(horizontal: false, vertical: true) {
-  VBoxContainer$ { /* long content */ }
-}
-```
-
-### ItemList
+#### ItemList
 
 ```swift
 ItemList$ {
   ListItem("Apple")
-  ListItem("Banana", icon: fruitIcon)
+  ListItem("Banana")
   ListItem("Cherry", disabled: true)
-  ListIcon(starIcon)
 }
 .onItemSelected { index in print("Selected: \(index)") }
 .onItemActivated { index in print("Activated: \(index)") }
 ```
 
-### OptionButton
+#### OptionButton
 
 ```swift
 OptionButton$ {
@@ -752,7 +625,7 @@ OptionButton$ {
 .onItemSelected { id in print("Selected: \(id)") }
 ```
 
-### TabBar / TabContainer
+#### Tabs
 
 ```swift
 // TabBar only (no content)
@@ -761,17 +634,17 @@ TabBar$ {
   Tab("Audio")
   Tab("Video", disabled: true)
 }
-.onTabChanged { index in currentTab = index }
+.onTabChanged { index in print("Tab: \(index)") }
 
 // TabContainer with content
 TabContainer$ {
-  TabContent("General") { Label$().text("General settings") }
-  TabContent("Audio") { VolumeSlider() }
+  Tab("General") { Label$().text("General settings") }
+  Tab("Audio") { HSlider$().value(80) }
 }
-.onTabChanged { index in ... }
+.onTabChanged { index in print("Tab: \(index)") }
 ```
 
-### Tree
+#### Tree
 
 ```swift
 Tree$ {
@@ -786,7 +659,7 @@ Tree$ {
 .onItemActivated { print("Double-clicked") }
 ```
 
-### MenuBar
+#### MenuBar
 
 ```swift
 MenuBar$ {
@@ -801,7 +674,7 @@ MenuBar$ {
     MenuSeparator()
     MenuItem("Quit", id: 99)
   }
-  .onItemPressed { id in handleFileMenu(id) }
+  .onItemPressed { id in print("File menu: \(id)") }
 
   Menu("Edit") {
     MenuItem("Undo", id: 0)
@@ -809,11 +682,13 @@ MenuBar$ {
     MenuRadioItem("Tab size: 2", checked: true)
     MenuRadioItem("Tab size: 4")
   }
-  .onItemPressed { id in handleEditMenu(id) }
+  .onItemPressed { id in print("Edit menu: \(id)") }
 }
 ```
 
-### Context Menus
+### Misc
+
+#### Context Menus
 
 ```swift
 Label$().text("Right-click me")
@@ -824,11 +699,11 @@ Label$().text("Right-click me")
     MenuSeparator()
     MenuItem("Delete", id: 10)
   } onItemPressed: { id in
-    handleContextAction(id)
+    print("Context action: \(id)")
   }
 ```
 
-### RichTextLabel
+#### RichTextLabel
 
 ```swift
 RichTextLabel$ {
@@ -849,7 +724,7 @@ RichTextLabel$ {
 
 Elements: `Text`, `Bold`, `Italic`, `Underline`, `Strikethrough`, `Colored`, `FontSize`, `Link`, `Newline`, `Paragraph`
 
-### ColorPicker
+#### ColorPicker
 
 ```swift
 ColorPicker$ {
@@ -872,41 +747,54 @@ ColorPicker$ {
 }
 ```
 
-### Dialogs
+#### Dialogs
+
+Dialogs must be shown explicitly via `popup()`. Use `.ref()` to capture a reference.
 
 ```swift
-// AcceptDialog with custom buttons
+@State var saveDialog: AcceptDialog?
+
+Button$().text("Save").onSignal(\.pressed) { _ in
+  saveDialog?.popupCentered()
+}
+
 AcceptDialog$ {
   DialogButton("Save", action: "save")
   DialogButton("Don't Save", action: "discard")
   CancelButton()
 }
+.ref($saveDialog)
 .title("Unsaved Changes")
 .dialogText("Save before closing?")
 .onConfirmed { print("OK") }
-.onCustomAction { action in
-  switch action {
-  case "save": save()
-  case "discard": discard()
-  default: break
-  }
-}
+.onCustomAction { action in print(action) }
 
-// ConfirmationDialog
-ConfirmationDialog$ {
-  DialogButton("Delete Anyway", action: "force")
-}
-.title("Confirm Delete")
-.dialogText("This cannot be undone.")
-.cancelButtonText("Keep")
-.onConfirmed { delete() }
-.onCanceled { print("Cancelled") }
+// FileDialog
+@State var fileDialog: FileDialog?
 
-// FileDialog filters
 FileDialog$()
+  .ref($fileDialog)
   .filter("Images", "*.png,*.jpg")
   .filter("All Files", "*")
   .onFileSelected { path in print(path) }
+
+// Show methods: popup(), popupCentered(), popupCenteredRatio(0.5)
+```
+
+#### Wrappers
+
+Wrapper components that add behavior to child content.
+
+```swift
+// Inset from edges
+SafeArea(top: 20, right: 10, bottom: 20, left: 10) {
+  Label$().text("Content with margins")
+}
+
+// Center in parent
+Centered {
+  Label$().text("Centered")
+}
 ```
 
 ## Node Modifiers
@@ -924,9 +812,9 @@ CharacterBody2D$()
 // .iota, .kappa, .lambda, .mu, .nu, .xi, .omicron, .pi, .rho, .sigma, .tau,
 // .upsilon, .phi, .chi, .psi, .omega
 
-// Custom layers
+// Combine layers
 CharacterBody2D$()
-  .collisionMask(wallLayer | enemyLayer)
+  .collisionMask([.alpha, .beta])
 
 // Debug border visualization for collision shapes
 CollisionShape2D$()
@@ -1029,7 +917,7 @@ Button$()
 // Conditional animation - run different animations based on state value
 @State var selectedTab = 0
 
-TabButton$()
+Button$()
   .tweenWhen($selectedTab, equals: 0) { btn in
     btn.tween(.scale([1.1, 1.1]), duration: 0.1).ease(.out)
   } otherwise: { btn in
@@ -1039,7 +927,7 @@ TabButton$()
 // On change - custom handler for any state change
 @State var health = 100
 
-HealthBar$()
+ProgressBar$()
   .tweenOnChange($health) { bar, newHealth in
     bar.tween(.scaleX(Float(newHealth) / 100.0), duration: 0.2).ease(.out)
   }
@@ -1450,9 +1338,9 @@ let particles = TypedParticlePool<ParticleType, CPUParticles2D>(
   config: .init(prewarmPerType: 5)
 ) { type in
   switch type {
-  case .dust: return makeDustParticles()
-  case .spark: return makeSparkParticles()
-  case .blood: return makeBloodParticles()
+  case .dust: return CPUParticles2D(.dust)
+  case .spark: return CPUParticles2D(.sparkle)
+  case .blood: return CPUParticles2D(.splatter)
   }
 }
 
@@ -1529,8 +1417,8 @@ particles.emitting = true
 
 ```swift
 // Damage numbers, popups
-FloatingTextSpawner(GameEvent.self) { event in
-  if case let .damageDealt(amount, position) = event {
+FloatingTextSpawner(ActorEvent.self) { event in
+  if case let .damaged(_, amount, position) = event {
     return (text: "\(amount)", position: position, color: .red)
   }
   return nil
@@ -1538,8 +1426,8 @@ FloatingTextSpawner(GameEvent.self) { event in
 
 // Spawn nodes in response to events
 NodeSpawner(GameEvent.self) { event in
-  if case let .collectibleSpawned(def, pos) = event {
-    return CollectibleView(position: pos, def).toNode()
+  if case let .itemSpawned(position) = event {
+    return Sprite2D$().position(position).toNode()
   }
   return nil
 } resetWhen: { event in
@@ -1616,12 +1504,12 @@ enum Item: String, LDEnum {
   case potion = "Potion"
 }
 
-struct GameView: GView {
+struct GameView: View {
   let project: LDProject
   @State var inventory: [Item] = []
   @State var spawnPosition: Vector2 = .zero
 
-  var body: some GView {
+  var body: some View {
     Node2D$ {
       LDLevelView(project, level: "Level_0")
         // Spawn nodes for entities
@@ -1752,7 +1640,7 @@ Tile layer where tiles can be destroyed by collision.
 ```swift
 LDBreakableTerrainView(layer: breakableLayer, project: project)
   .terrainCollisionLayer(.terrain)
-  .detectionLayer(.none)
+  .detectionLayer([])
   .detectionMask(.combat)
   .onTileDestroyed { position in
     GameEvent.terrainDestroyed(position: position).emit()
@@ -1843,10 +1731,10 @@ BfxrSound$("res://sounds/jump.bfxr")
   }
 
 // With reactive bindings
-struct GameView: GView {
+struct GameView: View {
   @State var pitch: Double = 1.0
 
-  var body: some GView {
+  var body: some View {
     Node2D$ {
       BfxrSound$("res://sounds/laser.bfxr")
         .ref($laserSound)
@@ -1908,8 +1796,7 @@ ColorBox$([100, 50])
 ### Vector2 Extensions
 
 ```swift
-let pos = Vector2(100, 200)
-let pos: Vector2 = [100, 200]  // Array literal
+let pos: Vector2 = [100, 200]
 let doubled = pos * 2
 let scaled = pos * 1.5
 ```
@@ -2043,3 +1930,28 @@ final class Player: CharacterBody2D {
   }
 }
 ```
+
+## CLI Playground
+
+Use the bundled `swiftgodotbuilder` CLI to preview any `View` without hand-creating a Godot project.
+
+```bash
+swift run swiftgodotbuilder MyGameView.swift \
+  --assets Assets \
+  --include Utils
+```
+
+Flags:
+
+- `--include <dir>` – copy `.swift` files from directory into sources (repeatable)
+- `--assets <dir>` – symlink an entire assets directory (repeatable)
+- `--godot <path>` – path to Godot (defaults to `godot` in PATH, then mdfind on macOS)
+- `--project <file>` – use a custom `project.godot` file (use `res://main.tscn` for main_scene)
+- `--release` / `--debug` – switch the Swift build configuration (`debug` is the default)
+- `--no-run` – stop after building; leaves the project ready to open manually
+- `--cache <dir>` – workspace cache directory (default `~/.swiftgodotbuilder/playgrounds`)
+- `--builder-path <path>` – override the SwiftGodotBuilder dependency path
+- `--view <TypeName>` – specify the `View` to instantiate if auto-detection fails
+- `--codesign` – codesign dylibs (macOS only, off by default)
+- `--clean` – delete cached playground workspaces and exit
+- `--verbose` / `--quiet` – increase or decrease CLI logging
