@@ -725,9 +725,7 @@ Scrollable(horizontal: false, vertical: true) {
 }
 ```
 
-### Declarative UI Components
-
-#### ItemList
+### ItemList
 
 ```swift
 ItemList$ {
@@ -740,7 +738,7 @@ ItemList$ {
 .onItemActivated { index in print("Activated: \(index)") }
 ```
 
-#### OptionButton
+### OptionButton
 
 ```swift
 OptionButton$ {
@@ -753,7 +751,7 @@ OptionButton$ {
 .onItemSelected { id in print("Selected: \(id)") }
 ```
 
-#### TabBar / TabContainer
+### TabBar / TabContainer
 
 ```swift
 // TabBar only (no content)
@@ -772,7 +770,7 @@ TabContainer$ {
 .onTabChanged { index in ... }
 ```
 
-#### Tree
+### Tree
 
 ```swift
 Tree$ {
@@ -787,7 +785,7 @@ Tree$ {
 .onItemActivated { print("Double-clicked") }
 ```
 
-#### MenuBar
+### MenuBar
 
 ```swift
 MenuBar$ {
@@ -814,7 +812,7 @@ MenuBar$ {
 }
 ```
 
-#### Context Menus
+### Context Menus
 
 ```swift
 Label$().text("Right-click me")
@@ -827,6 +825,87 @@ Label$().text("Right-click me")
   } onItemPressed: { id in
     handleContextAction(id)
   }
+```
+
+### RichTextLabel
+
+```swift
+RichTextLabel$ {
+  Bold("Important: ")
+  "Normal text "
+  Colored(.red, "Warning!")
+  Newline()
+  Italic {
+    "Nested "
+    Bold("formatting")
+  }
+  Paragraph {
+    FontSize(16, "Large text")
+  }
+  Link("https://example.com", "Click here")
+}
+```
+
+Elements: `Text`, `Bold`, `Italic`, `Underline`, `Strikethrough`, `Colored`, `FontSize`, `Link`, `Newline`, `Paragraph`
+
+### ColorPicker
+
+```swift
+ColorPicker$ {
+  Preset(.red)
+  Preset(.green)
+  Preset(.blue)
+  Preset(hex: "#FF6600")
+  Preset(r: 128, g: 0, b: 255)
+}
+.onColorChanged { color in print("Color: \(color)") }
+
+// Static presets
+ColorPicker$ {
+  Preset.red
+  Preset.orange
+  Preset.yellow
+  Preset.green
+  Preset.blue
+  Preset.purple
+}
+```
+
+### Dialogs
+
+```swift
+// AcceptDialog with custom buttons
+AcceptDialog$ {
+  DialogButton("Save", action: "save")
+  DialogButton("Don't Save", action: "discard")
+  CancelButton()
+}
+.title("Unsaved Changes")
+.dialogText("Save before closing?")
+.onConfirmed { print("OK") }
+.onCustomAction { action in
+  switch action {
+  case "save": save()
+  case "discard": discard()
+  default: break
+  }
+}
+
+// ConfirmationDialog
+ConfirmationDialog$ {
+  DialogButton("Delete Anyway", action: "force")
+}
+.title("Confirm Delete")
+.dialogText("This cannot be undone.")
+.cancelButtonText("Keep")
+.onConfirmed { delete() }
+.onCanceled { print("Cancelled") }
+
+// FileDialog filters
+FileDialog$()
+  .filter("Images", "*.png,*.jpg")
+  .filter("All Files", "*")
+  .onFileSelected { path in print(path) }
 ```
 
 ## Node Modifiers

@@ -8,7 +8,7 @@ public struct Idle: ActorBehavior {
   public init() {}
 
   public func process(actor: ActorState, delta _: Double) {
-    actor.physics?.inputDirection = 0
+    actor.physics?.inputDirection = .zero
   }
 
   public func enter(actor _: ActorState) {}
@@ -65,9 +65,9 @@ public struct Patrol: ActorBehavior {
 
     // Use physics speed by default, or scale input if speed override provided
     if let speed, physics.config.speed > 0 {
-      physics.inputDirection = direction * (speed / physics.config.speed)
+      physics.inputDirection.x = direction * (speed / physics.config.speed)
     } else {
-      physics.inputDirection = direction
+      physics.inputDirection.x = direction
     }
   }
 
@@ -116,7 +116,7 @@ public struct Shoot: ActorBehavior {
 
 // MARK: - Chase Behavior
 
-/// Chases toward the current target
+/// Chases toward the current target (auto-detects 2D mode when gravity = 0)
 public struct Chase: ActorBehavior {
   public let speed: Float?
   public let stopDistance: Float
@@ -137,23 +137,33 @@ public struct Chase: ActorBehavior {
           let targeting = actor.targeting,
           let targetPos = targeting.targetPosition
     else {
-      physics.inputDirection = 0
+      physics.inputDirection = .zero
       return
     }
 
-    let distance = abs(targetPos.x - node.position.x)
+    let diff = targetPos - node.position
+    let distance = Float(diff.length())
+
     if distance < stopDistance {
-      physics.inputDirection = 0
+      physics.inputDirection = .zero
       return
     }
 
-    let direction: Float = targetPos.x > node.position.x ? 1 : -1
-
-    // Use physics speed by default, or scale input if speed override provided
-    if let speed, physics.config.speed > 0 {
-      physics.inputDirection = direction * (speed / physics.config.speed)
+    // Calculate speed multiplier
+    let speedMult: Float = if let speed, physics.config.speed > 0 {
+      speed / physics.config.speed
     } else {
-      physics.inputDirection = direction
+      1.0
+    }
+
+    if physics.config.gravity == 0 {
+      // Top-down: normalize direction for diagonal movement
+      let normalized = diff.normalized()
+      physics.inputDirection = Vector2(x: normalized.x, y: normalized.y) * speedMult
+    } else {
+      // Side-scroller: horizontal only
+      let direction: Float = diff.x > 0 ? 1 : -1
+      physics.inputDirection = Vector2(x: direction * speedMult, y: 0)
     }
   }
 
@@ -255,5 +265,84 @@ public struct SineWave: ActorBehavior {
     }
   }
 
+  public func exit(actor _: ActorState) {}
+}
+
+// MARK: - Kite Behavior
+
+/// Maintains preferred distance from target - retreats if too close, advances if too far
+/// Auto-detects top-down mode when gravity = 0
+public struct Kite: ActorBehavior {
+  public let preferredDistance: Float
+  public let retreatThreshold: Float
+  public let advanceThreshold: Float
+  public let speed: Float?
+
+  /// Create a kite behavior for ranged units
+  /// - Parameters:
+  ///   - preferredDistance: Ideal distance to maintain from target
+  ///   - retreatThreshold: Run away if closer than this (defaults to preferredDistance * 0.6)
+  ///   - advanceThreshold: Move closer if farther than this (defaults to preferredDistance * 1.2)
+  ///   - speed: Override speed (defaults to actor's physics speed)
+  public init(
+    preferredDistance: Float = 60,
+    retreatThreshold: Float? = nil,
+    advanceThreshold: Float? = nil,
+    speed: Float? = nil
+  ) {
+    self.preferredDistance = preferredDistance
+    self.retreatThreshold = retreatThreshold ?? preferredDistance * 0.6
+    self.advanceThreshold = advanceThreshold ?? preferredDistance * 1.2
+    self.speed = speed
+  }
+
+  public mutating func process(actor: ActorState, delta _: Double) {
+    guard let physics = actor.physics else { return }
+
+    guard let node = actor.node,
+          let targeting = actor.targeting,
+          let targetPos = targeting.targetPosition
+    else {
+      physics.inputDirection = .zero
+      return
+    }
+
+    let diff = targetPos - node.position
+    let distance = Float(diff.length())
+
+    // Calculate speed multiplier
+    let speedMult: Float = if let speed, physics.config.speed > 0 {
+      speed / physics.config.speed
+    } else {
+      1.0
+    }
+
+    if physics.config.gravity == 0 {
+      // Top-down: move directly toward/away from target
+      if distance < retreatThreshold {
+        let awayDir = (node.position - targetPos).normalized()
+        physics.inputDirection = Vector2(x: awayDir.x, y: awayDir.y) * speedMult
+      } else if distance > advanceThreshold {
+        let towardDir = diff.normalized()
+        physics.inputDirection = Vector2(x: towardDir.x, y: towardDir.y) * speedMult
+      } else {
+        physics.inputDirection = .zero
+      }
+    } else {
+      // Side-scroller: horizontal only
+      let distanceX = abs(diff.x)
+
+      var direction: Float = 0
+      if distanceX < retreatThreshold {
+        direction = diff.x > 0 ? -1 : 1
+      } else if distanceX > advanceThreshold {
+        direction = diff.x > 0 ? 1 : -1
+      }
+
+      physics.inputDirection = Vector2(x: direction * speedMult, y: 0)
+    }
+  }
+
+  public func enter(actor _: ActorState) {}
   public func exit(actor _: ActorState) {}
 }

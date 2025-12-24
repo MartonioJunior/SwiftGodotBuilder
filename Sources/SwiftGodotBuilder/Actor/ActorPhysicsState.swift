@@ -34,7 +34,7 @@ public class ActorPhysicsState {
 
   // MARK: - Input State
 
-  public var inputDirection: Float = 0
+  public var inputDirection: Vector2 = .zero
   public var jumpRequested = false
   public var jumpHeld = false
   public var dashRequested = false
@@ -214,7 +214,12 @@ public class ActorPhysicsState {
 
   private func applyHorizontalMovement(body: CharacterBody2D) {
     let speed = isCrouching ? config.speed * config.crouchSpeedMultiplier : config.speed
-    body.velocity.x = inputDirection * speed
+    body.velocity.x = inputDirection.x * speed
+
+    // Apply vertical movement for top-down mode (when gravity is 0)
+    if config.gravity == 0 {
+      body.velocity.y = inputDirection.y * speed
+    }
   }
 
   // MARK: - Knockback
@@ -273,9 +278,9 @@ public class ActorPhysicsState {
   // MARK: - Facing
 
   private func updateFacing(coreState: ActorState) {
-    if inputDirection > 0.1 {
+    if inputDirection.x > 0.1 {
       coreState.facing = .right
-    } else if inputDirection < -0.1 {
+    } else if inputDirection.x < -0.1 {
       coreState.facing = .left
     }
   }
@@ -306,7 +311,7 @@ public class ActorPhysicsState {
     dashDirection = .zero
 
     // Input State
-    inputDirection = 0
+    inputDirection = .zero
     jumpRequested = false
     jumpHeld = false
     dashRequested = false

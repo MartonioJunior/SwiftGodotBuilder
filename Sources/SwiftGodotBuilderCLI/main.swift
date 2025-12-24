@@ -213,7 +213,7 @@ private struct CLIConfig {
       --include <dir>         Copy .swift files from directory into sources (repeatable)
       --assets <dir>          Symlink an assets directory into the Godot project
       --project <file>        Use a custom project.godot file (Use "res://main.tscn" for main_scene)
-      --godot <command>       Path to Godot (default: godot in PATH, or /Applications/Godot.app)
+      --godot <command>       Path to Godot (default: PATH, then mdfind on macOS)
       --cache <dir>           Workspace cache directory (default: ~/.swiftgodotbuilder/playgrounds)
       --builder-path <path>   Override the SwiftGodotBuilder dependency path
       --view <Type>           Override the GView type to instantiate
@@ -282,27 +282,42 @@ private struct CLIConfig {
 
   private static func resolveGodotCommand() -> String {
     // Check if godot is available in PATH
-    let whichProcess = Process()
-    whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-    whichProcess.arguments = ["godot"]
-    whichProcess.standardOutput = Pipe()
-    whichProcess.standardError = Pipe()
+    let which = Process()
+    which.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+    which.arguments = ["godot"]
+    which.standardOutput = Pipe()
+    which.standardError = Pipe()
     do {
-      try whichProcess.run()
-      whichProcess.waitUntilExit()
-      if whichProcess.terminationStatus == 0 {
+      try which.run()
+      which.waitUntilExit()
+      if which.terminationStatus == 0 {
         return "godot"
       }
-    } catch {
-      // Fall through to check macOS app bundle
-    }
+    } catch {}
 
-    // Check macOS Godot.app bundle
     #if os(macOS)
-      let macOSPath = "/Applications/Godot.app/Contents/MacOS/Godot"
-      if FileManager.default.fileExists(atPath: macOSPath) {
-        return macOSPath
-      }
+      // Try mdfind to locate Godot by bundle identifier
+      let mdfindProcess = Process()
+      mdfindProcess.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+      mdfindProcess.arguments = ["kMDItemCFBundleIdentifier = \"org.godotengine.godot\""]
+      let mdfindPipe = Pipe()
+      mdfindProcess.standardOutput = mdfindPipe
+      mdfindProcess.standardError = Pipe()
+      do {
+        try mdfindProcess.run()
+        mdfindProcess.waitUntilExit()
+        if mdfindProcess.terminationStatus == 0 {
+          let data = mdfindPipe.fileHandleForReading.readDataToEndOfFile()
+          if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+             !output.isEmpty, let appPath = output.components(separatedBy: "\n").first
+          {
+            let execPath = "\(appPath)/Contents/MacOS/Godot"
+            if FileManager.default.fileExists(atPath: execPath) {
+              return execPath
+            }
+          }
+        }
+      } catch {}
     #endif
 
     // Default to godot and let it fail with a clear error if not found

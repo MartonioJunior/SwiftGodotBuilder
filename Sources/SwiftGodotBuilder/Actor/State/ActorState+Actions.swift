@@ -7,12 +7,17 @@ import SwiftGodot
 public extension ActorState {
   // MARK: - Movement Input
 
-  /// Set movement input (-1 to 1)
+  /// Set horizontal movement input (-1 to 1)
   func move(_ direction: Double) {
-    physics?.inputDirection = Float(direction)
+    physics?.inputDirection.x = Float(direction)
   }
 
   func move(_ direction: Float) {
+    physics?.inputDirection.x = direction
+  }
+
+  /// Set 2D movement input (for top-down games)
+  func move(_ direction: Vector2) {
     physics?.inputDirection = direction
   }
 

@@ -25,13 +25,13 @@ public extension ActorBehavior {
 
 /// Output from a behavior that affects actor state
 public struct BehaviorOutput: Sendable {
-  public var inputDirection: Float?
+  public var inputDirection: Vector2?
   public var jumpRequested: Bool?
   public var attackRequested: Bool?
   public var facingOverride: Facing?
 
   public init(
-    inputDirection: Float? = nil,
+    inputDirection: Vector2? = nil,
     jumpRequested: Bool? = nil,
     attackRequested: Bool? = nil,
     facingOverride: Facing? = nil
