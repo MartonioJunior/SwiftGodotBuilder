@@ -67,9 +67,10 @@ swift run swiftgodotbuilder MinimalGameView.swift \
 Useful flags:
 
 - `--view <TypeName>` – specify the `GView` to instantiate if auto-detection fails
+- `--include <dir>` – copy `.swift` files from directory into sources (repeatable)
 - `--assets <dir>` – symlink an entire assets directory (repeatable)
-- `--godot <path>` – path to Godot (defaults to `godot` in PATH, then `/Applications/Godot.app`)
-- `--project <file>` – use a custom `project.godot` file instead of the generated one
+- `--godot <path>` – path to Godot (defaults to `godot` in PATH, then mdfind on macOS)
+- `--project <file>` – use a custom `project.godot` file (use `res://main.tscn` for main_scene)
 - `--release` / `--debug` – switch the Swift build configuration (`debug` is the default)
 - `--no-run` – stop after building; leaves the project ready to open manually
 - `--cache <dir>` – workspace cache directory (default `~/.swiftgodotbuilder/playgrounds`)
