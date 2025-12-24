@@ -725,6 +725,110 @@ Scrollable(horizontal: false, vertical: true) {
 }
 ```
 
+### Declarative UI Components
+
+#### ItemList
+
+```swift
+ItemList$ {
+  ListItem("Apple")
+  ListItem("Banana", icon: fruitIcon)
+  ListItem("Cherry", disabled: true)
+  ListIcon(starIcon)
+}
+.onItemSelected { index in print("Selected: \(index)") }
+.onItemActivated { index in print("Activated: \(index)") }
+```
+
+#### OptionButton
+
+```swift
+OptionButton$ {
+  Option("Small", id: 0)
+  Option("Medium", id: 1)
+  Option("Large", id: 2)
+  OptionSeparator()
+  Option("Custom...", id: 99)
+}
+.onItemSelected { id in print("Selected: \(id)") }
+```
+
+#### TabBar / TabContainer
+
+```swift
+// TabBar only (no content)
+TabBar$ {
+  Tab("General")
+  Tab("Audio")
+  Tab("Video", disabled: true)
+}
+.onTabChanged { index in currentTab = index }
+
+// TabContainer with content
+TabContainer$ {
+  TabContent("General") { Label$().text("General settings") }
+  TabContent("Audio") { VolumeSlider() }
+}
+.onTabChanged { index in ... }
+```
+
+#### Tree
+
+```swift
+Tree$ {
+  TreeNode("Root") {
+    TreeNode("Child 1")
+    TreeNode("Child 2", editable: true) {
+      TreeNode("Grandchild")
+    }
+  }
+}
+.onItemSelected { print("Selected") }
+.onItemActivated { print("Double-clicked") }
+```
+
+#### MenuBar
+
+```swift
+MenuBar$ {
+  Menu("File") {
+    MenuItem("New", id: 0)
+    MenuItem("Open...", id: 1)
+    MenuSeparator()
+    SubMenu("Recent") {
+      MenuItem("Project1.swift")
+      MenuItem("Project2.swift")
+    }
+    MenuSeparator()
+    MenuItem("Quit", id: 99)
+  }
+  .onItemPressed { id in handleFileMenu(id) }
+
+  Menu("Edit") {
+    MenuItem("Undo", id: 0)
+    MenuCheckItem("Auto-save", checked: true)
+    MenuRadioItem("Tab size: 2", checked: true)
+    MenuRadioItem("Tab size: 4")
+  }
+  .onItemPressed { id in handleEditMenu(id) }
+}
+```
+
+#### Context Menus
+
+```swift
+Label$().text("Right-click me")
+  .contextMenu {
+    MenuItem("Cut", id: 0)
+    MenuItem("Copy", id: 1)
+    MenuItem("Paste", id: 2)
+    MenuSeparator()
+    MenuItem("Delete", id: 10)
+  } onItemPressed: { id in
+    handleContextAction(id)
+  }
+```
+
 ## Node Modifiers
 
 ### Collision (2D)
