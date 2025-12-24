@@ -216,9 +216,7 @@ private struct SelectionRectView: GView {
   var body: some GView {
     ColorRect$()
       .color(boxColor)
-      .onProcess { node, _ in
-        guard let rect = node as? ColorRect else { return }
-
+      .onProcess { rect, _ in
         let dragging = isDragging.wrappedValue
         let start = dragStart.wrappedValue
         let current = dragCurrent.wrappedValue

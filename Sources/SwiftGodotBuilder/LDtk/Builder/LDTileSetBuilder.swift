@@ -49,7 +49,7 @@ public class LDTileSetBuilder {
 
     // Add the atlas source to the tileset
     // Use the tileset UID as the source ID
-    tileSet.addSource(atlasSource, atlasSourceIdOverride: Int32(tilesetDef.uid))
+    _ = tileSet.addSource(atlasSource, atlasSourceIdOverride: Int32(tilesetDef.uid))
 
     // Cache it
     if cachingEnabled {

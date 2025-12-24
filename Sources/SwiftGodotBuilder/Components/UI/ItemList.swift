@@ -47,7 +47,7 @@ public struct ListIcon: ItemListElement {
     }
 
     public func addTo(_ list: ItemList) {
-        list.addIconItem(icon: icon, selectable: selectable)
+        _ = list.addIconItem(icon: icon, selectable: selectable)
     }
 }
 

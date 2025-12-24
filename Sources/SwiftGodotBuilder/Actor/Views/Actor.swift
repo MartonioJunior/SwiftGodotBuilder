@@ -260,8 +260,7 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
     .collisionLayer(state.isPlayer ? .beta : .gamma)
     .collisionMask(.alpha)
     .floorSnapLength(4)
-    .onReady { node in
-      guard let body = node as? CharacterBody2D else { return }
+    .onReady { body in
       state.node = body
     }
     .onPhysicsProcess { _, delta in

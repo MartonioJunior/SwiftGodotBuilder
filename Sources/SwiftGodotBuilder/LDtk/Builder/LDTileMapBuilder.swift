@@ -243,7 +243,7 @@ public class LDTileMapBuilder {
     atlasSource.createTile(atlasCoords: atlasCoords)
 
     // Add the atlas source to the tileset FIRST (before setting collision data)
-    tileSet.addSource(atlasSource, atlasSourceIdOverride: 0)
+    _ = tileSet.addSource(atlasSource, atlasSourceIdOverride: 0)
 
     // Now set collision polygon (full square)
     let tileData = atlasSource.getTileData(atlasCoords: atlasCoords, alternativeTile: 0)
@@ -412,7 +412,7 @@ public class LDTileMapBuilder {
     let atlasCoords = Vector2i(x: 0, y: 0)
     atlasSource.createTile(atlasCoords: atlasCoords)
 
-    tileSet.addSource(atlasSource, atlasSourceIdOverride: 0)
+    _ = tileSet.addSource(atlasSource, atlasSourceIdOverride: 0)
 
     // Set collision polygon on physics layer 0
     if let tileData = atlasSource.getTileData(atlasCoords: atlasCoords, alternativeTile: 0) {
@@ -534,7 +534,7 @@ public class LDTileMapBuilder {
     }
 
     // Add the atlas source to the tileset FIRST
-    tileSet.addSource(atlasSource, atlasSourceIdOverride: 0)
+    _ = tileSet.addSource(atlasSource, atlasSourceIdOverride: 0)
 
     // Now set collision data for each tile
     for layerIndex in uniqueLayerIndices {

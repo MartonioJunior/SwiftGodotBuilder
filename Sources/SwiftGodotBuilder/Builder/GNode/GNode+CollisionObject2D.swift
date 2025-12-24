@@ -29,7 +29,6 @@ public struct Physics2DLayer: OptionSet, Sendable {
 
   public init(rawValue: UInt32) { self.rawValue = rawValue }
 
-  public static let none = Physics2DLayer(rawValue: 0)
   public static let alpha = Physics2DLayer(rawValue: 1 << 0)
   public static let beta = Physics2DLayer(rawValue: 1 << 1)
   public static let gamma = Physics2DLayer(rawValue: 1 << 2)
