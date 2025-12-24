@@ -312,3 +312,11 @@ public struct ModifiedGView<Content: GView, RootType: Node>: GView {
     }
   }
 }
+
+// MARK: - SwiftUI-style Aliases
+
+/// SwiftUI-style alias for `GView`.
+public typealias View = GView
+
+/// SwiftUI-style alias for `GViewBuilder`.
+public typealias ViewBuilder = GViewBuilder
