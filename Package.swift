@@ -10,7 +10,6 @@ let package = Package(
         .library(name: "SwiftGodotBuilder", type: .dynamic, targets: ["SwiftGodotBuilder"]),
         .plugin(name: "GenNodeApi", targets: ["GenNodeApi"]),
         .plugin(name: "GenLDEnums", targets: ["GenLDEnums"]),
-        .executable(name: "swiftgodotbuilder", targets: ["SwiftGodotBuilderCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
@@ -60,11 +59,6 @@ let package = Package(
             ],
             exclude: ["Lib/SwiftDraw/LICENSE", "Resources"],
             plugins: ["GenNodeApi"],
-        ),
-
-        .executableTarget(
-            name: "SwiftGodotBuilderCLI",
-            path: "Sources/SwiftGodotBuilderCLI"
         ),
 
         .testTarget(

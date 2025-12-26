@@ -1930,28 +1930,3 @@ final class Player: CharacterBody2D {
   }
 }
 ```
-
-## CLI Playground
-
-Use the bundled `swiftgodotbuilder` CLI to preview any `View` without hand-creating a Godot project.
-
-```bash
-swift run swiftgodotbuilder MyGameView.swift \
-  --assets Assets \
-  --include Utils
-```
-
-Flags:
-
-- `--include <dir>` – copy `.swift` files from directory into sources (repeatable)
-- `--assets <dir>` – symlink an entire assets directory (repeatable)
-- `--godot <path>` – path to Godot (defaults to `godot` in PATH, then mdfind on macOS)
-- `--project <file>` – use a custom `project.godot` file (use `res://main.tscn` for main_scene)
-- `--release` / `--debug` – switch the Swift build configuration (`debug` is the default)
-- `--no-run` – stop after building; leaves the project ready to open manually
-- `--cache <dir>` – workspace cache directory (default `~/.swiftgodotbuilder/playgrounds`)
-- `--builder-path <path>` – override the SwiftGodotBuilder dependency path
-- `--view <TypeName>` – specify the `View` to instantiate if auto-detection fails
-- `--codesign` – codesign dylibs (macOS only, off by default)
-- `--clean` – delete cached playground workspaces and exit
-- `--verbose` / `--quiet` – increase or decrease CLI logging
