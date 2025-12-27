@@ -21,7 +21,7 @@ import SwiftGodot
 @Godot
 public class ColorBox: Polygon2D {
   /// The size of the colored rectangle
-  public var size: Vector2 = Vector2(x: 32, y: 32) {
+  public var size: Vector2 = .init(x: 32, y: 32) {
     didSet {
       updatePolygon()
     }
@@ -44,7 +44,7 @@ public class ColorBox: Polygon2D {
   /// Convenience init with width and height
   public convenience init(w: Float, h: Float) {
     self.init()
-    self.size = Vector2(x: w, y: h)
+    size = Vector2(x: w, y: h)
     updatePolygon()
   }
 
@@ -53,11 +53,11 @@ public class ColorBox: Polygon2D {
   }
 
   private func updatePolygon() {
-    var points = PackedVector2Array()
-    points.append(Vector2(x: 0, y: 0))           // Top-left
-    points.append(Vector2(x: size.x, y: 0))      // Top-right
+    let points = PackedVector2Array()
+    points.append(Vector2(x: 0, y: 0)) // Top-left
+    points.append(Vector2(x: size.x, y: 0)) // Top-right
     points.append(Vector2(x: size.x, y: size.y)) // Bottom-right
-    points.append(Vector2(x: 0, y: size.y))      // Bottom-left
+    points.append(Vector2(x: 0, y: size.y)) // Bottom-left
     polygon = points
   }
 }

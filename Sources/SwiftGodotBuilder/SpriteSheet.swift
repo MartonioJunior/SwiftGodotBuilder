@@ -1,141 +1,209 @@
 import SwiftGodot
 
-/// Protocol for defining sprites within a spritesheet.
-/// Conform your enum to this protocol and provide the sheet configuration.
+// MARK: - SpriteSheet
+
+/// A spritesheet defined with a dictionary of entries.
 ///
-/// Example:
 /// ```swift
-/// enum ItemSprite: Int, SpriteSheet {
-///   case heart = 0
-///   case key = 1
-///   // tile 2 is blank
-///   case coin = 3
-///   case sword = 4
-///
-///   static let sheetPath = "res://items.png"
-///   static let tileSize: Vector2 = [16, 16]
-///   static let columns = 4
-///
-///   // Optional: specify visual bounds for sprites smaller than tile size
-///   var visualBounds: Rect2i {
-///     switch self {
-///     case .coin: Rect2i(x: 2, y: 1, width: 4, height: 6)
-///     default: Rect2i(x: 0, y: 0, width: 16, height: 16)
-///     }
-///   }
-/// }
+/// let playerSheet = SpriteSheet(
+///   "res://player.png",
+///   tile: [16, 16],
+///   columns: 8,
+///   entries: [
+///     "idle": 0,
+///     "walk": 1...4,
+///     "run": [1...4, 8],   // fps as second element
+///     "hit": [[8, 9], 12]
+///   ]
+/// )
 ///
 /// // Usage
-/// Sprite2D$().texture(ItemSprite.heart.texture)
+/// AnimatedSprite(playerSheet.walk)
+/// Sprite2D$().texture(playerSheet.idle.texture)
 /// ```
-public protocol SpriteSheet: RawRepresentable, Sendable where RawValue == Int {
-  /// Path to the spritesheet texture resource
-  static var sheetPath: String { get }
+@dynamicMemberLookup
+public struct SpriteSheet: Sendable {
+  public let path: String
+  public let tileSize: Vector2
+  public let columns: Int
+  public let defaultFps: Double
+  private let sprites: [String: Clip]
 
-  /// Size of each tile in pixels
-  static var tileSize: Vector2 { get }
+  public init(
+    _ path: String,
+    tile tileSize: Vector2,
+    columns: Int,
+    fps: Double = 4,
+    entries: [String: Any]
+  ) {
+    self.path = path
+    self.tileSize = tileSize
+    self.columns = columns
+    self.defaultFps = fps
 
-  /// Number of columns in the sheet (tiles per row)
-  static var columns: Int { get }
+    var dict: [String: Clip] = [:]
+    for (name, value) in entries {
+      guard let entry = SheetEntry.fromDictionary(name: name, value: value) else {
+        fatalError("SpriteSheet: invalid entry for key '\(name)'")
+      }
+      dict[entry.name] = Clip(
+        sheet: SheetRef(path: path, tileSize: tileSize, columns: columns),
+        frames: entry.frames,
+        fps: entry.fps ?? fps
+      )
+    }
+    sprites = dict
+  }
 
-  /// Visual bounds within the tile (defaults to full tile).
-  /// Override this to specify the actual pixel bounds for sprites smaller than the tile size.
-  var visualBounds: Rect2i { get }
+  public subscript(dynamicMember name: String) -> Clip {
+    guard let clip = sprites[name] else {
+      fatalError("Sheet: no sprite named '\(name)'")
+    }
+    return clip
+  }
+
+  public subscript(name: String) -> Clip? {
+    sprites[name]
+  }
 }
 
-public extension SpriteSheet {
-  /// Default visual bounds - the full tile
-  var visualBounds: Rect2i {
-    Rect2i(x: 0, y: 0, width: Int32(Self.tileSize.x), height: Int32(Self.tileSize.y))
-  }
+// MARK: - Clip (unified sprite/animation)
 
-  /// The visual size of the sprite (from visualBounds) as Vector2i
-  var visualSize: Vector2i {
-    visualBounds.size
-  }
+/// A single sprite or animation clip from a sheet.
+public struct Clip: Sendable {
+  let sheet: SheetRef
+  public let frames: [Int]
+  public let fps: Double
 
-  /// The visual size as Vector2, suitable for use with .minSize()
-  var minSize: Vector2 {
-    let size = visualBounds.size
-    return [Float(size.x), Float(size.y)]
-  }
+  public var isAnimated: Bool { frames.count > 1 }
 
-  /// Offset to align the visual center with the tile center.
-  /// Apply this offset to position sprites correctly when visual bounds differ from tile size.
-  var visualOffset: Vector2 {
-    let b = visualBounds
-    let tileCenter = Self.tileSize / 2
-    let visualCenterX = Float(b.position.x) + Float(b.size.x) / 2
-    let visualCenterY = Float(b.position.y) + Float(b.size.y) / 2
-    return Vector2(x: tileCenter.x - visualCenterX, y: tileCenter.y - visualCenterY)
-  }
-
-  /// The region within the spritesheet for this sprite
-  var region: Rect2 {
-    let col = Float(rawValue % Self.columns)
-    let row = Float(rawValue / Self.columns)
+  /// Region for a specific frame index
+  public func region(for frameIndex: Int) -> Rect2 {
+    let col = Float(frameIndex % sheet.columns)
+    let row = Float(frameIndex / sheet.columns)
     return Rect2(
-      x: col * Self.tileSize.x,
-      y: row * Self.tileSize.y,
-      width: Self.tileSize.x,
-      height: Self.tileSize.y
+      x: col * sheet.tileSize.x,
+      y: row * sheet.tileSize.y,
+      width: sheet.tileSize.x,
+      height: sheet.tileSize.y
     )
   }
 
-  /// Creates an AtlasTexture for this sprite
-  var texture: AtlasTexture {
+  /// Texture for the first frame (or only frame for single sprites)
+  public var texture: AtlasTexture {
     let atlas = AtlasTexture()
-    atlas.atlas = GD.load(path: Self.sheetPath)
-    atlas.region = region
+    atlas.atlas = GD.load(path: sheet.path)
+    atlas.region = region(for: frames[0])
     return atlas
   }
-}
 
-// MARK: - Sprite Animation
-
-/// A simple looping animation defined by a sequence of sprites
-///
-/// Example:
-/// ```swift
-/// extension ItemSprite {
-///   static let coinSpin = SpriteAnimation(frames: [.coin1, .coin1side, .coin1back], fps: 4)
-/// }
-///
-/// // Usage
-/// AnimatedSpriteSheet$(ItemSprite.coinSpin)
-/// ```
-public struct SpriteAnimation<S: SpriteSheet>: Sendable {
-  public let frames: [S]
-  public let fps: Double
-
-  public init(frames: [S], fps: Double = 4) {
-    self.frames = frames
-    self.fps = fps
-  }
-
-  /// Build a SpriteFrames resource with a "default" animation
+  /// Build SpriteFrames for AnimatedSprite2D
   public func makeSpriteFrames() -> SpriteFrames {
     let spriteFrames = SpriteFrames()
     spriteFrames.setAnimationSpeed(anim: "default", fps: fps)
     spriteFrames.setAnimationLoop(anim: "default", loop: true)
 
-    for frame in frames {
-      spriteFrames.addFrame(anim: "default", texture: frame.texture)
+    for frameIndex in frames {
+      let tex = AtlasTexture()
+      tex.atlas = GD.load(path: sheet.path)
+      tex.region = region(for: frameIndex)
+      spriteFrames.addFrame(anim: "default", texture: tex)
     }
 
     return spriteFrames
   }
 }
 
-/// A GView that displays an animated spritesheet sequence using Godot's AnimatedSprite2D
-public struct AnimatedSpriteSheet<S: SpriteSheet>: GView {
-  let animation: SpriteAnimation<S>
+/// Internal reference to sheet config (for Clip to access)
+struct SheetRef: Sendable {
+  let path: String
+  let tileSize: Vector2
+  let columns: Int
+}
+
+// MARK: - Entry Parsing
+
+struct SheetEntry: Sendable {
+  let name: String
+  let frames: [Int]
+  let fps: Double?
+
+  static func fromDictionary(name: String, value: Any) -> SheetEntry? {
+    if let array = value as? [Any] {
+      var components = array
+      components.insert(name, at: 0)
+      return fromComponents(components)
+    }
+
+    guard let frames = frames(from: value) else { return nil }
+    return SheetEntry(name: name, frames: frames, fps: nil)
+  }
+
+  private static func fromComponents(_ components: [Any]) -> SheetEntry? {
+    guard components.count == 2 || components.count == 3 else { return nil }
+    guard let name = components.first as? String else { return nil }
+    guard let frames = frames(from: components[1]) else { return nil }
+
+    var fps: Double?
+    if components.count == 3 {
+      fps = fpsValue(from: components[2])
+      if fps == nil { return nil }
+    }
+
+    return SheetEntry(name: name, frames: frames, fps: fps)
+  }
+
+  private static func frames(from spec: Any) -> [Int]? {
+    switch spec {
+    case let value as Int:
+      return [value]
+    case let range as ClosedRange<Int>:
+      return Array(range)
+    case let range as Swift.Range<Int>:
+      return Array(range)
+    case let list as [Int]:
+      return list
+    case let slice as ArraySlice<Int>:
+      return Array(slice)
+    default:
+      return nil
+    }
+  }
+
+  private static func fpsValue(from spec: Any) -> Double? {
+    if let value = spec as? Double {
+      return value
+    } else if let value = spec as? Int {
+      return Double(value)
+    }
+    return nil
+  }
+}
+
+// MARK: - AnimatedSprite
+
+/// A GView that displays a Clip using AnimatedSprite2D
+///
+/// ```swift
+/// let sprites = SpriteSheet(
+///   "res://player.png",
+///   tile: [16, 16],
+///   columns: 8,
+///   entries: [
+///     "walk": 0...4
+///   ]
+/// )
+///
+/// AnimatedSprite(sprites.walk)
+/// ```
+public struct AnimatedSprite: GView {
+  let clip: Clip
   let spritePosition: Vector2
   let autoplay: Bool
 
-  public init(_ animation: SpriteAnimation<S>, position: Vector2 = .zero, autoplay: Bool = true) {
-    self.animation = animation
-    spritePosition = position
+  public init(_ clip: Clip, position: Vector2 = .zero, autoplay: Bool = true) {
+    self.clip = clip
+    self.spritePosition = position
     self.autoplay = autoplay
   }
 
@@ -143,7 +211,7 @@ public struct AnimatedSpriteSheet<S: SpriteSheet>: GView {
     AnimatedSprite2D$()
       .position(spritePosition)
       .onReady { sprite in
-        sprite.spriteFrames = animation.makeSpriteFrames()
+        sprite.spriteFrames = clip.makeSpriteFrames()
         if autoplay {
           sprite.play()
         }

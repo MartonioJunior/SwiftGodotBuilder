@@ -194,7 +194,7 @@ public class SVGSprite: Node2D {
     if index < strokeElements.count {
       let stroke = strokeElements[index]
       // Strokes need to be closed - add first point at end if not already closed
-      var strokePoints = vertices
+      let strokePoints = vertices
       if strokePoints.size() > 0 && strokePoints[0] != strokePoints[Int(strokePoints.size()) - 1] {
         strokePoints.append(strokePoints[0])
       }
