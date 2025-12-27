@@ -317,6 +317,10 @@ LineEdit$().text($username)
 Slider$().value($volume)
 CheckBox$().pressed($isEnabled)
 OptionButton$().selected($selectedIndex)
+
+// Sync non-reactive properties (polls via onProcess, only sets if changed)
+Node2D$().sync(\.visible) { state.isSelected }
+Sprite2D$().sync(\.modulate) { actor.isDying ? .red : .white }
 ```
 
 ### Dynamic Views
@@ -686,6 +690,36 @@ MenuBar$ {
 }
 ```
 
+#### GraphEdit
+
+```swift
+@State var graphEdit: GraphEdit?
+
+GraphEdit$ {
+  GraphNode$(name: "add", title: "Add") {
+    Slot("A", left: Port(.green, type: Float.self))
+    Slot("B", left: Port(.green, type: Float.self))
+    // Custom content in slots
+    Slot(right: Port(.green, type: Float.self)) {
+      Label$().text("Result")
+    }
+  }
+  .positionOffset([100, 100])
+
+  GraphNode$(name: "output", title: "Output") {
+    Slot("Value", left: Port(.green, type: Float.self))
+  }
+  .positionOffset([300, 100])
+}
+.ref($graphEdit)
+.onSignal(\.connectionRequest) { fromNode, fromPort, toNode, toPort in
+  graphEdit?.connectNode(fromNode: fromNode, fromPort: Int32(fromPort), toNode: toNode, toPort: Int32(toPort))
+}
+.onSignal(\.disconnectionRequest) { fromNode, fromPort, toNode, toPort in
+  graphEdit?.disconnectNode(fromNode: fromNode, fromPort: Int32(fromPort), toNode: toNode, toPort: Int32(toPort))
+}
+```
+
 ### Misc
 
 #### Context Menus
@@ -935,7 +969,7 @@ ProgressBar$()
 
 ## Actors
 
-Composable actor system for players, enemies, and NPCs with physics, combat, behaviors, and weapons.
+Composable 2D entity system for players, enemies, and NPCs. Supports platformers, top-down, twin-stick shooters, and grid-based games.
 
 ```swift
 // Basic enemy with physics and defense
@@ -990,6 +1024,67 @@ Actor { ... }
 .onDeath { actor in ... }                  // Death callback
 .onAcquiredTarget { actor, target in ... } // Target acquired
 .onLostAllTargets { actor in ... }         // Lost all targets
+```
+
+### Movement Models
+
+Actors support three movement models via `.physics()` config:
+
+```swift
+// Platformer (default) - CharacterBody2D with gravity, jumping, wall sliding
+Actor { ... }
+  .physics(.platformer(speed: 60, gravity: 800, jumpSpeed: 130))
+
+// Top-down - Physics-based, no gravity, 8-way facing
+Actor { ... }
+  .physics(.topDown(speed: 80, facingAxes: .eightWay))
+
+// Velocity - Simple position updates, optional acceleration
+Actor { ... }
+  .physics(.velocity(speed: 100, acceleration: 500, deceleration: 300))
+
+// Grid - Tile-by-tile movement for roguelikes
+Actor { ... }
+  .physics(.grid(tileSize: [16, 16], moveDuration: 0.1, facingAxes: .fourWay))
+```
+
+### Facing Directions
+
+Actors support 8-way facing: `up`, `down`, `left`, `right`, `upLeft`, `upRight`, `downLeft`, `downRight`.
+
+```swift
+// Configure which directions are allowed
+.physics(.init(facingAxes: .horizontal)) // left/right only (platformers)
+.physics(.init(facingAxes: .fourWay))    // cardinal directions
+.physics(.init(facingAxes: .eightWay))   // all 8 directions
+
+// Access facing
+state.facing           // Current facing direction
+state.facing.vector    // Unit vector for direction
+state.facing.angle     // Rotation in radians
+state.facing.isLeft    // True for left/upLeft/downLeft
+state.facingScale      // [-1, 1] or [1, 1] for sprite flipping
+```
+
+### Collision Layers
+
+Each role modifier has default layers that can be overridden inline:
+
+```swift
+// Default layers (used if not specified)
+.collision { _ in CollisionShape2D$() }  // layer: .beta, mask: .alpha
+.hurtbox { _ in CollisionShape2D$() }    // layer: .theta, mask: .kappa
+.hitbox { _, _ in CollisionShape2D$() }  // layer: .delta, mask: .iota
+
+// Override per-role
+.collision(layer: .gamma, mask: .alpha) { _ in CollisionShape2D$() }
+.hurtbox(layer: .iota, mask: .delta) { _ in CollisionShape2D$() }
+.hitbox(layer: .kappa, mask: [.theta, .iota]) { _, _ in CollisionShape2D$() }
+```
+
+Defaults are defined in `ActorLayers` and can be referenced directly:
+```swift
+.collision(layer: ActorLayers.bodyLayer, mask: [.alpha, .gamma]) { ... }
 ```
 
 ### Combat Callbacks
@@ -1746,30 +1841,22 @@ struct GameView: View {
 
 ### SpriteSheet
 
-Reference individual sprites from a spritesheet by name.
+Define spritesheets using a final `entries` dictionary.
 
 ```swift
-enum ItemSprite: Int, SpriteSheet {
-  case heart = 0
-  case key = 1
-  // tile 2 blank
-  case coin = 3, coinSide = 13, coinBack = 23
-  case sword = 4
-
-  static let sheetPath = "res://items.png"
-  static let tileSize: Vector2 = [16, 16]
-  static let columns = 10
-
-  // Define animations
-  static let coinSpin = SpriteAnimation(frames: [.coin, .coinSide, .coinBack, .coinSide], fps: 4)
-}
-
-// Static sprite
-Sprite2D$().texture(ItemSprite.heart.texture)
-
-// Animated sprite (uses Godot's AnimatedSprite2D)
-AnimatedSpriteSheet(ItemSprite.coinSpin)
+let PlayerSprite = SpriteSheet(
+  "res://player.png",
+  tile: [16, 16],
+  columns: 8,
+  entries: [
+    "idle": 0,
+    "walk": 1...4,
+    "run": [1...4, 8],   // fps as second element
+    "hit": [[8, 9], 12]
+  ]
+)
 ```
+
 
 ## Built-in Views
 

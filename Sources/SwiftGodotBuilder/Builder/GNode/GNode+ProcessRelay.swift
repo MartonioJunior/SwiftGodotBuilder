@@ -82,6 +82,27 @@ public extension GNode where T: Node {
       binding.wrappedValue = node
     }
   }
+
+  /// Syncs a node property to a value each frame during `_process`.
+  ///
+  /// Use this for lightweight reactivity with plain objects (no @Observable overhead).
+  ///
+  /// ### Usage:
+  /// ```swift
+  /// Line2D$()
+  ///   .sync(\.visible) { state.isSelected }
+  /// ```
+  func sync<V: Equatable>(_ nodeKeyPath: ReferenceWritableKeyPath<T, V>, _ value: @escaping () -> V) -> Self {
+    var lastValue: V?
+    return onProcess { node, _ in
+      let newValue = value()
+      if lastValue != newValue {
+        node[keyPath: nodeKeyPath] = newValue
+        lastValue = newValue
+      }
+    }
+  }
+
 }
 
 private func _attachOrUpdateRelay<T: Node>(
