@@ -64,6 +64,15 @@ public class SVGSprite: Node2D {
   /// Per-element stroke colors (overrides `strokeColor` for specific elements)
   public var strokeColors: [Color] = []
 
+  /// CSS class color overrides. Maps class names (without dot) to colors.
+  /// Example: `["cls-1": .red, "cls-2": .blue]`
+  public var classColors: [String: Color] = [:]
+
+  /// When true, inner subpaths within a single path element are treated as holes (cutouts).
+  /// When false, each subpath is rendered as a separate filled polygon.
+  /// Defaults to nil, which means: use holes when `colors` is empty, don't use holes otherwise.
+  public var useHoles: Bool?
+
   /// Flip the Y axis (SVG uses top-down, Godot can use bottom-up for certain setups)
   public var flipY = false
 
@@ -414,14 +423,17 @@ public class SVGSprite: Node2D {
     }
 
     // Build options
-    // Use holes for cutout effect when no per-element colors are set
+    // Use holes for cutout effect when no per-element colors are set (unless explicitly overridden)
+    let effectiveUseHoles = useHoles ?? colors.isEmpty
     let options = SVGOptions(
       size: size,
       tessellation: tessellation,
       color: color,
       flipY: flipY,
-      useHoles: colors.isEmpty,
-      calculatedScale: calculatedScale
+      useHoles: effectiveUseHoles,
+      calculatedScale: calculatedScale,
+      styles: domSVG.styles,
+      classColors: classColors
     )
 
     // Extract shapes from DOM
@@ -435,8 +447,8 @@ public class SVGSprite: Node2D {
     var shapes: [SVGShape] = []
 
     for element in elements {
-      // Get fill and stroke from presentation attributes
-      let fill = getColor(from: element.attributes.fill, options: options)
+      // Get fill and stroke from resolved presentation attributes (includes CSS classes)
+      let fill = getColor(from: element, options: options)
       let stroke = getStroke(from: element, options: options)
 
       switch element {
@@ -510,12 +522,20 @@ struct SVGOptions {
   /// Internal calculated scale (set during parsing based on size and viewBox)
   var calculatedScale: Float = 1.0
 
+  /// CSS stylesheets from the SVG
+  var styles: [DOM.StyleSheet] = []
+
+  /// User-provided CSS class color overrides
+  var classColors: [String: Color] = [:]
+
   public init(size: Float = 32,
               tessellation: Float = 1.0,
               color: Color? = nil,
               flipY: Bool = false,
               useHoles: Bool = true,
-              calculatedScale: Float = 1.0)
+              calculatedScale: Float = 1.0,
+              styles: [DOM.StyleSheet] = [],
+              classColors: [String: Color] = [:])
   {
     self.size = size
     self.tessellation = tessellation
@@ -523,6 +543,8 @@ struct SVGOptions {
     self.flipY = flipY
     self.useHoles = useHoles
     self.calculatedScale = calculatedScale
+    self.styles = styles
+    self.classColors = classColors
   }
 }
 
@@ -549,14 +571,37 @@ private struct StrokeStyle {
 // MARK: - Shape Extraction Helpers
 
 extension SVGSprite {
-  /// Extracts color from DOM.Fill, applying color override if set.
-  private func getColor(from fill: DOM.Fill?, options: SVGOptions) -> Color? {
-    // Apply color override if set
+  /// Extracts fill color from element, resolving CSS classes and applying overrides.
+  private func getColor(from element: DOM.GraphicsElement, options: SVGOptions) -> Color? {
+    // Resolve presentation attributes (cascades: element attrs -> CSS classes -> inline style)
+    let resolved = DOM.presentationAttributes(for: element, styles: options.styles)
+
+    // Skip elements with zero opacity (invisible)
+    if let opacity = resolved.opacity, opacity == 0 {
+      return nil
+    }
+
+    // Skip elements with zero fill opacity
+    if let fillOpacity = resolved.fillOpacity, fillOpacity == 0 {
+      return nil
+    }
+
+    // Apply global color override if set
     if let override = options.color {
       return override
     }
 
-    guard let fill = fill else { return nil }
+    // Check user-provided classColors overrides first
+    if let className = element.class {
+      for cls in className.split(separator: " ") {
+        let classKey = String(cls).trimmingCharacters(in: .whitespacesAndNewlines)
+        if let userColor = options.classColors[classKey] {
+          return userColor
+        }
+      }
+    }
+
+    guard let fill = resolved.fill else { return nil }
 
     switch fill {
     case let .color(domColor):
@@ -567,9 +612,12 @@ extension SVGSprite {
     }
   }
 
-  /// Extracts stroke from DOM element attributes.
+  /// Extracts stroke from DOM element, resolving CSS classes.
   private func getStroke(from element: DOM.GraphicsElement, options: SVGOptions) -> StrokeStyle? {
-    guard let stroke = element.attributes.stroke else { return nil }
+    // Resolve presentation attributes (cascades: element attrs -> CSS classes -> inline style)
+    let resolved = DOM.presentationAttributes(for: element, styles: options.styles)
+
+    guard let stroke = resolved.stroke else { return nil }
 
     let color: Color
     switch stroke {
@@ -584,7 +632,7 @@ extension SVGSprite {
     let finalColor = options.color ?? color
 
     // Get stroke width (default to 1.0)
-    let width = element.attributes.strokeWidth ?? 1.0
+    let width = resolved.strokeWidth ?? 1.0
 
     return StrokeStyle(color: finalColor, width: width * options.calculatedScale)
   }
