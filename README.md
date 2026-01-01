@@ -1012,7 +1012,6 @@ Actor { ... }
 .targetbox { _ in ... }    // Target scanning (auto-enables targeting)
 .interaction { _ in ... }  // NPC interaction zone
 .collector { _ in ... }    // Item pickup area
-.selectbox { _ in ... }    // Selection area (RTS-style)
 .physics(config)           // Movement/gravity
 .defense(config)           // Health/invincibility
 .attacks([weapons])        // Weapon configs
@@ -1217,42 +1216,6 @@ Actor(npcState) { state in
 ```
 
 Use with `DialogManager` (see Dialog Trees section) for automatic dialog UI handling.
-
-### Selection System
-
-RTS-style unit selection with click and box selection.
-
-```swift
-// Make actor selectable
-Actor { state in
-  AseSprite$(path: "Unit")
-
-  // Selection indicator
-  if state.isSelected {
-    ColorBox$([18, 18]).color(Color.green.withAlpha(0.3)).position([-9, -9])
-  }
-}
-.collision { _ in CollisionShape2D$().shape(RectangleShape2D(w: 16, h: 16)) }
-.selectbox(group: "units") { _ in
-  CollisionShape2D$().shape(RectangleShape2D(w: 18, h: 18))
-}
-
-// Add SelectionBox to scene for click/drag selection
-Node2D$ {
-  SelectableUnit().position([100, 50])
-  SelectableUnit().position([150, 50])
-  SelectionBox() // Handles mouse input for selection
-}
-.onEvent(SelectionEvent.self) { _, event in
-  switch event {
-  case .selected(let actorId): print("Selected: \(actorId)")
-  case .deselected(let actorId): print("Deselected: \(actorId)")
-  default: break
-  }
-}
-```
-
-Selection groups prevent mixing different unit types in multi-selection. Shift+click toggles selection.
 
 ## Game Systems
 
@@ -1788,6 +1751,11 @@ SVGSprite$()
   .size(16) // Default is 32
   .colors([.red, .darkRed, .crimson]) // Per-element colors
   .stroke(.white, width: 2)
+
+// CSS class color overrides (for SVGs with <style> blocks)
+SVGSprite$()
+  .path("icon.svg")
+  .classColors(["cls-1": .red, "cls-2": .blue])
 
 // Mixing effect types - chaining works fine
 SVGSprite$()
