@@ -209,48 +209,6 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
         .collisionMask(.zero)
         .monitorable(true)
         .monitoring(false)
-        .onEvent(SelectionEvent.self) { node, event in
-          // Use the Area2D's instance ID to match what SelectionBox queries
-          let areaId = Int(node.getInstanceId())
-          switch event {
-          case let .selectRequested(ids, additive):
-            GD.print("Actor selectbox \(areaId): received selectRequested ids=\(ids) additive=\(additive)")
-            if ids.contains(areaId) {
-              if !selection.isSelected {
-                selection.isSelected = true
-                GD.print("Actor selectbox \(areaId): now selected")
-                SelectionEvent.selected(actorId: areaId).emit()
-              }
-            } else if !additive {
-              if selection.isSelected {
-                selection.isSelected = false
-                GD.print("Actor selectbox \(areaId): now deselected")
-                SelectionEvent.deselected(actorId: areaId).emit()
-              }
-            }
-          case let .deselectRequested(ids):
-            if ids.contains(areaId), selection.isSelected {
-              selection.isSelected = false
-              SelectionEvent.deselected(actorId: areaId).emit()
-            }
-          case .clearRequested:
-            if selection.isSelected {
-              selection.isSelected = false
-              SelectionEvent.deselected(actorId: areaId).emit()
-            }
-          case let .toggleRequested(id):
-            if id == areaId {
-              selection.isSelected.toggle()
-              if selection.isSelected {
-                SelectionEvent.selected(actorId: areaId).emit()
-              } else {
-                SelectionEvent.deselected(actorId: areaId).emit()
-              }
-            }
-          default:
-            break
-          }
-        }
       }
 
       // User content
