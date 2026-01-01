@@ -24,3 +24,5 @@ package-lock.json
 **/GodotProject/**.uid
 **/GodotProject/**.import
 **/.**/settings.local.json
+Tests/SwiftGodotBuilderTestProject/bin
+Tests/SwiftGodotBuilderTestProject/test_results.json
