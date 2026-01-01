@@ -10,6 +10,9 @@ let package = Package(
         .library(name: "SwiftGodotBuilder", type: .dynamic, targets: ["SwiftGodotBuilder"]),
         .plugin(name: "GenNodeApi", targets: ["GenNodeApi"]),
         .plugin(name: "GenLDEnums", targets: ["GenLDEnums"]),
+        // Runtime test infrastructure
+        .executable(name: "SwiftGodotBuilderTestRunner", targets: ["SwiftGodotBuilderTestRunner"]),
+        .library(name: "SwiftGodotBuilderTestExtension", type: .dynamic, targets: ["SwiftGodotBuilderTestExtension"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
@@ -67,6 +70,21 @@ let package = Package(
             resources: [
                 .copy("Test_file_for_API_showing_all_features.ldtk"),
             ]
+        ),
+
+        // Runtime test runner CLI
+        .executableTarget(
+            name: "SwiftGodotBuilderTestRunner",
+            dependencies: [],
+            path: "Sources/SwiftGodotBuilderTestRunner"
+        ),
+
+        // Runtime test extension (loaded by Godot)
+        .target(
+            name: "SwiftGodotBuilderTestExtension",
+            dependencies: ["SwiftGodotBuilder"],
+            path: "Tests/SwiftGodotBuilderTestExtension",
+            swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]
 )
