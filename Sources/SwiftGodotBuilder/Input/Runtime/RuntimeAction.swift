@@ -33,33 +33,6 @@ public struct RuntimeAction {
     public init(name: String) {
         action = StringName(name)
     }
-    // MARK: Methods
-    /// Returns the 2D vector for paired action sets (e.g., movement).
-    ///
-    /// Combines horizontal and vertical action pairs into a normalized
-    /// `Vector2` suitable for 2D movement.
-    ///
-    /// - Parameters:
-    ///   - negativeX: Action name for left/negative-x
-    ///   - positiveX: Action name for right/positive-x
-    ///   - negativeY: Action name for up/negative-y
-    ///   - positiveY: Action name for down/positive-y
-    ///   - deadzone: Optional deadzone override (default -1.0 uses InputMap value)
-    @inlinable public static func vector(
-        negativeX: String,
-        positiveX: String,
-        negativeY: String,
-        positiveY: String,
-        deadzone: Double = -1.0
-    ) -> Vector2 {
-        Input.getVector(
-        negativeX: StringName(negativeX),
-        positiveX: StringName(positiveX),
-        negativeY: StringName(negativeY),
-        positiveY: StringName(positiveY),
-        deadzone: deadzone
-        )
-    }
 }
 /// Returns a `RuntimeAction` for querying the state of an input action.
 ///
