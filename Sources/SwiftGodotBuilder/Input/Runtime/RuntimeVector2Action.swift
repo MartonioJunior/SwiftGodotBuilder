@@ -7,14 +7,18 @@
 
 import SwiftGodot
 
+/// A runtime wrapper for querying the state of two axises.
+///
+/// Combines horizontal and vertical action pairs into a normalized
+/// `Vector2` suitable for 2D movement.
 public struct RuntimeVector2Action {
     // MARK: Variables
     /// Composite action for the X axis.
-    var x: RuntimeAxisAction
+    public let x: RuntimeAxisAction
     /// Composite action for the Y axis.
-    var y: RuntimeAxisAction
+    public let y: RuntimeAxisAction
     /// Deadzone for the vector.
-    var deadzone: Double
+    public var deadzone: Double
     // MARK: Initializers
     /// Creates a runtime vector query for the given axis actions.
     /// - Parameters:
@@ -48,18 +52,18 @@ extension RuntimeVector2Action: GodotInputAction {
 
     @inlinable public var strength: Vector2 {
         Input.getVector(
-            negativeX: x.negative.action,
-            positiveX: x.positive.action,
-            negativeY: y.negative.action,
-            positiveY: y.positive.action,
+            negativeX: x.negativeAction.action,
+            positiveX: x.positiveAction.action,
+            negativeY: y.negativeAction.action,
+            positiveY: y.positiveAction.action,
             deadzone: deadzone
         )
     }
 
     @inlinable public var rawStrength: Vector2 {
         Vector2(
-            x: x.rawStrength,
-            y: y.rawStrength
+            x: Float(x.rawStrength),
+            y: Float(y.rawStrength)
         )
     }
 }
@@ -77,7 +81,7 @@ public extension GodotInputAction where Self == RuntimeVector2Action {
     ///   - negativeY: Action for up/negative-y
     ///   - positiveY: Action for down/positive-y
     ///   - deadzone: Optional deadzone override (default -1.0 uses InputMap value)
-    @inlinable public static func vector(
+    @inlinable static func vector(
         negativeX: RuntimeAction,
         positiveX: RuntimeAction,
         negativeY: RuntimeAction,
