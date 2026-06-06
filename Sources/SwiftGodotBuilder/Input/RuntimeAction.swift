@@ -25,29 +25,6 @@ public struct RuntimeAction {
     // MARK: Variables
     /// The action name as a cached `StringName`.
     public let action: StringName
-    /// Returns `true` if the action is currently pressed.
-    @inlinable public var isPressed: Bool {
-        Input.isActionPressed(action: action)
-    }
-    /// Returns `true` if the action was just pressed this frame.
-    @inlinable public var isJustPressed: Bool {
-        Input.isActionJustPressed(action: action)
-    }
-    /// Returns `true` if the action was just released this frame.
-    @inlinable public var isJustReleased: Bool {
-        Input.isActionJustReleased(action: action)
-    }
-    /// Returns the analog strength of the action (0.0 to 1.0).
-    ///
-    /// For digital inputs, returns `1.0` when pressed, `0.0` otherwise.
-    /// For analog inputs (axes), returns the current value after deadzone.
-    @inlinable public var strength: Double {
-        Input.getActionStrength(action: action)
-    }
-    /// Returns the raw analog strength without deadzone processing.
-    @inlinable public var rawStrength: Double {
-        Input.getActionRawStrength(action: action)
-    }
     // MARK: Initializers
     /// Creates a runtime action query for the given action name.
     ///
@@ -126,5 +103,31 @@ public struct RuntimeAction {
 extension RuntimeAction: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
         self.init(name: value)
+    }
+}
+
+// MARK: Self: GodotInputAction
+extension RuntimeAction: GodotInputAction {
+    @inlinable public var isPressed: Bool {
+        Input.isActionPressed(action: action)
+    }
+
+    @inlinable public var isJustPressed: Bool {
+        Input.isActionJustPressed(action: action)
+    }
+
+    @inlinable public var isJustReleased: Bool {
+        Input.isActionJustReleased(action: action)
+    }
+    /// Returns the analog strength of the action (0.0 to 1.0).
+    ///
+    /// For digital inputs, returns `1.0` when pressed, `0.0` otherwise.
+    /// For analog inputs (axes), returns the current value after deadzone.
+    @inlinable public var strength: Double {
+        Input.getActionStrength(action: action)
+    }
+    /// Returns the raw analog strength without deadzone processing.
+    @inlinable public var rawStrength: Double {
+        Input.getActionRawStrength(action: action)
     }
 }
