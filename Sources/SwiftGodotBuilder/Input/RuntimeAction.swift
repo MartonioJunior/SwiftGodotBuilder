@@ -121,3 +121,10 @@ public struct RuntimeAction {
 @inlinable public func Action(_ name: String) -> RuntimeAction {
     RuntimeAction(name: name)
 }
+
+// MARK: Self: ExpressibleByStringLiteral
+extension RuntimeAction: ExpressibleByStringLiteral {
+    public init(stringLiteral value: String) {
+        self.init(name: value)
+    }
+}
