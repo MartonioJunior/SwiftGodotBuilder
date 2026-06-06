@@ -59,7 +59,7 @@ public struct ActorProjectileView: GView {
         ColorBox$()
           .size(config.size)
           .color(config.color ?? defaultColor)
-          .position(-config.size / 2)
+          .position(-config.size / 2.0)
       }
 
       CollisionShape2D$()

@@ -104,7 +104,7 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
           guard let area, let weaponState = state.weapon, weaponState.hitboxActive else { return }
           guard let melee = weaponState.currentMelee else { return }
           let targetId = Int(area.getInstanceId())
-          let hitPos = (node.globalPosition + area.globalPosition) / 2
+          let hitPos = (node.globalPosition + area.globalPosition) / 2.0
           let direction = Vector2(x: state.facing.sign, y: 0)
           ActorEvent.meleeHitTarget(
             actorId: state.id,

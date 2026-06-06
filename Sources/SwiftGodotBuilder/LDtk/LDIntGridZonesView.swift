@@ -151,7 +151,7 @@ public struct LDIntGridZone {
 
   /// Center position of the zone.
   public var center: Vector2 {
-    position + size / 2
+    position + size / 2.0
   }
 }
 
@@ -168,7 +168,7 @@ private struct ZoneAreaNode: GView {
     Area2D$ {
       CollisionShape2D$()
         .shape(RectangleShape2D(size: zone.size))
-        .position(zone.size / 2)
+        .position(zone.size / 2.0)
     }
     .position(zone.position)
     .collisionLayer(collisionLayer)

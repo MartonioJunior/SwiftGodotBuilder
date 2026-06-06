@@ -55,7 +55,7 @@ public extension GNode where T: CollisionShape2D {
   }
 
   private static func rectanglePoints(size: Vector2) -> [Vector2] {
-    let half = size / 2
+    let half = size / 2.0
     return [
       Vector2(x: -half.x, y: -half.y),
       Vector2(x: half.x, y: -half.y),
