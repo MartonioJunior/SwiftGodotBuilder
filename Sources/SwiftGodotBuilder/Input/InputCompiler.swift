@@ -1,12 +1,12 @@
 import SwiftGodot
 
-struct _CompiledFilter {
+struct InputCompiler {
     // MARK: Variables
     let kind: Kind
     let phases: InputPhase
     let acceptEcho: Bool
     // MARK: Methods
-    static func compile(_ parts: [InputMatch]) -> _CompiledFilter {
+    static func compile(_ parts: [InputMatch]) -> InputCompiler {
         var kind: Kind = .any
         var phases: InputPhase = []
         var acceptEcho = false
@@ -73,7 +73,7 @@ struct _CompiledFilter {
 }
 
 // MARK: Self.Kind
-extension _CompiledFilter {
+extension InputCompiler {
     enum Kind {
         case any
         case key(Key)
