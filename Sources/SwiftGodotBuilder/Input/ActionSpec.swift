@@ -1,0 +1,62 @@
+import SwiftGodot
+/// A named input action and the set of events that trigger it.
+///
+/// Use `installing(clearExisting:)` to register this action with `InputMap`.
+public struct ActionSpec {
+    // MARK: Variables
+    /// Action name as used by Godot's `InputMap` and `Input.is_action_*` APIs.
+    public let name: String
+    /// Optional deadzone to apply to the action (commonly for analog axes).
+    public let deadzone: Double?
+    /// Events (keys, buttons, axes, mouse) that will trigger this action.
+    public let events: [InputEventSpec]
+    // MARK: Initializers
+    /// Creates a new `ActionSpec`.
+    public init(_ name: String, deadzone: Double? = nil, events: [InputEventSpec]) {
+        self.name = name
+        self.deadzone = deadzone
+        self.events = events
+    }
+    // MARK: Methods
+    /// Registers this action and its events with Godot's `InputMap`.
+    ///
+    /// - Parameter clearExisting: If `true`, erases any existing events
+    ///   for this action before adding the new ones.
+    public func installing(clearExisting: Bool = false) {
+        let sn = StringName(name)
+
+        if !InputMap.hasAction(sn) {
+            InputMap.addAction(sn)
+        }
+
+        if let dz = deadzone {
+            InputMap.actionSetDeadzone(action: sn, deadzone: Double(dz))
+        }
+
+        if clearExisting {
+            InputMap.actionEraseEvents(action: sn)
+        }
+
+        for e in events {
+            InputMap.actionAddEvent(action: sn, event: e.make())
+        }
+    }
+}
+
+// MARK: - Sugar for event literals inside InputEventBuilder
+/// Convenience function for building a single `ActionSpec` with an `InputEventBuilder` block.
+///
+/// ### Usage:
+/// ```swift
+/// Action("move_left", deadzone: 0.2) {
+///   JoyAxis(0, .leftX, -1)
+///   Key(.a)
+/// }
+/// ```
+@inlinable public func Action(
+    _ name: String,
+    deadzone: Double? = nil,
+    @InputEventBuilder events: () -> [InputEventSpec]
+) -> ActionSpec {
+    ActionSpec(name, deadzone: deadzone, events: events())
+}
