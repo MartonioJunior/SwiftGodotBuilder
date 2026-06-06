@@ -42,7 +42,7 @@ public struct GNode<T: Node>: GView {
   /// Accumulated configuration operations (builder modifiers).
   var ops: [Op] = []
 
-  /// Creates a node with a name, declarative children, and a custom `make` fn.
+  /// Creates a node with a name, declarative children, and a custom `make` function.
   ///
   /// - Parameters:
   ///   - name: Optional node name (assigned to `Node.name`).
@@ -50,22 +50,11 @@ public struct GNode<T: Node>: GView {
   ///   - make: Closure that constructs the concrete `T` instance.
   public init(_ name: String? = UUID().uuidString,
               @NodeBuilder _ children: () -> [any GView] = { [] },
-              make: @escaping () -> T)
+              make: @escaping () -> T = { T() })
   {
     self.name = name
     self.children = children()
     self.make = make
-  }
-
-  /// Creates a node with a name and declarative children, using `T()` as the make.
-  ///
-  /// - Parameters:
-  ///   - name: Optional node name (assigned to `Node.name`).
-  ///   - children: A `NodeBuilder` block producing child views.
-  public init(_ name: String = UUID().uuidString,
-              @NodeBuilder _ children: () -> [any GView] = { [] })
-  {
-    self.init(name, children, make: { T() })
   }
 }
 
