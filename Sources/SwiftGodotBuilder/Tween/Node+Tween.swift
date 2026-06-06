@@ -32,7 +32,7 @@ public extension Node {
   @discardableResult
   func tween(_ property: Anim, duration: Double) -> TweenHandle {
     let tween = createTween()
-    let tweener = tween?.tweenProperty(
+    let tweener = tween.tweenProperty(
       object: self,
       property: NodePath(stringLiteral: property.propertyName),
       finalVal: property.value,
@@ -59,7 +59,7 @@ public extension Node {
   @discardableResult
   func tween(property: String, to value: Variant, duration: Double) -> TweenHandle {
     let tween = createTween()
-    let tweener = tween?.tweenProperty(
+    let tweener = tween.tweenProperty(
       object: self,
       property: NodePath(stringLiteral: property),
       finalVal: value,

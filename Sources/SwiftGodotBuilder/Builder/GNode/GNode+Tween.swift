@@ -74,7 +74,7 @@ public extension GNode where T: Node {
           property: NodePath(stringLiteral: P.propertyName),
           finalVal: Variant(target),
           duration: duration
-        )?.setEase(ease)?.setTrans(trans)
+        ).setEase(ease).setTrans(trans)
       }
     }
   }
@@ -100,7 +100,7 @@ public extension GNode where T: Node {
           property: NodePath(stringLiteral: P.propertyName),
           finalVal: Variant(target),
           duration: duration
-        )?.setEase(ease)?.setTrans(trans)
+        ).setEase(ease).setTrans(trans)
       }
     }
   }
@@ -126,7 +126,7 @@ public extension GNode where T: Node {
           property: NodePath(stringLiteral: P.propertyName),
           finalVal: Variant(target),
           duration: duration
-        )?.setEase(ease)?.setTrans(trans)
+        ).setEase(ease).setTrans(trans)
       }
     }
   }

@@ -37,8 +37,9 @@ public extension Engine {
   ///   }
   @discardableResult
   static func onNextFrame(_ f: @escaping () -> Void) -> Bool {
-    guard let tree = Engine.getMainLoop() as? SceneTree,
-          let timer = tree.createTimer(timeSec: 0.0) else { return false }
+    guard let tree = Engine.getMainLoop() as? SceneTree else { return false }
+
+    let timer = tree.createTimer(timeSec: 0.0)
     _ = timer.timeout.connect { f() }
     return true
   }
@@ -63,8 +64,9 @@ public extension Engine {
   /// ```
   @discardableResult
   static func onNextPhysicsFrame(_ f: @escaping () -> Void) -> Bool {
-    guard let tree = Engine.getMainLoop() as? SceneTree,
-          let timer = tree.createTimer(timeSec: 0.0, processInPhysics: true) else { return false }
+    guard let tree = Engine.getMainLoop() as? SceneTree else { return false }
+
+    let timer = tree.createTimer(timeSec: 0.0, processInPhysics: true)
     _ = timer.timeout.connect { f() }
     return true
   }
