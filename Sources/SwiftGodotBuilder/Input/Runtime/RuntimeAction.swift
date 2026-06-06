@@ -34,23 +34,6 @@ public struct RuntimeAction {
         action = StringName(name)
     }
     // MARK: Methods
-    /// Returns the axis value for paired actions (e.g., "left"/"right").
-    ///
-    /// Typically used with action pairs like `move_left`/`move_right` to get
-    /// a signed axis value (-1.0 to 1.0).
-    ///
-    /// - Parameters:
-    ///   - negative: Action name for negative direction
-    ///   - positive: Action name for positive direction
-    @inlinable public static func axis(
-        negative: String,
-        positive: String
-    ) -> Double {
-        Input.getAxis(
-        negativeAction: StringName(negative),
-        positiveAction: StringName(positive)
-        )
-    }
     /// Returns the 2D vector for paired action sets (e.g., movement).
     ///
     /// Combines horizontal and vertical action pairs into a normalized
