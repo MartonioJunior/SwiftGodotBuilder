@@ -2,7 +2,9 @@ import SwiftGodot
 
 public enum InputMatch {
     case any
-    case pressed, released, echo
+    case pressed
+    case released
+    case echo
     case key(Key)
     case mouse(MouseButton)
     case joyButton(JoyButton)

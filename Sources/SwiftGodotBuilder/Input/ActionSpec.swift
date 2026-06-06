@@ -23,22 +23,22 @@ public struct ActionSpec {
     /// - Parameter clearExisting: If `true`, erases any existing events
     ///   for this action before adding the new ones.
     public func installing(clearExisting: Bool = false) {
-        let sn = StringName(name)
+        let actionName = StringName(name)
 
-        if !InputMap.hasAction(sn) {
-            InputMap.addAction(sn)
+        if !InputMap.hasAction(actionName) {
+            InputMap.addAction(actionName)
         }
 
-        if let dz = deadzone {
-            InputMap.actionSetDeadzone(action: sn, deadzone: Double(dz))
+        if let deadzone {
+            InputMap.actionSetDeadzone(action: actionName, deadzone: deadzone)
         }
 
         if clearExisting {
-            InputMap.actionEraseEvents(action: sn)
+            InputMap.actionEraseEvents(action: actionName)
         }
 
-        for e in events {
-            InputMap.actionAddEvent(action: sn, event: e.make())
+        for event in events {
+            InputMap.actionAddEvent(action: actionName, event: event.make())
         }
     }
 }

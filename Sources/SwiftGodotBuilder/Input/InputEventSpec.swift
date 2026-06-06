@@ -20,24 +20,24 @@ public enum InputEventSpec {
     func make() -> InputEvent {
         switch self {
             case let .key(key):
-                let e = InputEventKey()
-                e.physicalKeycode = key
-                return e
+                let event = InputEventKey()
+                event.physicalKeycode = key
+                return event
             case let .joyButton(button, device):
-                let e = InputEventJoypadButton()
-                e.device = Int32(device)
-                e.buttonIndex = button
-                return e
+                let event = InputEventJoypadButton()
+                event.device = Int32(device)
+                event.buttonIndex = button
+                return event
             case let .joyAxis(axis, device, value):
-                let e = InputEventJoypadMotion()
-                e.device = Int32(device)
-                e.axis = axis
-                e.axisValue = value
-                return e
+                let event = InputEventJoypadMotion()
+                event.device = Int32(device)
+                event.axis = axis
+                event.axisValue = value
+                return event
             case let .mouseButton(index):
-                let e = InputEventMouseButton()
-                e.buttonIndex = MouseButton(rawValue: Int64(index)) ?? .none
-                return e
+                let event = InputEventMouseButton()
+                event.buttonIndex = MouseButton(rawValue: Int64(index)) ?? .none
+                return event
         }
     }
 }

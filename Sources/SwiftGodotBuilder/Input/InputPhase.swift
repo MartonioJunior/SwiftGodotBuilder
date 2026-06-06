@@ -9,7 +9,7 @@ public struct InputPhase: OptionSet, Sendable {
 
 // MARK: DotSyntax
 public extension InputPhase {
-    public static let pressed = InputPhase(rawValue: 1 << 0)
-    public static let released = InputPhase(rawValue: 1 << 1)
-    public static let echo = InputPhase(rawValue: 1 << 2)
+    static let pressed = InputPhase(rawValue: 1 << 0)
+    static let released = InputPhase(rawValue: 1 << 1)
+    static let echo = InputPhase(rawValue: 1 << 2)
 }

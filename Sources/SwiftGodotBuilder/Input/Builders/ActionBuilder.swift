@@ -12,9 +12,9 @@
 @resultBuilder
 public enum ActionBuilder {
     public static func buildBlock(_ parts: [ActionSpec]...) -> [ActionSpec] { parts.flatMap { $0 } }
-    public static func buildExpression(_ a: ActionSpec) -> [ActionSpec] { [a] }
+    public static func buildExpression(_ action: ActionSpec) -> [ActionSpec] { [action] }
     public static func buildExpression(_ asv: [ActionSpec]) -> [ActionSpec] { asv }
-    public static func buildOptional(_ a: [ActionSpec]?) -> [ActionSpec] { a ?? [] }
+    public static func buildOptional(_ action: [ActionSpec]?) -> [ActionSpec] { action ?? [] }
     public static func buildEither(first: [ActionSpec]) -> [ActionSpec] { first }
     public static func buildEither(second: [ActionSpec]) -> [ActionSpec] { second }
     public static func buildArray(_ arr: [[ActionSpec]]) -> [ActionSpec] { arr.flatMap { $0 } }

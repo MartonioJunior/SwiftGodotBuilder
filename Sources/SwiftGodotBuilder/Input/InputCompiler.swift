@@ -11,15 +11,15 @@ struct _CompiledFilter {
         var phases: InputPhase = []
         var acceptEcho = false
 
-        for p in parts {
-            switch p {
+        for match in parts {
+            switch match {
                 case .any: kind = .any
                 case .pressed: phases.insert(.pressed)
                 case .released: phases.insert(.released)
                 case .echo: acceptEcho = true
-                case let .key(k): kind = .key(k)
-                case let .mouse(b): kind = .mouse(b)
-                case let .joyButton(b): kind = .joy(b)
+                case let .key(key): kind = .key(key)
+                case let .mouse(button): kind = .mouse(button)
+                case let .joyButton(button): kind = .joy(button)
                 case let .action(name): kind = .action(StringName(name))
             }
         }
@@ -29,30 +29,30 @@ struct _CompiledFilter {
         return .init(kind: kind, phases: phases, acceptEcho: acceptEcho)
     }
 
-    func matches(_ ev: InputEvent) -> Bool {
+    func matches(_ event: InputEvent) -> Bool {
         switch kind {
             case .any:
-                return matchesPhase(ev)
-            case let .key(k):
-                guard let kev = ev as? InputEventKey, kev.physicalKeycode == k else { return false }
+                return matchesPhase(event)
+            case let .key(key):
+                guard let kev = event as? InputEventKey, kev.physicalKeycode == key else { return false }
                 return matchesKeyPhase(kev)
-            case let .mouse(b):
-                guard let mev = ev as? InputEventMouseButton, mev.buttonIndex == b else { return false }
+            case let .mouse(button):
+                guard let mev = event as? InputEventMouseButton, mev.buttonIndex == button else { return false }
                 return matchesMousePhase(mev)
-            case let .joy(b):
-                guard let jev = ev as? InputEventJoypadButton, jev.buttonIndex == b else { return false }
+            case let .joy(button):
+                guard let jev = event as? InputEventJoypadButton, jev.buttonIndex == button else { return false }
                 return matchesButtonPhase(jev.pressed)
             case let .action(name):
-                if phases.contains(.pressed), ev.isActionPressed(action: name) { return true }
-                if phases.contains(.released), ev.isActionReleased(action: name) { return true }
+                if phases.contains(.pressed), event.isActionPressed(action: name) { return true }
+                if phases.contains(.released), event.isActionReleased(action: name) { return true }
                 return false
         }
     }
 
-    private func matchesPhase(_ ev: InputEvent) -> Bool {
-        if let kev = ev as? InputEventKey { return matchesKeyPhase(kev) }
-        if let mev = ev as? InputEventMouseButton { return matchesMousePhase(mev) }
-        if let btn = ev as? InputEventJoypadButton { return matchesButtonPhase(btn.pressed) }
+    private func matchesPhase(_ event: InputEvent) -> Bool {
+        if let kev = event as? InputEventKey { return matchesKeyPhase(kev) }
+        if let mev = event as? InputEventMouseButton { return matchesMousePhase(mev) }
+        if let btn = event as? InputEventJoypadButton { return matchesButtonPhase(btn.pressed) }
 
         return false
     }

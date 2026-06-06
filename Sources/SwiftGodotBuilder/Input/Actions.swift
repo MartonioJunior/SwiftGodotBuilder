@@ -24,8 +24,8 @@ public struct Actions {
     /// - Parameter clearExisting: When `true`, purges existing events for each
     ///   action name before re-adding the declared bindings.
     public func install(clearExisting: Bool = false) {
-        for a in actions {
-            a.installing(clearExisting: clearExisting)
+        for action in actions {
+            action.installing(clearExisting: clearExisting)
         }
     }
 }
@@ -43,7 +43,7 @@ public enum ActionRecipes {
     ///   - namePrefix: Action name prefix, e.g. `"move"` -> `"move_down"`, `"move_up"`.
     ///   - device: Joypad device index.
     ///   - axis: The joypad axis to sample.
-    ///   - dz: Deadzone for both actions (default `0.2`).
+    ///   - deadzone: Deadzone for both actions (default `0.2`).
     ///   - keyDown: Optional keyboard keys to include.
     ///   - keyUp: Optional keyboard keys to include.
     ///   - btnDown: Optional joypad buttons to include.
@@ -53,7 +53,7 @@ public enum ActionRecipes {
         namePrefix: String,
         device: Int,
         axis: JoyAxis,
-        dz: Double = 0.2,
+        deadzone: Double = 0.2,
         keyDown: Key? = nil, keyUp: Key? = nil,
         btnDown: JoyButton? = nil, btnUp: JoyButton? = nil
     ) -> [ActionSpec] {
@@ -70,11 +70,10 @@ public enum ActionRecipes {
         ].compactMap { $0 }
 
         return [
-            ActionSpec("\(namePrefix)_down", deadzone: dz, events: downEv),
-            ActionSpec("\(namePrefix)_up", deadzone: dz, events: upEv)
+            ActionSpec("\(namePrefix)_down", deadzone: deadzone, events: downEv),
+            ActionSpec("\(namePrefix)_up", deadzone: deadzone, events: upEv)
         ]
     }
-
     /// Produces `<prefix>_left` and `<prefix>_right` actions for a horizontal axis.
     ///
     /// Mirrors `axisUD` but with left/right semantics and axis values `−1.0/ +1.0`.
@@ -82,7 +81,7 @@ public enum ActionRecipes {
         namePrefix: String,
         device: Int,
         axis: JoyAxis,
-        dz: Double = 0.2,
+        deadzone: Double = 0.2,
         keyLeft: Key? = nil,
         keyRight: Key? = nil,
         btnLeft: JoyButton? = nil,
@@ -101,8 +100,8 @@ public enum ActionRecipes {
         ].compactMap { $0 }
 
         return [
-            ActionSpec("\(namePrefix)_left", deadzone: dz, events: left),
-            ActionSpec("\(namePrefix)_right", deadzone: dz, events: right)
+            ActionSpec("\(namePrefix)_left", deadzone: deadzone, events: left),
+            ActionSpec("\(namePrefix)_right", deadzone: deadzone, events: right)
         ]
     }
 }
