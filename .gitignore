@@ -26,3 +26,5 @@ package-lock.json
 **/.**/settings.local.json
 Tests/SwiftGodotBuilderTestProject/bin
 Tests/SwiftGodotBuilderTestProject/test_results.json
+
+Package.resolved
