@@ -201,7 +201,7 @@ public struct Actor<Content: GView, Collision: GView, Hurtbox: GView, Hitbox: GV
       }
 
       // Selectbox (can be selected by player)
-      if let builder = selectboxBuilder, let selection = state.selection {
+      if let builder = selectboxBuilder, state.selection != nil {
         Area2D$ {
           builder(state)
         }
