@@ -18,17 +18,17 @@ public struct RuntimeVector2Action {
     /// Composite action for the Y axis.
     public let y: RuntimeAxisAction
     /// Deadzone for the vector.
-    public var deadzone: Double
+    public var deadzone: Double?
     // MARK: Initializers
     /// Creates a runtime vector query for the given axis actions.
     /// - Parameters:
     ///   - x: Action for the X axis.
     ///   - y: Action for the Y axis.
-    ///   - deadzone: Deadzone value (default -1.0 uses InputMap value)
+    ///   - deadzone: Deadzone for the vector.
     public init(
         x: RuntimeAxisAction,
         y: RuntimeAxisAction,
-        deadzone: Double = -1.0
+        deadzone: Double? = nil
     ) {
         self.x = x
         self.y = y
@@ -56,7 +56,7 @@ extension RuntimeVector2Action: GodotInputAction {
             positiveX: x.positiveAction.action,
             negativeY: y.negativeAction.action,
             positiveY: y.positiveAction.action,
-            deadzone: deadzone
+            deadzone: deadzone ?? -1.0 // default -1.0 uses InputMap value
         )
     }
 
@@ -80,13 +80,13 @@ public extension GodotInputAction where Self == RuntimeVector2Action {
     ///   - positiveX: Action for right/positive-x
     ///   - negativeY: Action for up/negative-y
     ///   - positiveY: Action for down/positive-y
-    ///   - deadzone: Optional deadzone override (default -1.0 uses InputMap value)
+    ///   - deadzone: Deadzone for the vector.
     @inlinable static func vector(
         negativeX: RuntimeAction,
         positiveX: RuntimeAction,
         negativeY: RuntimeAction,
         positiveY: RuntimeAction,
-        deadzone: Double = -1.0
+        deadzone: Double? = nil
     ) -> Self {
         .init(
             x: .axis(negative: negativeX, positive: positiveX),
