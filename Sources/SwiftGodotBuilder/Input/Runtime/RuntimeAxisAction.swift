@@ -24,8 +24,8 @@ public struct RuntimeAxisAction {
     ///   - positive: Action for positive direction
     ///
     public init(negative: RuntimeAction, positive: RuntimeAction) {
-        negativeAction = Action(negative)
-        positiveAction = Action(positive)
+        negativeAction = negative
+        positiveAction = positive
     }
 }
 
@@ -71,8 +71,8 @@ public extension GodotInputAction where Self == RuntimeAxisAction {
         positive: RuntimeAction
     ) -> Self {
         .init(
-            negative: .init(negative),
-            positive: .init(positive)
+            negative: negative,
+            positive: positive
         )
     }
 }
