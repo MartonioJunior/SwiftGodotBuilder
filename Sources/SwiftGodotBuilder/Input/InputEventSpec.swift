@@ -1,7 +1,7 @@
 import SwiftGodot
 /// Describes a single input event in a declarative, strongly-typed way.
 /// Use these to build actions without hard-coding raw integers.
-public enum InputEventSpec {
+public enum InputEventEnumerator {
     // MARK: Cases
     /// Keyboard event using a Godot `Key` (physical scancode).
     case key(_ key: Key)
@@ -20,27 +20,13 @@ public enum InputEventSpec {
     func make() -> InputEvent {
         switch self {
             case let .key(key):
-                .key(key)
+                InputEventKey(key)
             case let .joyButton(button, device):
-                .joypadButton(button, device: device)
+                InputEventJoypadButton(button, device: device)
             case let .joyAxis(axis, device, value):
-                .joypadAxis(axis, device: device, value: value)
+                InputEventJoypadMotion(axis: axis, device: device, value: value)
             case let .mouseButton(button):
-                .mouseButton(button)
+                InputEventMouseButton(button)
         }
     }
 }
-
-// MARK: - Sugar for event literals inside InputEventBuilder
-/// Shorthand constructor for a keyboard event.
-@inlinable public func Key(_ key: Key) -> InputEventSpec { .key(key) }
-/// Shorthand constructor for a joypad button event.
-@inlinable public func JoyButton(_ button: JoyButton, device: InputDevice) -> InputEventEnumerator {
-    .joyButton(button: button, device: device)
-}
-/// Shorthand constructor for a joypad axis event.
-@inlinable public func JoyAxis(_ axis: JoyAxis, device: InputDevice, _ value: Double) -> InputEventSpec {
-    .joyAxis(axis: axis, device: device, value: value)
-}
-/// Shorthand constructor for a mouse button event (by integer index).
-@inlinable public func MouseButton(_ button: MouseButton) -> InputEventSpec { .mouseButton(button: button) }
