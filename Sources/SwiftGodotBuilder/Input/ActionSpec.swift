@@ -9,10 +9,10 @@ public struct ActionSpec {
     /// Optional deadzone to apply to the action (commonly for analog axes).
     public let deadzone: Double?
     /// Events (keys, buttons, axes, mouse) that will trigger this action.
-    public let events: [InputEventSpec]
+    public let events: [InputEvent]
     // MARK: Initializers
     /// Creates a new `ActionSpec`.
-    public init(_ name: String, deadzone: Double? = nil, events: [InputEventSpec]) {
+    public init(_ name: String, deadzone: Double? = nil, events: [InputEvent]) {
         self.name = name
         self.deadzone = deadzone
         self.events = events
@@ -38,7 +38,7 @@ public struct ActionSpec {
         }
 
         for event in events {
-            InputMap.actionAddEvent(action: actionName, event: event.make())
+            InputMap.actionAddEvent(action: actionName, event: event)
         }
     }
 }
@@ -56,7 +56,17 @@ public struct ActionSpec {
 @inlinable public func Action(
     _ name: String,
     deadzone: Double? = nil,
-    @InputEventBuilder events: () -> [InputEventSpec]
+    @InputEventBuilder events: () -> [InputEvent]
 ) -> ActionSpec {
     ActionSpec(name, deadzone: deadzone, events: events())
+}
+
+// MARK: RuntimeAction (EX)
+public extension RuntimeAction {
+    func binding(
+        deadzone: Double? = nil,
+        @InputEventBuilder events: () -> [InputEvent]
+    ) -> ActionSpec {
+        .init(action.description, deadzone: deadzone, events: events())
+    }
 }

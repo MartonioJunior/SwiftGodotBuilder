@@ -46,8 +46,8 @@ public enum ActionRecipes {
     ///   - deadzone: Deadzone for both actions (default `0.2`).
     ///   - keyDown: Optional keyboard keys to include.
     ///   - keyUp: Optional keyboard keys to include.
-    ///   - btnDown: Optional joypad buttons to include.
-    ///   - btnUp: Optional joypad buttons to include.
+    ///   - buttonDown: Optional joypad buttons to include.
+    ///   - buttonUp: Optional joypad buttons to include.
     /// - Returns: Two `ActionSpec`s: `*_down` (value `+1.0`) and `*_up` (value `-1.0`).
     @inlinable public static func axisUD(
         namePrefix: String,
@@ -55,24 +55,17 @@ public enum ActionRecipes {
         axis: JoyAxis,
         deadzone: Double = 0.2,
         keyDown: Key? = nil, keyUp: Key? = nil,
-        btnDown: JoyButton? = nil, btnUp: JoyButton? = nil
+        buttonDown: JoyButton? = nil, buttonUp: JoyButton? = nil
     ) -> [ActionSpec] {
-        let downEv: [InputEventSpec] = [
-            .joyAxis(axis: axis, device: device, value: 1.0),
-            keyDown.map { .key($0) },
-            btnDown.map { .joyButton(button: $0, device: device) }
-        ].compactMap { $0 }
+        let down = RuntimeAction("\(namePrefix)_down").binding(deadzone: deadzone) {
+            .combined(device: device, axis: (axis, -1.0), key: keyDown, button: buttonDown)
+        }
 
-        let upEv: [InputEventSpec] = [
-            .joyAxis(axis: axis, device: device, value: -1.0),
-            keyUp.map { .key($0) },
-            btnUp.map { .joyButton(button: $0, device: device) }
-        ].compactMap { $0 }
+        let up = RuntimeAction("\(namePrefix)_up").binding(deadzone: deadzone) {
+            .combined(device: device, axis: (axis, 1.0), key: keyUp, button: buttonUp)
+        }
 
-        return [
-            ActionSpec("\(namePrefix)_down", deadzone: deadzone, events: downEv),
-            ActionSpec("\(namePrefix)_up", deadzone: deadzone, events: upEv)
-        ]
+        return [down, up]
     }
     /// Produces `<prefix>_left` and `<prefix>_right` actions for a horizontal axis.
     ///
@@ -84,24 +77,17 @@ public enum ActionRecipes {
         deadzone: Double = 0.2,
         keyLeft: Key? = nil,
         keyRight: Key? = nil,
-        btnLeft: JoyButton? = nil,
-        btnRight: JoyButton? = nil
+        buttonLeft: JoyButton? = nil,
+        buttonRight: JoyButton? = nil
     ) -> [ActionSpec] {
-        let left: [InputEventSpec] = [
-            .joyAxis(axis: axis, device: device, value: -1.0),
-            keyLeft.map { .key($0) },
-            btnLeft.map { .joyButton(button: $0, device: device) }
-        ].compactMap { $0 }
+        let left = RuntimeAction("\(namePrefix)_left").binding(deadzone: deadzone) {
+            .combined(device: device, axis: (axis, -1.0), key: keyLeft, button: buttonLeft)
+        }
 
-        let right: [InputEventSpec] = [
-            .joyAxis(axis: axis, device: device, value: 1.0),
-            keyRight.map { .key($0) },
-            btnRight.map { .joyButton(button: $0, device: device) }
-        ].compactMap { $0 }
+        let right = RuntimeAction("\(namePrefix)_right").binding(deadzone: deadzone) {
+            .combined(device: device, axis: (axis, 1.0), key: keyRight, button: buttonRight)
+        }
 
-        return [
-            ActionSpec("\(namePrefix)_left", deadzone: deadzone, events: left),
-            ActionSpec("\(namePrefix)_right", deadzone: deadzone, events: right)
-        ]
+        return [left, right]
     }
 }
