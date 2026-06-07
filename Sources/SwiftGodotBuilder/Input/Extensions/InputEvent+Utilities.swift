@@ -55,7 +55,7 @@ public extension Array where Element == InputEvent {
         button: JoyButton? = nil,
     ) -> Self {
         [
-            axis.map { InputEventJoypadMotion($0.id, device: device, value: $0.value) },
+            axis.map { InputEventJoypadMotion(axis: $0.id, device: device, value: $0.value) },
             key.map { InputEventKey($0) },
             button.map { InputEventJoypadButton($0, device: device) }
         ].compactMap(\.self)
