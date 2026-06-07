@@ -98,16 +98,20 @@ public extension RuntimeAxisAction {
     ///   - buttonPositive: Optional joypad buttons to include.
     /// - Returns: An `RuntimeAxisAction`: positive `+1.0` and negative `-1.0` on `axis`.
     func binding(
-        device: InputDevice,
+        gamepad: Gamepad,
         axis: JoyAxis,
         deadzone: Double = 0.2,
         keyNegative: Key? = nil, keyPositive: Key? = nil,
         buttonNegative: JoyButton? = nil, buttonPositive: JoyButton? = nil
     ) -> [ActionSpec] {
         binding(deadzone: deadzone) {
-            .combined(device: device, axis: (axis, -1.0), key: keyNegative, button: buttonNegative)
+            if let keyNegative { Keyboard.key(keyNegative) }
+            if let buttonNegative { gamepad.button(buttonNegative) }
+            gamepad.axis(axis, value: -1.0)
         } positive: {
-            .combined(device: device, axis: (axis, 1.0), key: keyPositive, button: buttonPositive)
+            if let keyPositive { Keyboard.key(keyPositive) }
+            if let buttonPositive { gamepad.button(buttonPositive) }
+            gamepad.axis(axis, value: 1.0)
         }
     }
 }
