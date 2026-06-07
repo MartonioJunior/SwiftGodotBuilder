@@ -12,10 +12,10 @@ import SwiftGodot
 public struct Actions {
     // MARK: Variables
     /// The actions to be installed.
-    public let actions: [ActionSpec]
+    public let actions: [ActionBinding]
     // MARK: Initializers
     /// Builds an `Actions` from a declarative block of `ActionSpec`s.
-    public init(@ActionBuilder _ content: () -> [ActionSpec]) {
+    public init(@ActionBuilder _ content: () -> [ActionBinding]) {
         actions = content()
     }
     // MARK: Methods

@@ -11,11 +11,11 @@
 @_documentation(visibility: private)
 @resultBuilder
 public enum ActionBuilder {
-    public static func buildBlock(_ parts: [ActionSpec]...) -> [ActionSpec] { parts.flatMap { $0 } }
-    public static func buildExpression(_ action: ActionSpec) -> [ActionSpec] { [action] }
-    public static func buildExpression(_ asv: [ActionSpec]) -> [ActionSpec] { asv }
-    public static func buildOptional(_ action: [ActionSpec]?) -> [ActionSpec] { action ?? [] }
-    public static func buildEither(first: [ActionSpec]) -> [ActionSpec] { first }
-    public static func buildEither(second: [ActionSpec]) -> [ActionSpec] { second }
-    public static func buildArray(_ arr: [[ActionSpec]]) -> [ActionSpec] { arr.flatMap { $0 } }
+    public static func buildBlock(_ parts: [ActionBinding]...) -> [ActionBinding] { parts.flatMap { $0 } }
+    public static func buildExpression(_ action: ActionBinding) -> [ActionBinding] { [action] }
+    public static func buildExpression(_ asv: [ActionBinding]) -> [ActionBinding] { asv }
+    public static func buildOptional(_ action: [ActionBinding]?) -> [ActionBinding] { action ?? [] }
+    public static func buildEither(first: [ActionBinding]) -> [ActionBinding] { first }
+    public static func buildEither(second: [ActionBinding]) -> [ActionBinding] { second }
+    public static func buildArray(_ arr: [[ActionBinding]]) -> [ActionBinding] { arr.flatMap { $0 } }
 }

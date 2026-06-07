@@ -2,7 +2,7 @@ import SwiftGodot
 /// A named input action and the set of events that trigger it.
 ///
 /// Use `installing(clearExisting:)` to register this action with `InputMap`.
-public struct ActionSpec {
+public struct ActionBinding {
     // MARK: Variables
     /// Action name as used by Godot's `InputMap` and `Input.is_action_*` APIs.
     public let name: String
@@ -11,7 +11,7 @@ public struct ActionSpec {
     /// Events (keys, buttons, axes, mouse) that will trigger this action.
     public let events: [InputEvent]
     // MARK: Initializers
-    /// Creates a new `ActionSpec`.
+    /// Creates a new action binding.
     public init(_ name: String, deadzone: Double? = nil, events: [InputEvent]) {
         self.name = name
         self.deadzone = deadzone
@@ -57,8 +57,8 @@ public struct ActionSpec {
     _ name: String,
     deadzone: Double? = nil,
     @InputEventBuilder events: () -> [InputEvent]
-) -> ActionSpec {
-    ActionSpec(name, deadzone: deadzone, events: events())
+) -> ActionBinding {
+    ActionBinding(name, deadzone: deadzone, events: events())
 }
 
 // MARK: RuntimeAction (EX)
@@ -66,7 +66,7 @@ public extension RuntimeAction {
     func binding(
         deadzone: Double? = nil,
         @InputEventBuilder _ events: () -> [InputEvent]
-    ) -> ActionSpec {
+    ) -> ActionBinding {
         .init(action.description, deadzone: deadzone, events: events())
     }
 }
@@ -77,7 +77,7 @@ public extension RuntimeAxisAction {
         deadzone: Double = 0.2,
         @InputEventBuilder negative negativeEvents: () -> [InputEvent],
         @InputEventBuilder positive positiveEvents: () -> [InputEvent]
-    ) -> [ActionSpec] {
+    ) -> [ActionBinding] {
         let negativeBinding = negativeAction.binding(deadzone: deadzone, negativeEvents)
         let positiveBinding = positiveAction.binding(deadzone: deadzone, positiveEvents)
         return [negativeBinding, positiveBinding]
@@ -103,7 +103,7 @@ public extension RuntimeAxisAction {
         deadzone: Double = 0.2,
         keyNegative: Key? = nil, keyPositive: Key? = nil,
         buttonNegative: JoyButton? = nil, buttonPositive: JoyButton? = nil
-    ) -> [ActionSpec] {
+    ) -> [ActionBinding] {
         binding(deadzone: deadzone) {
             if let keyNegative { Keyboard.key(keyNegative) }
             if let buttonNegative { gamepad.button(buttonNegative) }
