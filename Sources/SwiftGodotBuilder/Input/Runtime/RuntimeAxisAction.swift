@@ -75,4 +75,12 @@ public extension GodotInputAction where Self == RuntimeAxisAction {
             positive: positive
         )
     }
+
+    static func leftRight(prefix: String) -> Self {
+        .axis(negative: "\(prefix)_left", positive: "\(prefix)_right")
+    }
+
+    static func upDown(prefix: String) -> Self {
+        .axis(negative: "\(prefix)_down", positive: "\(prefix)_up")
+    }
 }
