@@ -57,15 +57,11 @@ public enum ActionRecipes {
         keyDown: Key? = nil, keyUp: Key? = nil,
         buttonDown: JoyButton? = nil, buttonUp: JoyButton? = nil
     ) -> [ActionSpec] {
-        let down = RuntimeAction("\(namePrefix)_down").binding(deadzone: deadzone) {
+        RuntimeAxisAction.upDown(prefix: namePrefix).binding(deadzone: deadzone) {
             .combined(device: device, axis: (axis, -1.0), key: keyDown, button: buttonDown)
-        }
-
-        let up = RuntimeAction("\(namePrefix)_up").binding(deadzone: deadzone) {
+        } positive: {
             .combined(device: device, axis: (axis, 1.0), key: keyUp, button: buttonUp)
         }
-
-        return [down, up]
     }
     /// Produces `<prefix>_left` and `<prefix>_right` actions for a horizontal axis.
     ///
@@ -80,14 +76,10 @@ public enum ActionRecipes {
         buttonLeft: JoyButton? = nil,
         buttonRight: JoyButton? = nil
     ) -> [ActionSpec] {
-        let left = RuntimeAction("\(namePrefix)_left").binding(deadzone: deadzone) {
+        RuntimeAxisAction.leftRight(prefix: namePrefix).binding(deadzone: deadzone) {
             .combined(device: device, axis: (axis, -1.0), key: keyLeft, button: buttonLeft)
-        }
-
-        let right = RuntimeAction("\(namePrefix)_right").binding(deadzone: deadzone) {
+        } positive: {
             .combined(device: device, axis: (axis, 1.0), key: keyRight, button: buttonRight)
         }
-
-        return [left, right]
     }
 }

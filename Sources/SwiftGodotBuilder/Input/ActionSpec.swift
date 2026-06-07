@@ -65,8 +65,21 @@ public struct ActionSpec {
 public extension RuntimeAction {
     func binding(
         deadzone: Double? = nil,
-        @InputEventBuilder events: () -> [InputEvent]
+        @InputEventBuilder _ events: () -> [InputEvent]
     ) -> ActionSpec {
         .init(action.description, deadzone: deadzone, events: events())
+    }
+}
+
+// MARK: RuntimeAxisAction (EX)
+public extension RuntimeAxisAction {
+    func binding(
+        deadzone: Double = 0.2,
+        @InputEventBuilder negative negativeEvents: () -> [InputEvent],
+        @InputEventBuilder positive positiveEvents: () -> [InputEvent]
+    ) -> [ActionSpec] {
+        let negativeBinding = negativeAction.binding(deadzone: deadzone, negativeEvents)
+        let positiveBinding = positiveAction.binding(deadzone: deadzone, positiveEvents)
+        return [negativeBinding, positiveBinding]
     }
 }
