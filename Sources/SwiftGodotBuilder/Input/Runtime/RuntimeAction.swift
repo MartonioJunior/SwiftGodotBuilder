@@ -55,8 +55,8 @@ public struct RuntimeAction {
     RuntimeAction(name: name)
 }
 
-// MARK: Self: ExpressibleByStringLiteral
-extension RuntimeAction: ExpressibleByStringLiteral {
+// MARK: Self: ExpressibleByStringInterpolation
+extension RuntimeAction: ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
         self.init(name: value)
     }
