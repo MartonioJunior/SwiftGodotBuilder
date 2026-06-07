@@ -6,11 +6,11 @@ public enum InputEventSpec {
     /// Keyboard event using a Godot `Key` (physical scancode).
     case key(_ key: Key)
     /// Joypad button event for a specific device and button.
-    case joyButton(button: JoyButton, device: Int)
+    case joyButton(button: JoyButton, device: InputDevice)
     /// Joypad axis motion event with a signed axis value (−1.0...1.0).
-    case joyAxis(axis: JoyAxis, device: Int, value: Double)
-    /// Mouse button event by numerical index (mapped to `MouseButton`).
-    case mouseButton(index: Int)
+    case joyAxis(axis: JoyAxis, device: InputDevice, value: Double)
+    /// Mouse button event.
+    case mouseButton(button: MouseButton)
     // MARK: Methods
     /// Builds the corresponding Godot `InputEvent` instance.
     ///
@@ -20,24 +20,13 @@ public enum InputEventSpec {
     func make() -> InputEvent {
         switch self {
             case let .key(key):
-                let event = InputEventKey()
-                event.physicalKeycode = key
-                return event
+                .key(key)
             case let .joyButton(button, device):
-                let event = InputEventJoypadButton()
-                event.device = Int32(device)
-                event.buttonIndex = button
-                return event
+                .joypadButton(button, device: device)
             case let .joyAxis(axis, device, value):
-                let event = InputEventJoypadMotion()
-                event.device = Int32(device)
-                event.axis = axis
-                event.axisValue = value
-                return event
-            case let .mouseButton(index):
-                let event = InputEventMouseButton()
-                event.buttonIndex = MouseButton(rawValue: Int64(index)) ?? .none
-                return event
+                .joypadAxis(axis, device: device, value: value)
+            case let .mouseButton(button):
+                .mouseButton(button)
         }
     }
 }
@@ -46,12 +35,12 @@ public enum InputEventSpec {
 /// Shorthand constructor for a keyboard event.
 @inlinable public func Key(_ key: Key) -> InputEventSpec { .key(key) }
 /// Shorthand constructor for a joypad button event.
-@inlinable public func JoyButton(_ button: JoyButton, device: Int) -> InputEventSpec {
+@inlinable public func JoyButton(_ button: JoyButton, device: InputDevice) -> InputEventEnumerator {
     .joyButton(button: button, device: device)
 }
 /// Shorthand constructor for a joypad axis event.
-@inlinable public func JoyAxis(_ axis: JoyAxis, device: Int, _ value: Double) -> InputEventSpec {
+@inlinable public func JoyAxis(_ axis: JoyAxis, device: InputDevice, _ value: Double) -> InputEventSpec {
     .joyAxis(axis: axis, device: device, value: value)
 }
 /// Shorthand constructor for a mouse button event (by integer index).
-@inlinable public func MouseButton(_ index: Int) -> InputEventSpec { .mouseButton(index: index) }
+@inlinable public func MouseButton(_ button: MouseButton) -> InputEventSpec { .mouseButton(button: button) }

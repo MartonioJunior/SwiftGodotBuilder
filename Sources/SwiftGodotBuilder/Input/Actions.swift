@@ -51,7 +51,7 @@ public enum ActionRecipes {
     /// - Returns: Two `ActionSpec`s: `*_down` (value `+1.0`) and `*_up` (value `-1.0`).
     @inlinable public static func axisUD(
         namePrefix: String,
-        device: Int,
+        device: InputDevice,
         axis: JoyAxis,
         deadzone: Double = 0.2,
         keyDown: Key? = nil, keyUp: Key? = nil,
@@ -79,7 +79,7 @@ public enum ActionRecipes {
     /// Mirrors `axisUD` but with left/right semantics and axis values `−1.0/ +1.0`.
     @inlinable public static func axisLR(
         namePrefix: String,
-        device: Int,
+        device: InputDevice,
         axis: JoyAxis,
         deadzone: Double = 0.2,
         keyLeft: Key? = nil,
