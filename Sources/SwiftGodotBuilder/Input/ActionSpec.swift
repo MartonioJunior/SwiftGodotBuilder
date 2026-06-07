@@ -82,4 +82,32 @@ public extension RuntimeAxisAction {
         let positiveBinding = positiveAction.binding(deadzone: deadzone, positiveEvents)
         return [negativeBinding, positiveBinding]
     }
+    /// Performs a binding with a set of related input mechanics.
+    /// 
+    /// Useful for mapping analog axes to paired digital actions (e.g. up/down, left/right).
+    /// Each action includes the axis motion plus any optional key or button,
+    /// with a shared deadzone applied to both.
+    ///
+    /// - Parameters:
+    ///   - device: Joypad device index.
+    ///   - axis: The joypad axis to sample.
+    ///   - deadzone: Deadzone for both actions (default `0.2`).
+    ///   - keyNegative: Optional keyboard keys to include.
+    ///   - keyPositive: Optional keyboard keys to include.
+    ///   - buttonNegative: Optional joypad buttons to include.
+    ///   - buttonPositive: Optional joypad buttons to include.
+    /// - Returns: An `RuntimeAxisAction`: positive `+1.0` and negative `-1.0` on `axis`.
+    func binding(
+        device: InputDevice,
+        axis: JoyAxis,
+        deadzone: Double = 0.2,
+        keyNegative: Key? = nil, keyPositive: Key? = nil,
+        buttonNegative: JoyButton? = nil, buttonPositive: JoyButton? = nil
+    ) -> [ActionSpec] {
+        binding(deadzone: deadzone) {
+            .combined(device: device, axis: (axis, -1.0), key: keyNegative, button: buttonNegative)
+        } positive: {
+            .combined(device: device, axis: (axis, 1.0), key: keyPositive, button: buttonPositive)
+        }
+    }
 }
