@@ -7,6 +7,7 @@
 
 import SwiftGodot
 
+/// Abstraction that represents a Gamepad.
 public struct Gamepad {
     // MARK: Variables
     /// Device representing the gamepad.

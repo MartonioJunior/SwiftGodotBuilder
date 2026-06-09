@@ -5,6 +5,7 @@
 //  Created by Martônio Júnior on 06/06/2026.
 //
 
+/// Abstraction that represents information about an input device.
 public struct InputDevice {
     /// Identifier for the device used.
     public var id: Int
