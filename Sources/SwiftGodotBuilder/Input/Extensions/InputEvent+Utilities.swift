@@ -13,6 +13,16 @@ public extension InputEventJoypadButton {
         self.device = Int32(device.id)
         self.buttonIndex = button
     }
+
+    func matches(_ button: JoyButton, mask: BitSet<InputPhase> = .all) -> Bool {
+        guard buttonIndex == button else { return false }
+
+        return if pressed {
+            mask.contains(.only(.pressed))
+        } else {
+            mask.contains(.only(.released))
+        }
+    }
 }
 
 public extension InputEventJoypadMotion {
@@ -29,11 +39,33 @@ public extension InputEventKey {
         self.init()
         self.physicalKeycode = key
     }
+
+    func matches(_ key: Key, mask: BitSet<InputPhase> = .all, acceptEcho: Bool = false) -> Bool {
+        guard physicalKeycode == key else { return false }
+
+        if echo { return acceptEcho }
+
+        return if pressed {
+            mask.contains(.only(.pressed))
+        } else {
+            mask.contains(.only(.released))
+        }
+    }
 }
 
 public extension InputEventMouseButton {
     convenience init(_ button: MouseButton) {
         self.init()
         self.buttonIndex = button
+    }
+
+    func matches(_ button: MouseButton, mask: BitSet<InputPhase> = .all) -> Bool {
+        guard buttonIndex == button else { return false }
+
+        return if pressed {
+            mask.contains(.only(.pressed))
+        } else {
+            mask.contains(.only(.released))
+        }
     }
 }
