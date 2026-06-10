@@ -7,6 +7,11 @@
 
 import SwiftGodot
 
+public extension InputEvent {
+    /// Artificially triggers the input event from code.
+    func invoke() { Input.parseInputEvent(self) }
+}
+
 public extension InputEventJoypadButton {
     convenience init(_ button: JoyButton, device: InputDevice) {
         self.init()
