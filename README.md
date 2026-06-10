@@ -1498,7 +1498,7 @@ NodeSpawner(GameEvent.self) { event in
 
 ```swift
 // Define actions
-Actions {
+ActionSet {
   Action("jump") {
     Key(.space)
     JoyButton(.a, device: 0)

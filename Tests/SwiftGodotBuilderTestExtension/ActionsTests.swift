@@ -90,7 +90,7 @@ struct ActionsTests: TestSuite {
 
   func testActionsBuilder() {
     // Test the Actions builder DSL
-    let actions = Actions {
+    let actions = ActionSet {
       Action("jump") { Key(.space) }
       Action("fire") { MouseButton(1) }
     }

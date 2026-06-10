@@ -1,15 +1,22 @@
+//
+//  ActionSet.swift
+//  SwiftGodotBuilder
+//
+//  Created by Martônio Júnior on 10/06/2026.
+//
+
 import SwiftGodot
 /// Top-level container for a set of actions to be installed into `InputMap`.
 ///
 /// ### Usage:
 /// ```swift
-/// let inputs = Actions {
+/// let inputs = ActionSet {
 ///   ActionBinding("jump") { Keyboard.key(.space) }
 ///   ActionBinding("shoot") { Mouse.button(1) }
 /// }
 /// inputs.install(clearExisting: true)
 /// ```
-public struct Actions {
+public struct ActionSet {
     // MARK: Variables
     /// The actions to be installed.
     public let actions: [ActionBinding]
