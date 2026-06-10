@@ -1,11 +1,11 @@
-/// Result builder for composing `[ActionSpec]` in a DSL block.
+/// Result builder for composing `[ActionBinding]` in a DSL block.
 ///
 /// Enables:
 /// ```swift
-/// Actions {
-///   Action("fire") { MouseButton(1) }
-///   Action("left") { Key(.a) }
-///   Action("right") { Key(.d) }
+/// ActionSet {
+///   ActionBinding("fire") { MouseButton(1) }
+///   ActionBinding("left") { Key(.a) }
+///   ActionBinding("right") { Key(.d) }
 /// }
 /// ```
 @_documentation(visibility: private)
