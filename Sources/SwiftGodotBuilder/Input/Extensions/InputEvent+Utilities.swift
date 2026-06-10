@@ -32,6 +32,16 @@ public extension InputEventJoypadMotion {
         self.axis = axis
         self.axisValue = value
     }
+
+    func matches(_ axis: JoyAxis, mask: BitSet<InputPhase> = .all, predicate: (Double) -> Bool) -> Bool {
+        guard self.axis == axis else { return false }
+
+        return if isPressed() {
+            mask.contains(.only(.pressed)) && predicate(axisValue)
+        } else {
+            mask.contains(.only(.released)) && predicate(axisValue)
+        }
+    }
 }
 
 public extension InputEventKey {
