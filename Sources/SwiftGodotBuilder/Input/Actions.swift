@@ -23,9 +23,9 @@ public struct Actions {
     ///
     /// - Parameter clearExisting: When `true`, purges existing events for each
     ///   action name before re-adding the declared bindings.
-    public func install(clearExisting: Bool = false) {
+    public func registerToInputMap(clearExisting: Bool = false) {
         for action in actions {
-            action.installing(clearExisting: clearExisting)
+            action.registerToInputMap(clearExisting: clearExisting)
         }
     }
 }

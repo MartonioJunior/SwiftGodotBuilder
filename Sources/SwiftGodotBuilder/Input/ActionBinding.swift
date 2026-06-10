@@ -38,7 +38,7 @@ public struct ActionBinding {
     ///
     /// - Parameter clearExisting: If `true`, erases any existing events
     ///   for this action before adding the new ones.
-    public func installing(clearExisting: Bool = false) {
+    public func registerToInputMap(clearExisting: Bool = false) {
         let actionName = StringName(name)
 
         if !InputMap.hasAction(actionName) {
