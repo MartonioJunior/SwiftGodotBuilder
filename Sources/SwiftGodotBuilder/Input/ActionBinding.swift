@@ -57,6 +57,11 @@ public struct ActionBinding {
             InputMap.actionAddEvent(action: actionName, event: event)
         }
     }
+    /// Decouples an event from this action.
+    /// - Parameter event: Event to be unregistered.
+    public func unregister(_ event: InputEvent) {
+        InputMap.actionEraseEvent(action: StringName(name), event: event)
+    }
 }
 
 // MARK: RuntimeAction (EX)
