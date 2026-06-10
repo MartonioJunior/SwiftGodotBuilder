@@ -19,3 +19,18 @@ public enum InputPhase: Int {
 
 // MARK: Self: Sendable
 extension InputPhase: Sendable {}
+
+// MARK: BitSet (EX)
+import SwiftGodot
+
+public extension BitSet where Base == InputPhase {
+    func validate(_ event: InputEvent) -> Bool {
+        if event.isPressed() {
+            contains(.only(.pressed))
+        } else if event.isReleased() {
+            contains(.only(.released))
+        } else {
+            contains(.only(.echo))
+        }
+    }
+}

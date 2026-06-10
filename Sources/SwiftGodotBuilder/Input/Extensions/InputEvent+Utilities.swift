@@ -21,16 +21,6 @@ public extension InputEventJoypadButton {
         self.init(device: device)
         self.buttonIndex = button
     }
-
-    func matches(_ button: JoyButton, mask: BitSet<InputPhase> = .all) -> Bool {
-        guard buttonIndex == button else { return false }
-
-        return if pressed {
-            mask.contains(.only(.pressed))
-        } else {
-            mask.contains(.only(.released))
-        }
-    }
 }
 
 public extension InputEventJoypadMotion {
@@ -39,16 +29,6 @@ public extension InputEventJoypadMotion {
         self.axis = axis
         self.axisValue = value
     }
-
-    func matches(_ axis: JoyAxis, mask: BitSet<InputPhase> = .all, predicate: (Double) -> Bool) -> Bool {
-        guard self.axis == axis else { return false }
-
-        return if isPressed() {
-            mask.contains(.only(.pressed)) && predicate(axisValue)
-        } else {
-            mask.contains(.only(.released)) && predicate(axisValue)
-        }
-    }
 }
 
 public extension InputEventKey {
@@ -56,33 +36,11 @@ public extension InputEventKey {
         self.init()
         self.physicalKeycode = key
     }
-
-    func matches(_ key: Key, mask: BitSet<InputPhase> = .all, acceptEcho: Bool = false) -> Bool {
-        guard physicalKeycode == key else { return false }
-
-        if echo { return acceptEcho }
-
-        return if pressed {
-            mask.contains(.only(.pressed))
-        } else {
-            mask.contains(.only(.released))
-        }
-    }
 }
 
 public extension InputEventMouseButton {
     convenience init(_ button: MouseButton) {
         self.init()
         self.buttonIndex = button
-    }
-
-    func matches(_ button: MouseButton, mask: BitSet<InputPhase> = .all) -> Bool {
-        guard buttonIndex == button else { return false }
-
-        return if pressed {
-            mask.contains(.only(.pressed))
-        } else {
-            mask.contains(.only(.released))
-        }
     }
 }

@@ -29,4 +29,16 @@ public extension InputSource {
 
         return Self.unwrapEvent(event)
     }
+
+    func validate(
+        _ event: InputEvent,
+        mask: BitSet<InputPhase> = .all,
+        predicate: (Input) -> Bool
+    ) -> Bool {
+        guard event.device == device.id, let input = unwrapEvent(event) else { return false }
+
+        let validInput = predicate(input)
+
+        return validInput && mask.validate(event)
+    }
 }
