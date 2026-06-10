@@ -4,8 +4,8 @@ import SwiftGodot
 /// ### Usage:
 /// ```swift
 /// let inputs = Actions {
-///   Action("jump") { Key(.space) }
-///   Action("shoot") { MouseButton(1) }
+///   ActionBinding("jump") { Keyboard.key(.space) }
+///   ActionBinding("shoot") { Mouse.button(1) }
 /// }
 /// inputs.install(clearExisting: true)
 /// ```

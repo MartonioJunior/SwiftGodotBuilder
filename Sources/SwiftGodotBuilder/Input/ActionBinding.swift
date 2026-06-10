@@ -1,7 +1,7 @@
 import SwiftGodot
 /// A named input action and the set of events that trigger it.
 ///
-/// Use `installing(clearExisting:)` to register this action with `InputMap`.
+/// Use `registerToInputMap(clearExisting:)` to register this action with `InputMap`.
 public struct ActionBinding {
     // MARK: Variables
     /// Action name as used by Godot's `InputMap` and `Input.is_action_*` APIs.
@@ -16,6 +16,22 @@ public struct ActionBinding {
         self.name = name
         self.deadzone = deadzone
         self.events = events
+    }
+    /// Convenience function for building a single `ActionSpec` with an `InputEventBuilder` block.
+    ///
+    /// ### Usage:
+    /// ```swift
+    /// ActionBinding("move_left", deadzone: 0.2) {
+    ///   Gamepad(0).axis(.leftX, -1)
+    ///   Keyboard.key(.a)
+    /// }
+    /// ```
+    public init(
+        _ name: String,
+        deadzone: Double? = nil,
+        @InputEventBuilder events: () -> [InputEvent]
+    ) {
+        self.init(name, deadzone: deadzone, events: events())
     }
     // MARK: Methods
     /// Registers this action and its events with Godot's `InputMap`.
@@ -41,24 +57,6 @@ public struct ActionBinding {
             InputMap.actionAddEvent(action: actionName, event: event)
         }
     }
-}
-
-// MARK: - Sugar for event literals inside InputEventBuilder
-/// Convenience function for building a single `ActionSpec` with an `InputEventBuilder` block.
-///
-/// ### Usage:
-/// ```swift
-/// Action("move_left", deadzone: 0.2) {
-///   JoyAxis(0, .leftX, -1)
-///   Key(.a)
-/// }
-/// ```
-@inlinable public func Action(
-    _ name: String,
-    deadzone: Double? = nil,
-    @InputEventBuilder events: () -> [InputEvent]
-) -> ActionBinding {
-    ActionBinding(name, deadzone: deadzone, events: events())
 }
 
 // MARK: RuntimeAction (EX)
