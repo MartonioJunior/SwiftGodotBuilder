@@ -8,14 +8,17 @@
 import SwiftGodot
 
 public extension InputEvent {
+    convenience init(device: InputDevice) {
+        self.init()
+        self.device = Int32(device.id)
+    }
     /// Artificially triggers the input event from code.
     func invoke() { Input.parseInputEvent(self) }
 }
 
 public extension InputEventJoypadButton {
     convenience init(_ button: JoyButton, device: InputDevice) {
-        self.init()
-        self.device = Int32(device.id)
+        self.init(device: device)
         self.buttonIndex = button
     }
 
@@ -32,8 +35,7 @@ public extension InputEventJoypadButton {
 
 public extension InputEventJoypadMotion {
     convenience init(axis: JoyAxis, device: InputDevice, value: Double) {
-        self.init()
-        self.device = Int32(device.id)
+        self.init(device: device)
         self.axis = axis
         self.axisValue = value
     }
