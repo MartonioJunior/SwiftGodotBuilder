@@ -104,17 +104,15 @@ public extension RuntimeAxisAction {
         gamepad: Gamepad,
         axis: JoyAxis,
         deadzone: Double = 0.2,
-        keyNegative: Key? = nil, keyPositive: Key? = nil,
-        buttonNegative: JoyButton? = nil, buttonPositive: JoyButton? = nil
+        @InputEventBuilder negative negativeEvents: () -> [InputEvent] = { [] },
+        @InputEventBuilder positive positiveEvents: () -> [InputEvent] = { [] }
     ) -> [ActionBinding] {
         binding(deadzone: deadzone) {
-            if let keyNegative { Keyboard.key(keyNegative) }
-            if let buttonNegative { gamepad.button(buttonNegative) }
             gamepad.axis(axis, value: -1.0)
+            negativeEvents()
         } positive: {
-            if let keyPositive { Keyboard.key(keyPositive) }
-            if let buttonPositive { gamepad.button(buttonPositive) }
             gamepad.axis(axis, value: 1.0)
+            positiveEvents()
         }
     }
 }
