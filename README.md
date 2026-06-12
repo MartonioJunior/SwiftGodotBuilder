@@ -1499,48 +1499,52 @@ NodeSpawner(GameEvent.self) { event in
 ```swift
 // Define actions
 ActionSet {
-  Action("jump") {
-    Key(.space)
-    JoyButton(.a, device: 0)
+  ActionBinding("jump") {
+    Keyboard.key(.space)
+    Gamepad(0).button(.a)
   }
 
-  Action("shoot") {
-    MouseButton(1)
-    Key(.leftCtrl)
+  ActionBinding("shoot") {
+    Mouse.button(1)
+    Keyboard.key(.leftCtrl)
   }
 
   // Analog axes
-  ActionRecipes.axisUD(
-    namePrefix: "move",
-    device: 0,
-    axis: .leftY,
-    dz: 0.2,
-    keyDown: .s,
-    keyUp: .w
-  )
+  RuntimeAxisAction.leftRight("move")
+    .binding(
+      gamepad: .init(0),
+      axis: .leftX,
+      deadzone: 0.2
+    ) {
+    Keyboard.key(.a)
+  } positive: {
+    Keyboard.key(.d)
+  }
 
-  ActionRecipes.axisLR(
-    namePrefix: "move",
-    device: 0,
-    axis: .leftX,
-    dz: 0.2,
-    keyLeft: .a,
-    keyRight: .d
-  )
+  RuntimeAxisAction.upDown("move")
+    .binding(
+      gamepad: .init(0),
+      axis: .leftY,
+      deadzone: 0.2
+    ) {
+    Keyboard.key(.s)
+  } positive: {
+    Keyboard.key(.w)
+  }
 }
 .install(clearExisting: true)
 
 // Runtime polling
-if Action("jump").isJustPressed {
+if RuntimeAction("jump").isJustPressed {
   player.jump()
 }
 
-if Action("shoot").isPressed {
-  player.shoot(Action("shoot").strength)
+if RuntimeAction("shoot").isPressed {
+  player.shoot(RuntimeAction("shoot").strength)
 }
 
-let horizontal = RuntimeAction.axis(negative: "move_left", positive: "move_right")
-let movement = RuntimeAction.vector(
+let horizontal = RuntimeAxisAction(negative: "move_left", positive: "move_right")
+let movement = RuntimeVector2Action(
   negativeX: "move_left",
   positiveX: "move_right",
   negativeY: "move_up",
