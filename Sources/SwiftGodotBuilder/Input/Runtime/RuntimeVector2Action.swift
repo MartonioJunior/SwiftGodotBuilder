@@ -70,6 +70,12 @@ extension RuntimeVector2Action: GodotInputAction {
 
 // MARK: GodotInputAction (EX)
 public extension GodotInputAction where Self == RuntimeVector2Action {
+    /// Produces a vector with up, down, left and right actions.
+    /// - Parameter prefix: Prefix name for the actions.
+    /// - Returns: A new 2D vector action.
+    static func directional(prefix: String) -> Self {
+        .init(x: .leftRight(prefix: prefix), y: .upDown(prefix: prefix))
+    }
     /// Returns the 2D vector for paired action sets (e.g., movement).
     ///
     /// Combines horizontal and vertical action pairs into a normalized
