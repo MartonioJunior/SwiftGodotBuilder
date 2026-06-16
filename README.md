@@ -1,4 +1,10 @@
 
+> This is a fork of John Susek's work on SwiftGodotBuilder that continues it (as no activity has happened on the original repository in the last few months) while also being it's own thing.
+>
+> Links in this README are kept as-is, but inline examples below may be updated to reflect current package behaviour.
+> 
+> As it's reworked further, it may eventually become it's own unique package (or even a set of packages) rather than a fork of the original.
+
 <a href="#"><img src="media/patterns.png?raw=true" width="210" align="right" title="Pictured: Ancient Roman seamstress at a loom, holding a shuttle."></a>
 
 #### SwiftGodotBuilder
