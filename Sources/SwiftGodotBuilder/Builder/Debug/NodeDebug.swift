@@ -117,9 +117,9 @@ public enum NodeDebug {
     guard now - lastGrowthCheckTime >= growthCheckInterval else { return }
 
     // Get current node count from scene tree
-    guard let tree = Engine.getMainLoop() as? SceneTree,
-          let root = tree.root else { return }
+    guard let tree = Engine.getMainLoop() as? SceneTree else { return }
 
+    let root = tree.root
     let currentCount = countNodes(root)
 
     if lastNodeCount > 0 {
@@ -153,9 +153,9 @@ public enum NodeDebug {
     defer { lock.unlock() }
 
     var nodeCount = 0
-    if let tree = Engine.getMainLoop() as? SceneTree,
-       let root = tree.root
+    if let tree = Engine.getMainLoop() as? SceneTree
     {
+      let root = tree.root
       nodeCount = countNodes(root)
     }
 
@@ -164,13 +164,12 @@ public enum NodeDebug {
 
   /// Print current node tree summary.
   public static func printSummary() {
-    guard let tree = Engine.getMainLoop() as? SceneTree,
-          let root = tree.root
-    else {
+    guard let tree = Engine.getMainLoop() as? SceneTree else {
       GD.print("[NodeDebug] No scene tree available")
       return
     }
 
+    let root = tree.root
     let count = countNodes(root)
     GD.print("[NodeDebug] Total nodes in tree: \(count)")
 

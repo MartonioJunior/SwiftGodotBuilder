@@ -66,7 +66,7 @@ public final class Autoload<T: Node>: _AutoBindProp {
 
   func _bind(host _: Node) {
     let tree = Engine.getMainLoop() as? SceneTree
-    ref = tree?.root?.getNode(path: NodePath("/root/\(name)")) as? T
+    ref = tree?.root.getNode(path: NodePath("/root/\(name)")) as? T
   }
 }
 
